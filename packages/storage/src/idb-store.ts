@@ -19,19 +19,44 @@ function transactionDone(tx: IDBTransaction): Promise<void> {
   });
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function openDatabase(factory: IDBFactory, name: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = factory.open(name, VERSION);
-    request.onupgradeneeded = () => {
-      for (const collection of COLLECTIONS) {
-        if (!request.result.objectStoreNames.contains(collection)) {
-          request.result.createObjectStore(collection, { keyPath: 'id' });
+    let settled = false;
+    try {
+      const request = factory.open(name, VERSION);
+      request.onupgradeneeded = () => {
+        for (const collection of COLLECTIONS) {
+          if (!request.result.objectStoreNames.contains(collection)) {
+            request.result.createObjectStore(collection, { keyPath: 'id' });
+          }
         }
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(new StorageError(request.error?.message ?? 'Could not open IndexedDB'));
-    request.onblocked = () => reject(new StorageError('IndexedDB is blocked by another tab'));
+      };
+      request.onsuccess = () => {
+        if (settled) {
+          request.result.close();
+          return;
+        }
+        settled = true;
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        if (settled) return;
+        settled = true;
+        reject(new StorageError(request.error?.message ?? 'Could not open IndexedDB'));
+      };
+      request.onblocked = () => {
+        if (settled) return;
+        settled = true;
+        reject(new StorageError('IndexedDB is blocked by another tab'));
+      };
+    } catch (error) {
+      settled = true;
+      reject(new StorageError(`Could not open IndexedDB: ${errorMessage(error)}`));
+    }
   });
 }
 
@@ -47,7 +72,28 @@ export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): DataS
   const name = options.name ?? DEFAULT_NAME;
 
   let opening: Promise<IDBDatabase> | undefined;
-  const database = () => (opening ??= openDatabase(factory, name));
+  const database = (): Promise<IDBDatabase> => {
+    if (!opening) {
+      const attempt: Promise<IDBDatabase> = openDatabase(factory, name).then(
+        (db) => {
+          db.onversionchange = () => {
+            db.close();
+            if (opening === attempt) opening = undefined;
+          };
+          db.onclose = () => {
+            if (opening === attempt) opening = undefined;
+          };
+          return db;
+        },
+        (error) => {
+          if (opening === attempt) opening = undefined;
+          throw error;
+        },
+      );
+      opening = attempt;
+    }
+    return opening;
+  };
 
   return {
     async get<T extends StoredRecord>(collection: CollectionName, id: string) {
@@ -62,8 +108,15 @@ export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): DataS
       }
       const db = await database();
       const tx = db.transaction(collection, 'readwrite');
-      tx.objectStore(collection).put(record);
-      await transactionDone(tx);
+      const done = transactionDone(tx);
+      try {
+        tx.objectStore(collection).put(record);
+      } catch (error) {
+        tx.abort();
+        await done.catch(() => {});
+        throw new StorageError(`Could not store this record: ${errorMessage(error)}`);
+      }
+      await done;
     },
 
     async list<T extends StoredRecord>(collection: CollectionName) {
@@ -94,12 +147,19 @@ export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): DataS
       const snapshot = parseSnapshot(input);
       const db = await database();
       const tx = db.transaction([...COLLECTIONS], 'readwrite');
-      for (const collection of COLLECTIONS) {
-        const objectStore = tx.objectStore(collection);
-        objectStore.clear();
-        for (const record of snapshot.collections[collection]) objectStore.put(record);
+      const done = transactionDone(tx);
+      try {
+        for (const collection of COLLECTIONS) {
+          const objectStore = tx.objectStore(collection);
+          objectStore.clear();
+          for (const record of snapshot.collections[collection]) objectStore.put(record);
+        }
+      } catch (error) {
+        tx.abort();
+        await done.catch(() => {});
+        throw new StorageError(`Could not import this backup: ${errorMessage(error)}`);
       }
-      await transactionDone(tx);
+      await done;
     },
   };
 }

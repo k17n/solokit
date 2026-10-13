@@ -27,4 +27,17 @@ describe('IndexedDB store', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('recovers after a failed open instead of caching the failure', async () => {
+    let calls = 0;
+    const factory = {
+      open(dbName: string, version?: number) {
+        if (++calls === 1) throw new Error('boom');
+        return indexedDB.open(dbName, version);
+      },
+    } as unknown as IDBFactory;
+    const store = createIndexedDbStore({ name: freshName(), factory });
+    await expect(store.list('clients')).rejects.toBeInstanceOf(StorageError);
+    await expect(store.list('clients')).resolves.toEqual([]);
+  });
 });

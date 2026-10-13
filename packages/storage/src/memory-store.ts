@@ -1,6 +1,14 @@
 import { parseSnapshot, emptyCollections } from './snapshot';
 import { COLLECTIONS, StorageError, type CollectionName, type DataStore, type Snapshot, type StoredRecord } from './types';
 
+function cloneRecord<T>(record: T): T {
+  try {
+    return structuredClone(record);
+  } catch (error) {
+    throw new StorageError(`Could not store this record: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 function assertRecord(record: StoredRecord): void {
   if (typeof record.id !== 'string' || record.id === '') {
     throw new StorageError('A record needs a non-empty id');
@@ -25,7 +33,7 @@ export function createMemoryStore(): DataStore {
 
     async put<T extends StoredRecord>(collection: CollectionName, record: T) {
       assertRecord(record);
-      table(collection).set(record.id, structuredClone(record));
+      table(collection).set(record.id, cloneRecord(record));
     },
 
     async list<T extends StoredRecord>(collection: CollectionName) {
@@ -46,10 +54,16 @@ export function createMemoryStore(): DataStore {
 
     async importAll(input) {
       const snapshot = parseSnapshot(input);
+      const prepared = new Map<CollectionName, Map<string, StoredRecord>>();
       for (const name of COLLECTIONS) {
-        const next = table(name);
-        next.clear();
-        for (const record of snapshot.collections[name]) next.set(record.id, structuredClone(record));
+        const records = new Map<string, StoredRecord>();
+        for (const record of snapshot.collections[name]) records.set(record.id, cloneRecord(record));
+        prepared.set(name, records);
+      }
+      for (const name of COLLECTIONS) {
+        const target = table(name);
+        target.clear();
+        for (const [id, record] of prepared.get(name)!) target.set(id, record);
       }
     },
   };

@@ -97,5 +97,40 @@ export function describeStoreContract(label: string, makeStore: () => DataStore)
       await expect(store.importAll('nonsense')).rejects.toBeInstanceOf(StorageError);
       expect(await store.list<Doc>('clients')).toEqual([{ id: 'keep', name: 'Keep me' }]);
     });
+
+    it('rejects a snapshot whose later collection is invalid and leaves existing data alone', async () => {
+      const store = makeStore();
+      await store.put<Doc>('clients', { id: 'keep', name: 'Keep me' });
+      const bad = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        collections: { profile: [{ id: 'p', name: 'ok' }], invoices: [{ name: 'no id' }] },
+      };
+      await expect(store.importAll(bad)).rejects.toBeInstanceOf(StorageError);
+      expect(await store.list<Doc>('clients')).toEqual([{ id: 'keep', name: 'Keep me' }]);
+      expect(await store.list('profile')).toEqual([]);
+    });
+
+    it('rejects an import with a non-clonable record and leaves every collection unchanged', async () => {
+      const store = makeStore();
+      await store.put<Doc>('clients', { id: 'c1', name: 'Keep client' });
+      await store.put<Doc>('invoices', { id: 'i1', name: 'Keep invoice' });
+      const bad = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        collections: { profile: [{ id: 'p', name: 'ok' }], clients: [{ id: 'bad', fn: () => 1 }] },
+      };
+      await expect(store.importAll(bad)).rejects.toBeInstanceOf(StorageError);
+      expect(await store.list<Doc>('clients')).toEqual([{ id: 'c1', name: 'Keep client' }]);
+      expect(await store.list<Doc>('invoices')).toEqual([{ id: 'i1', name: 'Keep invoice' }]);
+      expect(await store.list('profile')).toEqual([]);
+    });
+
+    it('rejects a put with a non-clonable record and does not change the store', async () => {
+      const store = makeStore();
+      await store.put<Doc>('clients', { id: 'c1', name: 'Keep' });
+      await expect(store.put('clients', { id: 'bad', fn: () => 1 } as never)).rejects.toBeInstanceOf(StorageError);
+      expect(await store.list<Doc>('clients')).toEqual([{ id: 'c1', name: 'Keep' }]);
+    });
   });
 }
