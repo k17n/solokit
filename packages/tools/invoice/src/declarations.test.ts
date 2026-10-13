@@ -64,4 +64,48 @@ describe('buildDeclarations', () => {
       'TDS at 2.5% is expected to be deducted by the client. Net payable is shown after this deduction.',
     ]);
   });
+  it('ignores reverse charge when the supply is not taxed', () => {
+    expect(buildDeclarations({ ...base, mode: 'no-tax', reverseCharge: true })).toEqual([]);
+    expect(buildDeclarations({ ...base, mode: 'export-lut', reverseCharge: true })).toEqual([
+      'Supply meant for export under Letter of Undertaking (LUT) without payment of integrated tax.',
+    ]);
+  });
+
+  it('only prints the exempt line for a regular seller on a no-tax supply', () => {
+    expect(buildDeclarations({ ...base, mode: 'intra-state', exemptSupply: true })).toEqual([]);
+    const unregistered = makeSeller({ gstStatus: 'unregistered', gstin: undefined });
+    expect(buildDeclarations({ ...base, seller: unregistered, mode: 'no-tax', exemptSupply: true })).toEqual([
+      'Not registered under GST.',
+    ]);
+  });
+
+  it('does not print the export line for a composition seller', () => {
+    expect(buildDeclarations({ ...base, seller: makeSeller({ gstStatus: 'composition' }), mode: 'export-lut' })).toEqual([
+      'Composition taxable person, not eligible to collect tax on supplies.',
+    ]);
+  });
+
+  it('orders proforma, composition and TDS', () => {
+    expect(
+      buildDeclarations({
+        ...base,
+        seller: makeSeller({ gstStatus: 'composition' }),
+        mode: 'no-tax',
+        isProforma: true,
+        tdsRatePercent: 10,
+      }),
+    ).toEqual([
+      'This is a proforma invoice. It is not a tax invoice.',
+      'Composition taxable person, not eligible to collect tax on supplies.',
+      'TDS at 10% is expected to be deducted by the client. Net payable is shown after this deduction.',
+    ]);
+  });
+
+  it('formats the TDS rate cleanly and ignores invalid rates', () => {
+    expect(buildDeclarations({ ...base, tdsRatePercent: 0.1 + 0.2 })).toEqual([
+      'TDS at 0.3% is expected to be deducted by the client. Net payable is shown after this deduction.',
+    ]);
+    expect(buildDeclarations({ ...base, tdsRatePercent: -5 })).toEqual([]);
+    expect(buildDeclarations({ ...base, tdsRatePercent: Number.NaN })).toEqual([]);
+  });
 });

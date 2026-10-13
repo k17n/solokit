@@ -25,21 +25,21 @@ export function buildDeclarations({
 
   if (seller.gstStatus === 'composition') {
     lines.push('Composition taxable person, not eligible to collect tax on supplies.');
-  } else if (seller.gstStatus === 'regular' && exemptSupply) {
+  } else if (seller.gstStatus === 'regular' && exemptSupply && mode === 'no-tax') {
     lines.push('Exempt supply: no tax is charged on this bill of supply.');
   } else if (seller.gstStatus === 'unregistered' && seller.unregisteredNote !== false) {
     lines.push('Not registered under GST.');
   }
 
-  if (mode === 'export-lut') {
+  if (mode === 'export-lut' && seller.gstStatus === 'regular') {
     const lut = seller.lutNumber ? `Letter of Undertaking (LUT No. ${seller.lutNumber})` : 'Letter of Undertaking (LUT)';
     lines.push(`Supply meant for export under ${lut} without payment of integrated tax.`);
   }
 
-  if (reverseCharge) lines.push('Tax on this supply is payable on reverse charge basis by the recipient.');
+  if (reverseCharge && (mode === 'intra-state' || mode === 'inter-state')) lines.push('Tax on this supply is payable on reverse charge basis by the recipient.');
 
-  if (tdsRatePercent !== undefined && tdsRatePercent > 0) {
-    lines.push(`TDS at ${tdsRatePercent}% is expected to be deducted by the client. Net payable is shown after this deduction.`);
+  if (tdsRatePercent !== undefined && Number.isFinite(tdsRatePercent) && tdsRatePercent > 0) {
+    lines.push(`TDS at ${Number(tdsRatePercent.toFixed(2))}% is expected to be deducted by the client. Net payable is shown after this deduction.`);
   }
   return lines;
 }
