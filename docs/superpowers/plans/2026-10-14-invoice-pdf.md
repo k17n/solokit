@@ -16,8 +16,8 @@
 
 ## Global Constraints
 
-- Invoice fonts: **Inter, Poppins (sans); Source Serif 4 (serif); IBM Plex Mono, Geist Mono (mono)**, regular (400) and bold (700). Every file must contain ₹ € £ $ and accented Latin-ext letters (`é Ł ž`). The ids are those of `FONT_OPTIONS` in `@solokit/tool-invoice`.
-- Font licensing (SIL OFL 1.1): ship each family's licence text and copyright in `THIRD_PARTY_LICENSES.txt` next to the fonts. **IBM Plex Mono declares a Reserved Font Name ("Plex"), so it is shipped UNMODIFIED; the other four are subset** (subsetting is a modification, allowed for fonts without a reserved name when the licence travels with them).
+- Invoice fonts: **Inter, Poppins (sans); Source Serif 4 (serif); Inconsolata, Geist Mono (mono)**, regular (400) and bold (700). Every file must contain ₹ € £ $ and accented Latin-ext letters (`é Ł ž`). The ids are those of `FONT_OPTIONS` in `@solokit/tool-invoice`.
+- Font licensing (SIL OFL 1.1): ship each family's licence text and copyright in `THIRD_PARTY_LICENSES.txt` next to the fonts. **Fonts whose licence reserves a name (detected automatically; currently Source Serif 4) are shipped UNMODIFIED; the others are subset** (subsetting is a modification, allowed for fonts without a reserved name when the licence travels with them).
 - Latin + Latin-ext only. Currency symbols supported: ₹ € £ $.
 - Presets and layouts: classic, modern, minimal, bold, consultant, formal. Theme customisation is colours plus font only; layout is fixed per preset.
 - The PDF must show: title, invoice number, dates, seller block (logo, address, GSTIN/PAN), client block, place of supply, line table (HSN/SAC code, quantity with unit, rate, discount, GST rate and tax only when shown), totals rows with emphasis, amount in words, bank details, UPI QR (INR only), declarations, notes, terms, a signature block ("Authorised signatory"), page numbers, and a DRAFT or CANCELLED watermark when the invoice is not issued.
@@ -64,7 +64,7 @@ packages/tools/invoice-pdf/
 - Test: `packages/tools/invoice-pdf/src/fonts.test.ts`
 
 **Interfaces:**
-- Produces: `@solokit/tool-invoice/testing` (exports `makeSeller`, `makeClient`, `makeInvoice`); font files `<id>-400.ttf` and `<id>-700.ttf` for `inter`, `poppins`, `source-serif-4`, `ibm-plex-mono`, `geist-mono`; `THIRD_PARTY_LICENSES.txt`; `FONT_DIR` and `extractPdfText(data): Promise<string[]>` in `src/testing.ts`.
+- Produces: `@solokit/tool-invoice/testing` (exports `makeSeller`, `makeClient`, `makeInvoice`); font files `<id>-400.ttf` and `<id>-700.ttf` for `inter`, `poppins`, `source-serif-4`, `inconsolata`, `geist-mono`; `THIRD_PARTY_LICENSES.txt`; `FONT_DIR` and `extractPdfText(data): Promise<string[]>` in `src/testing.ts`.
 
 - [ ] **Step 1: Export the test fixtures from the invoice package**
 
@@ -168,7 +168,7 @@ If TypeScript cannot find types for the `pdfjs-dist/legacy/build/pdf.mjs` import
 In `apps/web/package.json` add to `devDependencies` (keep the list alphabetical):
 ```json
     "@expo-google-fonts/geist-mono": "^0.4.3",
-    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo-google-fonts/inconsolata": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo-google-fonts/source-serif-4": "^0.4.2",
@@ -187,7 +187,7 @@ and to `scripts`:
 // Builds the invoice fonts. Run with: pnpm --filter @solokit/web fonts
 // Each family gets regular (400) and bold (700) TTF files that contain Latin, Latin-ext and currency symbols
 // (including the rupee sign) in ONE file, because react-pdf takes a single file per weight.
-// IBM Plex Mono declares a Reserved Font Name ("Plex"), so it is copied UNMODIFIED; the others are subset.
+// Fonts whose licence reserves a name (detected automatically; currently Source Serif 4) are copied UNMODIFIED; the others are subset.
 import { createRequire } from 'node:module';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -204,7 +204,7 @@ const FAMILIES = [
   { id: 'inter', pkg: 'inter', file: 'Inter', label: 'Inter', reservedName: false },
   { id: 'poppins', pkg: 'poppins', file: 'Poppins', label: 'Poppins', reservedName: false },
   { id: 'source-serif-4', pkg: 'source-serif-4', file: 'SourceSerif4', label: 'Source Serif 4', reservedName: false },
-  { id: 'ibm-plex-mono', pkg: 'ibm-plex-mono', file: 'IBMPlexMono', label: 'IBM Plex Mono', reservedName: true },
+  { id: 'inconsolata', pkg: 'inconsolata', file: 'Inconsolata', label: 'Inconsolata' },
   { id: 'geist-mono', pkg: 'geist-mono', file: 'GeistMono', label: 'Geist Mono', reservedName: false },
 ];
 const WEIGHTS = [
@@ -227,7 +227,7 @@ for (const [from, to] of RANGES) for (let code = from; code <= to; code++) chara
 
 const licenceParts = [
   'Fonts used for invoice PDFs. All are licensed under the SIL Open Font License 1.1.',
-  'IBM Plex Mono is distributed unmodified (its licence reserves the name "Plex"); the other fonts are subset to',
+  'Fonts whose licence reserves a name (currently Source Serif 4) are distributed unmodified; the other fonts are subset to',
   'Latin, Latin-ext and currency symbols, and keep their original names.',
   '',
 ];
@@ -299,18 +299,18 @@ describe('bundled invoice fonts', () => {
 
   it('ships each family with its licence and copyright', () => {
     const licences = readFileSync(join(FONT_DIR, 'THIRD_PARTY_LICENSES.txt'), 'utf8');
-    for (const label of ['Inter', 'Poppins', 'Source Serif 4', 'IBM Plex Mono', 'Geist Mono']) {
+    for (const label of ['Inter', 'Poppins', 'Source Serif 4', 'Inconsolata', 'Geist Mono']) {
       expect(licences).toContain(`==== ${label} ====`);
     }
     expect(licences.match(/SIL OPEN FONT LICENSE Version 1\.1/g)?.length).toBe(5);
     expect(licences).toContain('Copyright');
   });
 
-  it('keeps IBM Plex Mono unmodified because its licence reserves the name', () => {
+  it('keeps fonts with a reserved name unmodified', () => {
     const licences = readFileSync(join(FONT_DIR, 'THIRD_PARTY_LICENSES.txt'), 'utf8');
-    expect(licences).toContain('Reserved Font Name "Plex"');
-    const parsed = fontkit.create(readFileSync(join(FONT_DIR, 'ibm-plex-mono-400.ttf'))) as fontkit.Font;
-    expect(parsed.familyName).toBe('IBM Plex Mono');
+    expect(licences).toContain('Reserved Font Name');
+    const parsed = fontkit.create(readFileSync(join(FONT_DIR, 'source-serif-4-400.ttf'))) as fontkit.Font;
+    expect(parsed.familyName).toBe('Source Serif 4');
     // The unmodified font still has its full set of glyphs, far more than the Latin subset.
     expect(parsed.numGlyphs).toBeGreaterThan(900);
   });
@@ -324,7 +324,7 @@ Expected: exits 0 (if pnpm asks to approve a build script, run `pnpm approve-bui
 Run: `pnpm --filter @solokit/tool-invoice-pdf test`
 Expected: FAIL (the font files do not exist yet).
 Run: `pnpm --filter @solokit/web fonts`
-Expected: ten `wrote ...ttf` lines (IBM Plex Mono marked unmodified) and `wrote THIRD_PARTY_LICENSES.txt`.
+Expected: ten `wrote ...ttf` lines (Source Serif 4 marked unmodified) and `wrote THIRD_PARTY_LICENSES.txt`.
 Run: `pnpm --filter @solokit/tool-invoice-pdf test`
 Expected: PASS (5 tests).
 Run: `pnpm --filter @solokit/tool-invoice-pdf typecheck`
@@ -1453,7 +1453,7 @@ describe('renderInvoicePdf', () => {
   });
 
   it('works with every bundled font', async () => {
-    for (const fontId of ['inter', 'poppins', 'source-serif-4', 'ibm-plex-mono', 'geist-mono'] as const) {
+    for (const fontId of ['inter', 'poppins', 'source-serif-4', 'inconsolata', 'geist-mono'] as const) {
       const blob = await renderInvoicePdf({
         invoice: makeInvoice(),
         theme: { ...theme('classic'), fontId },
@@ -1615,7 +1615,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - UPI QR on the invoice: Task 3 and Task 5/6.
 - Logo: drawn in the header (Task 5); upload and PNG conversion belong to Plan 3C.
 - Declarations, TDS and net payable, export LUT, DRAFT and CANCELLED stamps, signature block, page numbers: Task 5.
-- Font licensing (OFL notices, Reserved Font Name handling for IBM Plex Mono): Task 1.
+- Font licensing (OFL notices, Reserved Font Name handling): Task 1.
 - Offline: fonts are plain files under `public/`, so the existing build step precaches them (verified in Task 6).
 - Out of this plan (Plan 3C): all screens, logo upload and conversion, theme editor, saved invoices, backup UI, registry flip, StoreProvider hardening, site mono font swap.
 
