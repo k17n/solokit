@@ -3,6 +3,9 @@
   "private": true,
   "packageManager": "pnpm@12.11.2",
   "scripts": {
+    "dev": "pnpm --filter @solokit/web dev",
+    "build": "pnpm --filter @solokit/web build",
+    "preview": "pnpm dlx serve apps/web/out -l 4173",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   }

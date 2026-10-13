@@ -1,16 +1,20 @@
 # SoloKit
 
-Free, local-first tools for freelancers, consultants and solopreneurs. Everything runs in the browser, works offline, and keeps your data on your device. India (GST) comes first; other countries are coming soon.
+Free, local-first tools for freelancers, consultants and solopreneurs. Everything runs in the browser, works offline, and keeps your data on your device; the service worker precaches the whole site at build time so it is fully usable offline. India (GST) comes first; other countries are coming soon.
 
 ## Status
 
-- Done: monorepo, money/numbering/amount-in-words primitives, India GST/TDS engine.
-- Next: storage, design system and app shell, then the invoice generator UI.
+- Done: monorepo, core primitives, India GST/TDS engine, design system, app shell, tool registry, local storage layer, installable offline site.
+- Next: the invoice generator tool.
 
 ## Layout
 
+- `apps/web` the website (Next.js, static export, installable PWA)
 - `packages/core` country-agnostic primitives (integer-paise money, amount in words, invoice numbering)
 - `packages/tax-engines` `TaxEngine` interface, country list, India GST engine
+- `packages/ui` design tokens and shared components (header, footer, buttons)
+- `packages/registry` the list of tools; drives the home page, tool routes and footer
+- `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters
 - `docs/ideas.md` backlog of tool ideas
 - `docs/superpowers/specs` design specs
 - `docs/superpowers/plans` implementation plans
@@ -19,7 +23,14 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 
     npm install -g pnpm
     pnpm install
+    pnpm dev          # http://localhost:3000
     pnpm test
     pnpm typecheck
+    pnpm build        # static site in apps/web/out
+    pnpm preview      # http://localhost:4173 (serves apps/web/out; try the offline mode here)
+
+The service worker is stamped with the list of built files after `next build` and only registers in production builds, so test offline behaviour with `pnpm build` then `pnpm preview`.
+
+Add a tool by creating its package under `packages/tools/` and adding one entry to `packages/registry/src/tools.ts`.
 
 Tax rates and thresholds are data (`packages/tax-engines/src/in/rules.ts`) with an "as of" date. They are not tax advice; verify with a chartered accountant.

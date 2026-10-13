@@ -1,0 +1,26 @@
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.75rem;
+  margin: 2.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stamp {
+  padding: 0.4rem 0.7rem;
+  font: 500 0.78rem/1.2 var(--ff-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius-s);
+}
+
+.stamp:nth-child(odd) {
+  transform: rotate(-1.2deg);
+}
+
+.stamp:nth-child(even) {
+  transform: rotate(0.9deg);
+}

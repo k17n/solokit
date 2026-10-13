@@ -1,0 +1,47 @@
+.page {
+  padding-top: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.head {
+  max-width: 44rem;
+}
+
+.eyebrow {
+  margin-bottom: 1rem;
+  font: 500 0.8rem/1 var(--ff-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.title {
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  font-weight: 800;
+}
+
+.lede {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.body {
+  max-width: 44rem;
+  margin-top: 2.5rem;
+}
+
+.body h2 {
+  margin: 2.25rem 0 0.6rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.body p + p {
+  margin-top: 0.9rem;
+}
+
+.body a {
+  text-decoration-color: var(--amber);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}

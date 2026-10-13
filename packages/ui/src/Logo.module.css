@@ -1,0 +1,42 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.md {
+  font-size: 1.35rem;
+}
+
+.lg {
+  font-size: 2rem;
+}
+
+.mark {
+  width: 1.45em;
+  height: 1.45em;
+}
+
+.paper {
+  fill: var(--text);
+}
+
+.lines {
+  fill: none;
+  stroke: var(--bg);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.word {
+  font-family: var(--ff-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.kit {
+  color: var(--accent-text);
+}
