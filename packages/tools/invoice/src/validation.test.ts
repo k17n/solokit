@@ -173,3 +173,83 @@ describe('validateInvoice', () => {
     expect(paths(validateInvoice(makeInvoice({ currency: 'JPY' as never })))).toContain('currency');
   });
 });
+
+describe('validateInvoice: advance and TDS must fit the total', () => {
+  // Default invoice: total 8,496,000 paise; 10% TDS on the 7,200,000 taxable value is 720,000.
+  const tds = { ratePercent: 10 };
+  const zeroLine = [{ id: 'a', description: 'Free', quantity: 1, unit: 'items' as const, rate: 0, gstRate: 18 }];
+
+  it('accepts an advance equal to the total minus TDS', () => {
+    expect(validateInvoice(makeInvoice({ tds, advanceReceived: 8496000 - 720000 }))).toEqual([]);
+  });
+
+  it('rejects an advance one paisa more than the total minus TDS', () => {
+    const issues = validateInvoice(makeInvoice({ tds, advanceReceived: 8496000 - 720000 + 1 }));
+    expect(paths(issues)).toEqual(['advanceReceived']);
+  });
+
+  it('rejects any advance on a zero-total invoice', () => {
+    expect(paths(validateInvoice(makeInvoice({ lines: zeroLine, advanceReceived: 1 })))).toEqual(['advanceReceived']);
+    expect(validateInvoice(makeInvoice({ lines: zeroLine, advanceReceived: 0 }))).toEqual([]);
+  });
+
+  it('rejects TDS that rounding makes larger than the total', () => {
+    // Rs 100.40 rounds down to Rs 100.00, but 100% TDS is taken on the unrounded 100.40.
+    const invoice = makeInvoice({
+      seller: makeSeller({ gstStatus: 'unregistered', gstin: undefined }),
+      placeOfSupplyStateCode: undefined,
+      lines: [{ id: 'a', description: 'x', quantity: 1, unit: 'items', rate: 10040 }],
+      tds: { ratePercent: 100 },
+    });
+    const issues = validateInvoice(invoice);
+    expect(paths(issues)).toEqual(['advanceReceived']);
+    expect(issues[0]?.message).toBe('TDS and the advance together are more than the invoice total');
+  });
+});
+
+describe('validateInvoice: financial year and currency', () => {
+  it('requires the financial year to match the issue date', () => {
+    expect(paths(validateInvoice(makeInvoice({ fiscalYear: '2025-26' })))).toEqual(['fiscalYear']);
+    expect(validateInvoice(makeInvoice({ issueDate: '2026-03-31', fiscalYear: '2025-26' }))).toEqual([]);
+    expect(paths(validateInvoice(makeInvoice({ issueDate: '2026-03-31' })))).toEqual(['fiscalYear']);
+  });
+
+  it('does not check the financial year of an invalid date', () => {
+    expect(paths(validateInvoice(makeInvoice({ issueDate: '2026-02-30' })))).toEqual(['issueDate']);
+  });
+
+  it('issues domestic invoices in INR only', () => {
+    const domestic = validateInvoice(makeInvoice({ currency: 'USD' }));
+    expect(domestic).toEqual([
+      { path: 'currency', message: 'Domestic invoices are issued in rupees (INR). Use another currency only for exports.' },
+    ]);
+  });
+
+  it('lets exports use any supported currency', () => {
+    const seller = makeSeller({ lutNumber: 'AD270326012345Z' });
+    for (const currency of ['INR', 'USD', 'EUR', 'GBP'] as const) {
+      expect(validateInvoice(makeInvoice({ seller, isExport: true, currency, placeOfSupplyStateCode: undefined, lines: [{ id: 'a', description: 'x', quantity: 1, unit: 'items', rate: 1000 }] }))).toEqual([]);
+    }
+  });
+});
+
+describe('validateInvoice: quantity and line size', () => {
+  const withQuantity = (quantity: number, rate = 1000) =>
+    makeInvoice({ lines: [{ id: 'a', description: 'x', quantity, unit: 'items', rate, gstRate: 18 }] });
+
+  it('rejects quantities below 0.001 or with more than three decimals', () => {
+    const message = 'Quantity can have up to 3 decimals and must be at least 0.001';
+    expect(validateInvoice(withQuantity(0.0004))).toEqual([{ path: 'lines[0].quantity', message }]);
+    expect(validateInvoice(withQuantity(1.2345))).toEqual([{ path: 'lines[0].quantity', message }]);
+  });
+
+  it('accepts 0.001 and 7.5', () => {
+    expect(validateInvoice(withQuantity(0.001))).toEqual([]);
+    expect(validateInvoice(withQuantity(7.5))).toEqual([]);
+  });
+
+  it('rejects a line larger than 1e13 paise', () => {
+    expect(validateInvoice(withQuantity(1e12, 10_000_000))).toEqual([{ path: 'lines[0]', message: 'This line is too large' }]);
+  });
+});
+

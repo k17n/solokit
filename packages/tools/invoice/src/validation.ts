@@ -1,6 +1,7 @@
-import { InvoiceNumberError, formatInvoiceNumber, lineAmount } from '@solokit/core';
-import { isAllowedGstRate, isValidStateCode, validateGstin } from '@solokit/tax-engines';
+import { InvoiceNumberError, formatInvoiceNumber, indianFiscalYear, lineAmount } from '@solokit/core';
+import { GstInputError, isAllowedGstRate, isValidStateCode, validateGstin } from '@solokit/tax-engines';
 import { isCurrencyCode } from './currencies';
+import { calculateInvoiceGst } from './gst-input';
 import type { Client, InvoiceRecord, SellerProfile } from './model';
 
 export interface Issue {
@@ -105,7 +106,13 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
       add('dueDate', 'The due date cannot be before the issue date');
     }
   }
+  if (isRealIsoDate(invoice.issueDate) && invoice.fiscalYear !== indianFiscalYear(invoice.issueDate)) {
+    add('fiscalYear', 'The financial year must match the issue date');
+  }
   if (!isCurrencyCode(invoice.currency)) add('currency', 'Choose a supported currency');
+  else if (!invoice.isExport && invoice.currency !== 'INR') {
+    add('currency', 'Domestic invoices are issued in rupees (INR). Use another currency only for exports.');
+  }
 
   for (const issue of validateSeller(invoice.seller)) add(`seller.${issue.path}`, issue.message);
   for (const issue of validateClient(invoice.client)) add(`client.${issue.path}`, issue.message);
@@ -119,10 +126,14 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
   invoice.lines.forEach((line, index) => {
     const at = `lines[${index}]`;
     if (blank(line.description)) add(`${at}.description`, 'Describe what you are charging for');
-    const quantityOk = Number.isFinite(line.quantity) && line.quantity > 0;
+    const quantityOk =
+      Number.isFinite(line.quantity) &&
+      line.quantity >= 0.001 &&
+      Math.abs(line.quantity * 1000 - Math.round(line.quantity * 1000)) < 1e-9;
     const rateOk = Number.isSafeInteger(line.rate) && line.rate >= 0;
-    if (!quantityOk) add(`${at}.quantity`, 'Quantity must be more than 0');
+    if (!quantityOk) add(`${at}.quantity`, 'Quantity can have up to 3 decimals and must be at least 0.001');
     if (!rateOk) add(`${at}.rate`, 'Enter the rate as an amount of 0 or more');
+    if (quantityOk && rateOk && line.quantity * line.rate > 1e13) add(at, 'This line is too large');
     if (taxed && line.gstRate === undefined) add(`${at}.gstRate`, 'Choose a GST rate');
     else if (taxed && line.gstRate !== undefined && !isAllowedGstRate(line.gstRate)) {
       add(`${at}.gstRate`, `${line.gstRate}% is not a GST rate`);
@@ -149,6 +160,18 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
   }
   if (invoice.advanceReceived !== undefined && (!Number.isSafeInteger(invoice.advanceReceived) || invoice.advanceReceived < 0)) {
     add('advanceReceived', 'Advance must be 0 or more');
+  }
+
+  if (issues.length === 0) {
+    try {
+      const result = calculateInvoiceGst(invoice);
+      if (result.netPayable < 0) {
+        add('advanceReceived', 'TDS and the advance together are more than the invoice total');
+      }
+    } catch (error) {
+      if (!(error instanceof GstInputError)) throw error;
+      add(/advance/i.test(error.message) ? 'advanceReceived' : 'lines', error.message);
+    }
   }
   return issues;
 }
