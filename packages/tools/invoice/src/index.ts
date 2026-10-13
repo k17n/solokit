@@ -8,3 +8,4 @@ export * from './document';
 export * from './codes';
 export * from './themes';
 export * from './repositories';
+export * from './backup';
