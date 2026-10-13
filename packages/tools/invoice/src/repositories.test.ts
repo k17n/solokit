@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
-import { createInvoiceStorage } from './repositories';
+import { InvoiceNumberTakenError, IssuedInvoiceError, createInvoiceStorage } from './repositories';
 import { makeClient, makeInvoice, makeSeller } from './testing';
 import { PRESET_THEMES, createCustomTheme } from './themes';
 
@@ -46,12 +46,95 @@ describe('invoices', () => {
   it('lists newest first and supports get and remove', async () => {
     const storage = setup();
     await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001', issueDate: '2026-10-01' }));
-    await storage.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0002', issueDate: '2026-10-14' }));
+    await storage.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0002', issueDate: '2026-10-14', status: 'draft' }));
     await storage.invoices.save(makeInvoice({ id: 'c', number: '2026-27/0003', issueDate: '2026-10-14' }));
     expect((await storage.invoices.list()).map((invoice) => invoice.id)).toEqual(['c', 'b', 'a']);
     expect((await storage.invoices.get('b'))?.number).toBe('2026-27/0002');
     await storage.invoices.remove('b');
     expect(await storage.invoices.get('b')).toBeUndefined();
+  });
+});
+
+describe('invoice number integrity', () => {
+  it('rejects a second invoice with the same number and leaves the store unchanged', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
+    await expect(storage.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0001' }))).rejects.toBeInstanceOf(
+      InvoiceNumberTakenError,
+    );
+    expect((await storage.invoices.list()).map((invoice) => invoice.id)).toEqual(['a']);
+    expect(await storage.invoices.get('b')).toBeUndefined();
+  });
+
+  it('allows re-saving the same id with the same number', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
+    await expect(storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001', notes: 'edited' }))).resolves.toMatchObject({
+      notes: 'edited',
+    });
+  });
+
+  it('refuses to delete issued invoices', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', status: 'issued' }));
+    await expect(storage.invoices.remove('a')).rejects.toBeInstanceOf(IssuedInvoiceError);
+    expect(await storage.invoices.get('a')).toBeDefined();
+  });
+
+  it('refuses to delete cancelled invoices', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', status: 'cancelled' }));
+    await expect(storage.invoices.remove('a')).rejects.toBeInstanceOf(IssuedInvoiceError);
+    expect(await storage.invoices.get('a')).toBeDefined();
+  });
+
+  it('deletes drafts and ignores missing ids', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'd', status: 'draft' }));
+    await storage.invoices.remove('d');
+    expect(await storage.invoices.get('d')).toBeUndefined();
+    await expect(storage.invoices.remove('missing')).resolves.toBeUndefined();
+  });
+
+  it('cancels an issued invoice, keeping its number and re-stamping updatedAt', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0007' }));
+    const cancelled = await storage.invoices.cancel('a');
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.number).toBe('2026-27/0007');
+    expect(cancelled.updatedAt).toBe('2026-10-14T12:00:00.000Z');
+    expect((await storage.invoices.get('a'))?.status).toBe('cancelled');
+  });
+
+  it('cancel is idempotent', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a' }));
+    await storage.invoices.cancel('a');
+    expect((await storage.invoices.cancel('a')).status).toBe('cancelled');
+  });
+
+  it('cancel rejects drafts and missing invoices', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'd', status: 'draft', number: '2026-27/0002' }));
+    await expect(storage.invoices.cancel('d')).rejects.toThrow('Only issued invoices can be cancelled; delete a draft instead');
+    await expect(storage.invoices.cancel('nope')).rejects.toThrow('Invoice not found');
+    expect((await storage.invoices.get('d'))?.status).toBe('draft');
+  });
+
+  it('keeps counting cancelled invoices so their numbers are never reused', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0007' }));
+    await storage.invoices.cancel('a');
+    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0008');
+  });
+
+  it('orders numbers naturally when issue dates tie', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'nine', number: '2026-27/0009' }));
+    await storage.invoices.save(makeInvoice({ id: 'ten', number: '2026-27/0010' }));
+    await storage.invoices.save(makeInvoice({ id: 'wide', number: '2026-27/100' }));
+    await storage.invoices.save(makeInvoice({ id: 'narrow', number: '2026-27/2' }));
+    expect((await storage.invoices.list()).map((invoice) => invoice.id)).toEqual(['wide', 'ten', 'nine', 'narrow']);
   });
 });
 

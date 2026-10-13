@@ -3,6 +3,20 @@ import type { DataStore } from '@solokit/storage';
 import { SELLER_ID, SETTINGS_ID, type Client, type InvoiceRecord, type InvoiceSettings, type SellerProfile } from './model';
 import { DEFAULT_THEME_ID, type InvoiceTheme } from './themes';
 
+export class InvoiceNumberTakenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvoiceNumberTakenError';
+  }
+}
+
+export class IssuedInvoiceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IssuedInvoiceError';
+  }
+}
+
 export interface InvoiceStorageOptions {
   now?: () => Date;
 }
@@ -23,6 +37,7 @@ export interface InvoiceStorage {
     get(id: string): Promise<InvoiceRecord | undefined>;
     save(invoice: InvoiceRecord): Promise<InvoiceRecord>;
     remove(id: string): Promise<void>;
+    cancel(id: string): Promise<InvoiceRecord>;
     nextNumber(issueDate: string): Promise<string>;
   };
   themes: {
@@ -43,7 +58,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
 
   async function listInvoices(): Promise<InvoiceRecord[]> {
     const all = await store.list<InvoiceRecord>('invoices');
-    return all.sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number));
+    return all.sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number, undefined, { numeric: true }));
   }
 
   return {
@@ -55,7 +70,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
     clients: {
       list: async () => {
         const all = await store.list<Client>('clients');
-        return all.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+        return all.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
       },
       get: (id) => store.get<Client>('clients', id),
       save: (client) => store.put('clients', client),
@@ -66,12 +81,30 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
       list: listInvoices,
       get: (id) => store.get<InvoiceRecord>('invoices', id),
       async save(invoice) {
+        const all = await store.list<InvoiceRecord>('invoices');
+        if (all.some((other) => other.id !== invoice.id && other.number === invoice.number)) {
+          throw new InvoiceNumberTakenError(`Invoice number ${invoice.number} is already used by another invoice`);
+        }
         const stamp = now().toISOString();
         const saved: InvoiceRecord = { ...invoice, createdAt: invoice.createdAt || stamp, updatedAt: stamp };
         await store.put('invoices', saved);
         return saved;
       },
-      remove: (id) => store.remove('invoices', id),
+      async remove(id) {
+        const existing = await store.get<InvoiceRecord>('invoices', id);
+        if (existing && existing.status !== 'draft') {
+          throw new IssuedInvoiceError(
+            'Issued invoices cannot be deleted. Cancel the invoice instead so its number stays used.',
+          );
+        }
+        await store.remove('invoices', id);
+      },
+      async cancel(id) {
+        const existing = await store.get<InvoiceRecord>('invoices', id);
+        if (!existing) throw new Error('Invoice not found');
+        if (existing.status === 'draft') throw new Error('Only issued invoices can be cancelled; delete a draft instead');
+        return this.save({ ...existing, status: 'cancelled' });
+      },
       async nextNumber(issueDate) {
         const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
         const fiscalYear = indianFiscalYear(issueDate);

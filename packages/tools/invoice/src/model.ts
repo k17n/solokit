@@ -74,7 +74,7 @@ export interface LineItem {
 }
 
 export type InvoiceKind = 'invoice' | 'proforma';
-export type InvoiceStatus = 'draft' | 'issued';
+export type InvoiceStatus = 'draft' | 'issued' | 'cancelled';
 
 export interface InvoiceRecord extends StoredRecord {
   number: string;
