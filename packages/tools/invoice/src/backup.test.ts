@@ -73,3 +73,50 @@ describe('isBackupDue', () => {
     expect(isBackupDue('garbage', NOW, true)).toBe(true);
   });
 });
+
+describe('backup time and file handling', () => {
+  it('records its own backup time inside the file, so a restore elsewhere shows the right date', async () => {
+    const source = createMemoryStore();
+    await createInvoiceStorage(source, { now: () => NOW }).invoices.save(makeInvoice());
+    const { json } = await createBackup(source, NOW);
+
+    const target = createMemoryStore();
+    await restoreBackup(target, json);
+    expect((await createInvoiceStorage(target).settings.get()).lastBackupAt).toBe('2026-10-14T12:00:00.000Z');
+  });
+
+  it('treats a restored file without a recorded time as backed up when it was exported', async () => {
+    const source = createMemoryStore();
+    await createInvoiceStorage(source, { now: () => NOW }).invoices.save(makeInvoice());
+    const snapshot = await source.exportAll();
+    const old = JSON.stringify({ ...snapshot, exportedAt: '2026-09-20T08:00:00.000Z' });
+
+    const target = createMemoryStore();
+    await restoreBackup(target, old);
+    expect((await createInvoiceStorage(target).settings.get()).lastBackupAt).toBe('2026-09-20T08:00:00.000Z');
+  });
+
+  it('accepts a file that starts with a byte-order mark', async () => {
+    const source = createMemoryStore();
+    await createInvoiceStorage(source, { now: () => NOW }).invoices.save(makeInvoice({ id: 'bom' }));
+    const { json } = await createBackup(source, NOW);
+    const target = createMemoryStore();
+    await restoreBackup(target, `\uFEFF${json}`);
+    expect((await createInvoiceStorage(target).invoices.list()).map((invoice) => invoice.id)).toEqual(['bom']);
+  });
+
+  it('rejects arrays, null and a future file version without touching existing data', async () => {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => NOW });
+    await storage.invoices.save(makeInvoice({ id: 'keep' }));
+    for (const text of ['[]', 'null', '42', JSON.stringify({ version: 2, exportedAt: 'x', collections: {} })]) {
+      await expect(restoreBackup(store, text)).rejects.toBeInstanceOf(StorageError);
+    }
+    expect((await storage.invoices.list()).map((invoice) => invoice.id)).toEqual(['keep']);
+  });
+
+  it('does not trust a backup time far in the future', () => {
+    expect(isBackupDue('2027-01-01T00:00:00.000Z', NOW, true)).toBe(true);
+    expect(isBackupDue('2026-10-15T00:00:00.000Z', NOW, true)).toBe(false);
+  });
+});
