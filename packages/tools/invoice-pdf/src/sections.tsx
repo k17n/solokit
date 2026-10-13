@@ -396,7 +396,7 @@ export function PageFooter({ doc, palette }: Pick<SectionProps, 'doc' | 'palette
   );
 }
 
-export function Watermark({ doc, palette }: Pick<SectionProps, 'doc' | 'palette'>) {
+export function Watermark({ doc }: Pick<SectionProps, 'doc'>) {
   if (doc.status === 'issued') return null;
   return (
     <Text
@@ -407,7 +407,8 @@ export function Watermark({ doc, palette }: Pick<SectionProps, 'doc' | 'palette'
         left: 70,
         fontSize: 90,
         fontWeight: 700,
-        color: mixHex('#9CA3AF', palette.bg, 0.3),
+        color: '#6B7280',
+        opacity: 0.12,
         transform: 'rotate(-30deg)',
       }}
     >

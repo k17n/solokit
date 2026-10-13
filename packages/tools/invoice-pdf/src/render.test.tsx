@@ -58,6 +58,26 @@ describe('renderInvoicePdf', () => {
 });
 
 describe('pdfFilename', () => {
+  it('sanitises the number: runs of other characters become one dash, edges are trimmed', () => {
+    expect(pdfFilename(makeInvoice({ number: 'INV 1/' }))).toBe('Tax-Invoice-INV-1.pdf');
+    expect(pdfFilename(makeInvoice({ number: '  A / / B__C  ' }))).toBe('Tax-Invoice-A-B-C.pdf');
+  });
+
+  it('falls back to "invoice" when nothing is left of the number', () => {
+    expect(pdfFilename(makeInvoice({ number: '///' }))).toBe('Tax-Invoice-invoice.pdf');
+    expect(pdfFilename(makeInvoice({ number: '' }))).toBe('Tax-Invoice-invoice.pdf');
+  });
+
+  it('names an exempt supply by a regular seller a bill of supply', () => {
+    expect(pdfFilename(makeInvoice({ exemptSupply: true }))).toBe('Bill-of-Supply-2026-27-0001.pdf');
+  });
+
+  it('does not throw for an invoice that would fail validation', () => {
+    const broken = makeInvoice({ lines: [], seller: makeSeller({ gstin: undefined }), placeOfSupplyStateCode: undefined });
+    expect(() => pdfFilename(broken)).not.toThrow();
+    expect(pdfFilename(broken)).toBe('Tax-Invoice-2026-27-0001.pdf');
+  });
+
   it('turns the invoice number into a safe file name', () => {
     expect(pdfFilename(makeInvoice())).toBe('Tax-Invoice-2026-27-0001.pdf');
     expect(pdfFilename(makeInvoice({ number: 'INV/2026-27/0012' }))).toBe('Tax-Invoice-INV-2026-27-0012.pdf');
@@ -81,6 +101,13 @@ async function renderBytes(invoice: ReturnType<typeof makeInvoice>, themeId = 'c
 }
 
 describe('renderInvoicePdf: robustness', () => {
+  it('falls back to the classic layout and Inter for a stale or imported theme', async () => {
+    const stale = { ...theme('modern'), layout: 'gone-layout', fontId: 'gone-font' } as never;
+    const blob = await renderInvoicePdf({ invoice: makeInvoice(), theme: stale, fontBase: FONT_DIR });
+    const [page] = await extractPdfText(new Uint8Array(await blob.arrayBuffer()));
+    expect(page).toContain('₹84,960.00');
+  });
+
   it('recovers after a failed font download', async () => {
     await expect(
       renderInvoicePdf({ invoice: makeInvoice(), theme: theme('classic'), fontBase: '/does-not-exist' }),

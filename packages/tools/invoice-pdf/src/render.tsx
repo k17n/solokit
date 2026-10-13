@@ -25,10 +25,18 @@ export async function renderInvoicePdf({ invoice, theme, fontBase }: RenderInvoi
   }
 }
 
-/** "Invoice-2026-27-0001.pdf": the document title and the number, safe for file systems. */
+/** "Tax-Invoice-2026-27-0001.pdf": the document type and the number, safe for file systems. Never runs the tax engine. */
 export function pdfFilename(invoice: InvoiceRecord): string {
-  const { title, number } = buildInvoiceDocument(invoice);
-  const safeTitle = title.replace(/\s+/g, '-');
-  const safeNumber = number.replace(/[^A-Za-z0-9-]+/g, '-');
-  return `${safeTitle}-${safeNumber}.pdf`;
+  const title =
+    invoice.kind === 'proforma'
+      ? 'Proforma-Invoice'
+      : invoice.seller.gstStatus === 'regular'
+        ? invoice.exemptSupply
+          ? 'Bill-of-Supply'
+          : 'Tax-Invoice'
+        : invoice.seller.gstStatus === 'composition'
+          ? 'Bill-of-Supply'
+          : 'Invoice';
+  const number = invoice.number.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'invoice';
+  return `${title}-${number}.pdf`;
 }

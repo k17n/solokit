@@ -1,5 +1,5 @@
 import { Document, Page, View } from '@react-pdf/renderer';
-import type { InvoiceDocument, InvoiceTheme } from '@solokit/tool-invoice';
+import { FONT_OPTIONS, type InvoiceDocument, type InvoiceTheme } from '@solokit/tool-invoice';
 import { LAYOUTS } from './layouts';
 import {
   Header,
@@ -22,7 +22,9 @@ export interface InvoicePdfProps {
 }
 
 export function InvoicePdf({ doc, theme, qrDataUrl }: InvoicePdfProps) {
-  const spec = LAYOUTS[theme.layout];
+  // A stale or imported theme may name a layout or font this build does not have.
+  const spec = LAYOUTS[theme.layout] ?? LAYOUTS.classic;
+  const fontFamily = FONT_OPTIONS.some((font) => font.id === theme.fontId) ? theme.fontId : 'inter';
   const palette = paletteFor(theme);
   const common = { doc, spec, palette };
   return (
@@ -30,7 +32,7 @@ export function InvoicePdf({ doc, theme, qrDataUrl }: InvoicePdfProps) {
       <Page
         size="A4"
         style={{
-          fontFamily: theme.fontId,
+          fontFamily,
           fontSize: 9,
           color: palette.text,
           backgroundColor: palette.bg,
@@ -38,7 +40,6 @@ export function InvoicePdf({ doc, theme, qrDataUrl }: InvoicePdfProps) {
           paddingBottom: 48,
         }}
       >
-        <Watermark doc={doc} palette={palette} />
         {spec.header === 'sidebar' ? (
           <View fixed style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 10, backgroundColor: palette.accent }} />
         ) : null}
@@ -50,6 +51,8 @@ export function InvoicePdf({ doc, theme, qrDataUrl }: InvoicePdfProps) {
         <NotesBlock doc={doc} palette={palette} />
         <SignatoryBlock doc={doc} palette={palette} />
         <PageFooter doc={doc} palette={palette} />
+        {/* Last, so opaque fills above cannot cut through it. */}
+        <Watermark doc={doc} />
       </Page>
     </Document>
   );
