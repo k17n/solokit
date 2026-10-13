@@ -49,6 +49,22 @@ describe('TextField', () => {
   });
 });
 
+describe('TextField wiring', () => {
+  it('describes itself by its hint alone and is not invalid', () => {
+    render(<TextField label="PAN" hint="Ten characters" value="" onChange={() => {}} />);
+    const input = screen.getByLabelText('PAN');
+    expect(input).toHaveAccessibleDescription('Ten characters');
+    expect(input).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('cannot have the Field wiring overridden by caller props', () => {
+    render(<TextField label="PAN" error="Bad" value="" onChange={() => {}} {...({ id: "mine", "aria-invalid": false } as object)} />);
+    const input = screen.getByLabelText('PAN');
+    expect(input).not.toHaveAttribute('id', 'mine');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
 describe('SelectField', () => {
   const options = [
     { value: 'mh', label: 'Maharashtra', group: 'West' },
@@ -73,6 +89,21 @@ describe('SelectField', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
+  it('puts options in the right optgroups', () => {
+    render(<SelectField label="State" options={options} value="" onChange={() => {}} />);
+    const [west, south] = within(screen.getByLabelText('State')).getAllByRole('group');
+    expect(within(west!).getAllByRole('option').map((o) => o.textContent)).toEqual(['Maharashtra', 'Gujarat']);
+    expect(within(south!).getAllByRole('option').map((o) => o.textContent)).toEqual(['Tamil Nadu']);
+  });
+
+  it('marks required and invalid states', () => {
+    render(<SelectField label="State" options={options} required error="Pick one" value="" onChange={() => {}} />);
+    const select = screen.getByLabelText('State');
+    expect(select).toHaveAttribute('aria-required', 'true');
+    expect(select).not.toHaveAttribute('required');
+    expect(select).toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('works without a placeholder', () => {
     render(<SelectField label="State" options={options.slice(0, 2)} value="gj" onChange={() => {}} />);
     expect(screen.getByLabelText('State')).toHaveValue('gj');
@@ -90,7 +121,40 @@ describe('TextAreaField', () => {
   });
 });
 
+describe('TextAreaField required', () => {
+  it('marks required without native validation', () => {
+    render(<TextAreaField label="Notes" required value="" onChange={() => {}} />);
+    const area = screen.getByLabelText('Notes');
+    expect(area).toHaveAttribute('aria-required', 'true');
+    expect(area).not.toHaveAttribute('required');
+    expect(screen.getByText('Notes')).toHaveAttribute('data-required');
+  });
+});
+
 describe('CheckboxField', () => {
+  it('describes itself by the hint only without an error', () => {
+    render(<CheckboxField label="RC" hint="Hint text" checked={false} onChange={() => {}} />);
+    expect(screen.getByRole('checkbox', { name: 'RC' })).toHaveAccessibleDescription('Hint text');
+  });
+
+  it('shows an error and includes it with the hint in the description', () => {
+    render(<CheckboxField label="RC" hint="Hint text" error="Must accept" checked={false} onChange={() => {}} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Must accept');
+    expect(screen.getByRole('checkbox', { name: 'RC' })).toHaveAccessibleDescription('Hint text Must accept');
+  });
+
+  it('keeps and extends a caller aria-describedby', () => {
+    render(
+      <>
+        <p id="extra">Extra</p>
+        <CheckboxField label="RC" hint="Hint text" aria-describedby="extra" checked={false} onChange={() => {}} />
+      </>,
+    );
+    const box = screen.getByRole('checkbox', { name: 'RC' });
+    expect(box.getAttribute('aria-describedby')?.split(' ')[0]).toBe('extra');
+    expect(box).toHaveAccessibleDescription('Extra Hint text');
+  });
+
   it('toggles and shows its hint', async () => {
     const onChange = vi.fn();
     render(<CheckboxField label="Reverse charge" hint="Tax is paid by the buyer" checked={false} onChange={onChange} />);
@@ -126,6 +190,12 @@ describe('RadioCards', () => {
   it('shows an error for the group', () => {
     render(<RadioCards legend="Status" name="status" value={undefined} onChange={() => {}} options={options} error="Choose one" />);
     expect(screen.getByRole('alert')).toHaveTextContent('Choose one');
+    expect(screen.getByRole('group', { name: 'Status' })).toHaveAccessibleDescription('Choose one');
+  });
+
+  it('has no description without an error', () => {
+    render(<RadioCards legend="Status" name="status" value={undefined} onChange={() => {}} options={options} />);
+    expect(screen.getByRole('group', { name: 'Status' })).not.toHaveAttribute('aria-describedby');
   });
 });
 

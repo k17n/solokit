@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import styles from './Form.module.css';
 
 export interface RadioCardOption {
@@ -17,8 +18,9 @@ export interface RadioCardsProps {
 
 /** A group of large, described radio buttons. Uses native radios, so the keyboard works as expected. */
 export function RadioCards({ legend, name, value, onChange, options, error }: RadioCardsProps) {
+  const errorId = `${useId()}-error`;
   return (
-    <fieldset className={styles.cards}>
+    <fieldset className={styles.cards} {...(error ? { 'aria-describedby': errorId } : {})}>
       <legend className={styles.legend}>{legend}</legend>
       {options.map((option) => (
         <label key={option.value} className={styles.card}>
@@ -28,7 +30,7 @@ export function RadioCards({ legend, name, value, onChange, options, error }: Ra
         </label>
       ))}
       {error ? (
-        <p className={styles.error} role="alert">
+        <p className={styles.error} id={errorId} role="alert">
           {error}
         </p>
       ) : null}
