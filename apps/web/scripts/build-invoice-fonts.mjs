@@ -1,9 +1,10 @@
 // Builds the invoice fonts. Run with: pnpm --filter @solokit/web fonts
 // Each family gets regular (400) and bold (700) TTF files that contain Latin, Latin-ext and currency symbols
 // (including the rupee sign) in ONE file, because react-pdf takes a single file per weight.
-// IBM Plex Mono declares a Reserved Font Name ("Plex"), so it is copied UNMODIFIED; the others are subset.
+// A family whose copyright string or LICENSE_FONT header mentions a "Reserved Font Name" is copied UNMODIFIED
+// (the OFL forbids a modified version, and subsetting counts, from using a reserved name); the rest are subset.
 import { createRequire } from 'node:module';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as fontkit from 'fontkit';
@@ -15,11 +16,11 @@ const outDir = join(here, '..', 'public', 'fonts', 'invoice');
 mkdirSync(outDir, { recursive: true });
 
 const FAMILIES = [
-  { id: 'inter', pkg: 'inter', file: 'Inter', label: 'Inter', reservedName: false },
-  { id: 'poppins', pkg: 'poppins', file: 'Poppins', label: 'Poppins', reservedName: false },
-  { id: 'source-serif-4', pkg: 'source-serif-4', file: 'SourceSerif4', label: 'Source Serif 4', reservedName: false },
-  { id: 'ibm-plex-mono', pkg: 'ibm-plex-mono', file: 'IBMPlexMono', label: 'IBM Plex Mono', reservedName: true },
-  { id: 'geist-mono', pkg: 'geist-mono', file: 'GeistMono', label: 'Geist Mono', reservedName: false },
+  { id: 'inter', pkg: 'inter', file: 'Inter', label: 'Inter' },
+  { id: 'poppins', pkg: 'poppins', file: 'Poppins', label: 'Poppins' },
+  { id: 'source-serif-4', pkg: 'source-serif-4', file: 'SourceSerif4', label: 'Source Serif 4' },
+  { id: 'ibm-plex-mono', pkg: 'ibm-plex-mono', file: 'IBMPlexMono', label: 'IBM Plex Mono' },
+  { id: 'geist-mono', pkg: 'geist-mono', file: 'GeistMono', label: 'Geist Mono' },
 ];
 const WEIGHTS = [
   { weight: 400, folder: '400Regular' },
@@ -39,30 +40,46 @@ const RANGES = [
 let characters = '';
 for (const [from, to] of RANGES) for (let code = from; code <= to; code++) characters += String.fromCodePoint(code);
 
-const licenceParts = [
-  'Fonts used for invoice PDFs. All are licensed under the SIL Open Font License 1.1.',
-  'IBM Plex Mono is distributed unmodified (its licence reserves the name "Plex"); the other fonts are subset to',
-  'Latin, Latin-ext and currency symbols, and keep their original names.',
-  '',
-];
+const RESERVED = /reserved font name/i;
+const RESERVED_NAME = /Reserved Font Name\s+["“‘']?([^"”‘’',.]+)/i;
 
+const results = [];
+const sections = [];
 for (const family of FAMILIES) {
   const packageDir = dirname(require.resolve(`@expo-google-fonts/${family.pkg}/package.json`));
-  let copyright = '';
-  for (const { weight, folder } of WEIGHTS) {
+  const licencePath = join(packageDir, 'LICENSE_FONT');
+  if (!existsSync(licencePath)) throw new Error(`${family.label}: LICENSE_FONT is missing at ${licencePath}`);
+  const licenceText = readFileSync(licencePath, 'utf8').trim();
+  const sources = WEIGHTS.map(({ weight, folder }) => {
     const source = join(packageDir, folder, `${family.file}_${folder}.ttf`);
+    return { weight, source, original: readFileSync(source) };
+  });
+  const copyright = (fontkit.create(sources[0].original).copyright ?? '').trim();
+  if (!copyright) throw new Error(`${family.label}: the font's name table has an empty copyright string`);
+  const header = licenceText.split(/\r?\n/).slice(0, 5).join('\n');
+  const reserved = RESERVED.test(copyright) || RESERVED.test(header);
+  const reservedFontName = reserved ? (RESERVED_NAME.exec(copyright) ?? RESERVED_NAME.exec(header))?.[1].trim() ?? null : null;
+  for (const { weight, source, original } of sources) {
     const target = join(outDir, `${family.id}-${weight}.ttf`);
-    const original = readFileSync(source);
-    copyright = fontkit.create(original).copyright ?? copyright;
-    if (family.reservedName) {
+    if (reserved) {
       copyFileSync(source, target);
     } else {
       const subset = await subsetFont(original, characters, { targetFormat: 'truetype' });
       writeFileSync(target, Buffer.from(subset));
     }
-    console.log(`wrote ${family.id}-${weight}.ttf${family.reservedName ? ' (unmodified)' : ''}`);
+    console.log(`wrote ${family.id}-${weight}.ttf${reserved ? ' (unmodified)' : ''}`);
   }
-  licenceParts.push(`==== ${family.label} ====`, copyright.trim(), '', readFileSync(join(packageDir, 'LICENSE_FONT'), 'utf8').trim(), '', '');
+  results.push({ id: family.id, label: family.label, modified: !reserved, reservedFontName });
+  sections.push(`==== ${family.label} ====`, copyright, '', licenceText, '', '');
 }
+
+const quoted = (r) => (r.reservedFontName ? ` (its licence reserves the name "${r.reservedFontName}")` : ' (its licence reserves a font name)');
+const unmodified = results.filter((r) => !r.modified);
+const modified = results.filter((r) => r.modified);
+const licenceParts = ['Fonts used for invoice PDFs. All are licensed under the SIL Open Font License 1.1.'];
+if (unmodified.length) licenceParts.push('Distributed unmodified (not subset, original names kept): ' + unmodified.map((r) => r.label + quoted(r)).join('; ') + '.');
+if (modified.length) licenceParts.push('Modified (subset to Latin, Latin-ext and currency symbols; none of them reserves a font name): ' + modified.map((r) => r.label).join(', ') + '.');
+licenceParts.push('', ...sections);
 writeFileSync(join(outDir, 'THIRD_PARTY_LICENSES.txt'), licenceParts.join('\n'));
-console.log('wrote THIRD_PARTY_LICENSES.txt');
+writeFileSync(join(outDir, 'fonts.json'), JSON.stringify({ families: results }, null, 2) + '\n');
+console.log('wrote THIRD_PARTY_LICENSES.txt and fonts.json');

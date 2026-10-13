@@ -8,6 +8,13 @@ import { FONT_DIR } from './testing';
 const REQUIRED = ['₹', '€', '£', '$', 'é', 'Ł', 'ž'];
 const WEIGHTS = [400, 700];
 
+interface Manifest {
+  families: { id: string; label: string; modified: boolean; reservedFontName: string | null }[];
+}
+const manifest = JSON.parse(readFileSync(join(FONT_DIR, 'fonts.json'), 'utf8')) as Manifest;
+const readLicences = () => readFileSync(join(FONT_DIR, 'THIRD_PARTY_LICENSES.txt'), 'utf8');
+const licenceHeader = () => readLicences().split(/^==== /m)[0] ?? '';
+
 describe('bundled invoice fonts', () => {
   it('has a file for every font option and weight', () => {
     for (const font of FONT_OPTIONS) {
@@ -32,26 +39,70 @@ describe('bundled invoice fonts', () => {
     for (const font of FONT_OPTIONS) {
       for (const weight of WEIGHTS) {
         const bytes = statSync(join(FONT_DIR, `${font.id}-${weight}.ttf`)).size;
-        expect(bytes, `${font.id}-${weight}`).toBeLessThan(300 * 1024);
+        expect(bytes, `${font.id}-${weight}`).toBeLessThan(350 * 1024);
       }
     }
   });
 
-  it('ships each family with its licence and copyright', () => {
-    const licences = readFileSync(join(FONT_DIR, 'THIRD_PARTY_LICENSES.txt'), 'utf8');
-    for (const label of ['Inter', 'Poppins', 'Source Serif 4', 'IBM Plex Mono', 'Geist Mono']) {
-      expect(licences).toContain(`==== ${label} ====`);
+  it('ships each family with its licence and a copyright line', () => {
+    const licences = readLicences();
+    for (const family of manifest.families) {
+      expect(licences).toContain(`==== ${family.label} ====`);
+      const block = (licences.split(`==== ${family.label} ====`)[1] ?? '').split(/^==== /m)[0] ?? '';
+      const lines = block.split('\n').map((line) => line.trim());
+      expect(
+        lines.some((line) => line.startsWith('Copyright') || line.startsWith('©')),
+        `${family.label} has a copyright line`,
+      ).toBe(true);
     }
-    expect(licences.match(/SIL OPEN FONT LICENSE Version 1\.1/g)?.length).toBe(5);
-    expect(licences).toContain('Copyright');
+    expect(licences.match(/SIL OPEN FONT LICENSE Version 1\.1/g)?.length).toBe(manifest.families.length);
   });
 
-  it('keeps IBM Plex Mono unmodified because its licence reserves the name', () => {
-    const licences = readFileSync(join(FONT_DIR, 'THIRD_PARTY_LICENSES.txt'), 'utf8');
-    expect(licences).toContain('Reserved Font Name "Plex"');
-    const parsed = fontkit.create(readFileSync(join(FONT_DIR, 'ibm-plex-mono-400.ttf'))) as fontkit.Font;
-    expect(parsed.familyName).toBe('IBM Plex Mono');
-    // The unmodified font still has its full set of glyphs, far more than the Latin subset.
-    expect(parsed.numGlyphs).toBeGreaterThan(900);
+  describe('font licensing manifest', () => {
+    it('lists every font option exactly once', () => {
+      for (const font of FONT_OPTIONS) {
+        expect(manifest.families.filter((family) => family.id === font.id), font.id).toHaveLength(1);
+      }
+      expect(manifest.families).toHaveLength(FONT_OPTIONS.length);
+    });
+
+    it('ships fonts with a reserved name, or listed as unmodified in the licence header, unmodified', () => {
+      const header = licenceHeader();
+      const unmodifiedLine = header.split('\n').find((line) => /unmodified/i.test(line)) ?? '';
+      for (const family of manifest.families) {
+        if (family.reservedFontName !== null || unmodifiedLine.includes(family.label)) {
+          expect(family.modified, family.label).toBe(false);
+        }
+      }
+    });
+
+    it('keeps unmodified fonts whole, with their original family name', () => {
+      for (const family of manifest.families.filter((entry) => !entry.modified)) {
+        for (const weight of WEIGHTS) {
+          const parsed = fontkit.create(readFileSync(join(FONT_DIR, `${family.id}-${weight}.ttf`))) as fontkit.Font;
+          expect(parsed.numGlyphs, `${family.id}-${weight} glyphs`).toBeGreaterThan(600);
+          expect(parsed.familyName, `${family.id}-${weight} family name`).toBe(family.label);
+        }
+      }
+    });
+
+    it('never gives a modified font a reserved name', () => {
+      const reservedNames = manifest.families.flatMap((family) => (family.reservedFontName ? [family.reservedFontName] : []));
+      for (const family of manifest.families.filter((entry) => entry.modified)) {
+        for (const weight of WEIGHTS) {
+          const parsed = fontkit.create(readFileSync(join(FONT_DIR, `${family.id}-${weight}.ttf`))) as fontkit.Font;
+          for (const name of reservedNames) {
+            expect(parsed.familyName, `${family.id}-${weight} must not contain "${name}"`).not.toContain(name);
+          }
+        }
+      }
+    });
+
+    it('names every unmodified family in the licence header', () => {
+      const header = licenceHeader();
+      for (const family of manifest.families.filter((entry) => !entry.modified)) {
+        expect(header, family.label).toContain(family.label);
+      }
+    });
   });
 });
