@@ -6,3 +6,5 @@ coverage/
 *.log
 .DS_Store
 .superpowers/
+next-env.d.ts
+*.tsbuildinfo
