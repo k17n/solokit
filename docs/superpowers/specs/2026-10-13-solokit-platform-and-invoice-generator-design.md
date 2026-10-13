@@ -70,7 +70,7 @@ Onboarding order: GST status, then goods or services, then details. The form hid
 
 ### 4.4 Fonts (invoice documents)
 - **Google Fonts only; no user font uploads** (avoids licensing issues).
-- **Small bundled set** in three groups: **sans-serif, serif, monospace**. Candidate list, confirmed in the implementation plan after a licence and glyph check: Sans: Inter, Poppins; Serif: Lora, Merriweather; Mono: JetBrains Mono, IBM Plex Mono.
+- **Small bundled set** in three groups: **sans-serif, serif, monospace**. Final set after a licence and glyph check (Lora and JetBrains Mono lack the rupee sign; Merriweather is very large; IBM Plex Mono breaks fontkit): Sans: Inter, Poppins; Serif: Source Serif 4; Mono: Inconsolata, Geist Mono. Fonts whose licence reserves a name (currently Source Serif 4) are shipped unmodified; the rest are subset.
 - **Latin character set only: the `latin` and `latin-ext` subsets**, which covers accented names and currency symbols such as ₹, €, £, ¥, ₽, ₺ and ₫ (the rupee sign U+20B9 sits in latin-ext). Every bundled font must contain ₹, €, £ and $, and the plan verifies the other symbols the currency picker offers. Indian-script and other non-Latin fonts are out of scope for now.
 - **Self-hosted and cached by the service worker** (offline, and no requests to Google's servers, which also avoids GDPR exposure).
 - Ship each font's licence text (`THIRD_PARTY_LICENSES`), keep copyright notices, do not rename modified fonts, and check Reserved Font Names per font. All candidates are OFL or Apache 2.0, which permit PDF embedding and bundling.
