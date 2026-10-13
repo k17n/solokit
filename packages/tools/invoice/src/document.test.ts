@@ -374,3 +374,53 @@ describe('buildInvoiceDocument: currency and payment edge cases', () => {
     expect(doc.payment.upi).toBeUndefined();
   });
 });
+
+describe('buildInvoiceDocument: rounding default', () => {
+  const usdLine = { id: 'a', description: 'Design', quantity: 1, unit: 'items' as const, rate: 123456 };
+  const unregistered = makeSeller({ gstStatus: 'unregistered', gstin: undefined });
+
+  it('does not round a foreign-currency invoice from an unregistered seller', () => {
+    const doc = buildInvoiceDocument(
+      makeInvoice({ seller: unregistered, currency: 'USD', isExport: true, placeOfSupplyStateCode: undefined, lines: [usdLine] }),
+    );
+    expect(doc.totals.at(-1)?.amount).toBe('$1,234.56');
+    expect(labels(doc)).not.toContain('Round off');
+  });
+
+  it('still rounds a domestic INR invoice from an unregistered seller', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ seller: unregistered, placeOfSupplyStateCode: undefined, lines: [usdLine] }));
+    expect(doc.totals.at(-1)?.amount).toBe('₹1,235.00');
+    expect(labels(doc)).toContain('Round off');
+  });
+
+  it('lets an explicit roundOff win', () => {
+    const doc = buildInvoiceDocument(
+      makeInvoice({ seller: unregistered, currency: 'USD', isExport: true, roundOff: true, placeOfSupplyStateCode: undefined, lines: [usdLine] }),
+    );
+    expect(doc.totals.at(-1)?.amount).toBe('$1,235.00');
+  });
+});
+
+describe('buildInvoiceDocument: TDS wording', () => {
+  it('formats the TDS row label like the declaration', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ tds: { ratePercent: 10.004 } }));
+    expect(labels(doc)).toContain('TDS @10% (deducted by client)');
+    expect(doc.declarations.join(' ')).toContain('TDS at 10%');
+  });
+
+  it('shows no TDS wording when the rate rounds to no tax', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ tds: { ratePercent: 0.00001 } }));
+    expect(doc.declarations.join(' ')).not.toContain('TDS');
+    expect(labels(doc).some((label) => label.startsWith('TDS'))).toBe(false);
+    expect(labels(doc)).not.toContain('Net payable');
+  });
+});
+
+describe('buildInvoiceDocument: status, kind and signatory', () => {
+  it('copies status and kind and names the signatory', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ status: 'cancelled', kind: 'proforma' }));
+    expect(doc.status).toBe('cancelled');
+    expect(doc.kind).toBe('proforma');
+    expect(doc.signatory).toEqual({ forName: 'Asha Rao Consulting', label: 'Authorised signatory' });
+  });
+});

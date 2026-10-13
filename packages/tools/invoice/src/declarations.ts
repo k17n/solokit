@@ -10,6 +10,11 @@ export interface DeclarationInput {
   tdsRatePercent?: number;
 }
 
+/** A TDS rate as printed on the invoice: at most two decimals, no trailing zeros. */
+export function formatTdsRate(ratePercent: number): string {
+  return String(Number(ratePercent.toFixed(2)));
+}
+
 /** The statements an Indian invoice has to carry for this kind of supply. */
 export function buildDeclarations({
   seller,
@@ -39,7 +44,7 @@ export function buildDeclarations({
   if (reverseCharge && (mode === 'intra-state' || mode === 'inter-state')) lines.push('Tax on this supply is payable on reverse charge basis by the recipient.');
 
   if (tdsRatePercent !== undefined && Number.isFinite(tdsRatePercent) && tdsRatePercent > 0) {
-    lines.push(`TDS at ${Number(tdsRatePercent.toFixed(2))}% is expected to be deducted by the client. Net payable is shown after this deduction.`);
+    lines.push(`TDS at ${formatTdsRate(tdsRatePercent)}% is expected to be deducted by the client. Net payable is shown after this deduction.`);
   }
   return lines;
 }

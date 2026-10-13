@@ -1,8 +1,9 @@
 import { amountInWords } from '@solokit/core';
-import { calculateGst, getStateByCode, type GstLineResult, type SupplyMode } from '@solokit/tax-engines';
+import { getStateByCode, type GstLineResult, type SupplyMode } from '@solokit/tax-engines';
 import { formatAmount, type CurrencyCode } from './currencies';
-import { buildDeclarations } from './declarations';
-import type { Address, Client, InvoiceRecord, SellerProfile } from './model';
+import { buildDeclarations, formatTdsRate } from './declarations';
+import { calculateInvoiceGst } from './gst-input';
+import type { Address, Client, InvoiceKind, InvoiceRecord, InvoiceStatus, SellerProfile } from './model';
 import { buildUpiPayload } from './upi';
 import { formatQuantity } from './units';
 
@@ -36,6 +37,8 @@ export interface DocTotalRow {
 
 export interface InvoiceDocument {
   title: string;
+  status: InvoiceStatus;
+  kind: InvoiceKind;
   number: string;
   issueDate: string;
   dueDate?: string;
@@ -58,6 +61,7 @@ export interface InvoiceDocument {
     upi?: { id: string; payload: string };
   };
   logoDataUrl?: string;
+  signatory: { forName: string; label: string };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
@@ -100,23 +104,7 @@ function titleFor(invoice: InvoiceRecord, documentType: string): string {
 export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
   const money = (minor: number) => formatAmount(minor, invoice.currency);
 
-  const result = calculateGst({
-    sellerStatus: invoice.seller.gstStatus,
-    ...(invoice.seller.address.stateCode ? { sellerStateCode: invoice.seller.address.stateCode } : {}),
-    ...(invoice.placeOfSupplyStateCode ? { placeOfSupplyStateCode: invoice.placeOfSupplyStateCode } : {}),
-    isExport: invoice.isExport,
-    exemptSupply: invoice.exemptSupply,
-    reverseCharge: invoice.reverseCharge,
-    lines: invoice.lines.map((line) => ({
-      quantity: line.quantity,
-      unitRate: line.rate,
-      ...(line.discount ? { discount: line.discount } : {}),
-      ...(line.gstRate !== undefined ? { gstRate: line.gstRate } : {}),
-    })),
-    ...(invoice.roundOff !== undefined ? { roundOff: invoice.roundOff } : {}),
-    ...(invoice.tds ? { tds: invoice.tds } : {}),
-    ...(invoice.advanceReceived !== undefined ? { advanceReceived: invoice.advanceReceived } : {}),
-  });
+  const result = calculateInvoiceGst(invoice);
   if (result.lines.length !== invoice.lines.length) {
     throw new Error('Tax engine returned a different number of lines than the invoice');
   }
@@ -180,7 +168,7 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
 
   if (result.tds > 0) {
     rows.push({
-      label: `TDS @${invoice.tds?.ratePercent ?? 0}% (deducted by client)`,
+      label: `TDS @${formatTdsRate(invoice.tds?.ratePercent ?? 0)}% (deducted by client)`,
       amount: money(-result.tds),
       emphasis: 'muted',
     });
@@ -218,6 +206,8 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
 
   const document: InvoiceDocument = {
     title: titleFor(invoice, result.documentType),
+    status: invoice.status,
+    kind: invoice.kind,
     number: invoice.number,
     issueDate: formatDisplayDate(invoice.issueDate),
     currency: invoice.currency,
@@ -236,9 +226,10 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
       exemptSupply: invoice.exemptSupply,
       reverseCharge,
       isProforma: invoice.kind === 'proforma',
-      ...(invoice.tds ? { tdsRatePercent: invoice.tds.ratePercent } : {}),
+      ...(invoice.tds && result.tds > 0 ? { tdsRatePercent: invoice.tds.ratePercent } : {}),
     }),
     payment,
+    signatory: { forName: invoice.seller.name, label: 'Authorised signatory' },
   };
   if (invoice.dueDate) document.dueDate = formatDisplayDate(invoice.dueDate);
   if (placeOfSupply) document.placeOfSupply = placeOfSupply;
