@@ -52,7 +52,7 @@ Onboarding order: GST status, then goods or services, then details. The form hid
 ### 4.2 Core features
 - **Seller profile** (saved once, reused across tools): name, address, state, GST status, GSTIN, PAN, optional UDYAM, logo, bank details, UPI ID.
 - **Clients:** saved list with GSTIN, address, state.
-- **Line items:** description, HSN/SAC (searchable list), quantity and **billing unit** (hours, days, fixed fee, retainer, items), rate, discount, GST slab (0/5/12/18/28).
+- **Line items:** description, HSN/SAC (searchable list), quantity and **billing unit** (hours, days, fixed fee, retainer, items), rate, discount, GST rate. The UI offers the current slabs (0/5/18/40, after the GST Council's 22 Sept 2025 reform that retired 12% and 28%) plus special rates (0.25, 3). The engine still accepts the legacy 12% and 28% so older invoices can be recreated, and the UI warns when a legacy rate is used on an invoice dated on or after 2025-09-22.
 - **GST engine:** GSTIN format and checksum validation, place of supply, CGST+SGST vs IGST, reverse-charge flag, round-off, amount in words in rupees (lakh/crore).
 - **Consultant features:** optional **TDS** line (user-entered %, 10% suggested for professional fees) with net payable; **milestone/advance** invoicing (% of project, advance received); **export of services** (foreign currency such as USD/EUR/GBP, zero-rated under LUT with LUT number, optional reference INR value).
 - **Numbering:** financial-year series (e.g. `2026-27/0001`), kept within the 16-character GST limit.
