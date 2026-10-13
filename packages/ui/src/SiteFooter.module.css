@@ -1,0 +1,188 @@
+/* The footer is dark in both colour schemes; re-map the tokens it uses so Badge and links adapt locally. */
+.footer {
+  --text: #eaf0fa;
+  --text-muted: #9fb0ce;
+  --border: rgb(234 240 250 / 0.2);
+  --accent-text: #34d399;
+  --edge: #eaf0fa; /* keeps the global focus ring visible on the dark footer */
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: var(--space-section);
+  padding-top: 4.5rem;
+  background: var(--ink);
+  color: var(--text);
+}
+
+/* scalloped paper edge, like a torn receipt */
+.footer::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 14px;
+  background: radial-gradient(circle at 50% 0, var(--bg) 0 7px, transparent 7.5px) 0 0 / 20px 14px repeat-x;
+}
+
+/* emerald glow rising from the wordmark */
+.footer::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 70%;
+  z-index: -1;
+  background: radial-gradient(60% 80% at 50% 100%, rgb(16 185 129 / 0.35), transparent 70%);
+  pointer-events: none;
+}
+
+.top {
+  display: grid;
+  gap: 2.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 40rem) {
+  .top {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pitch {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 64rem) {
+  .top {
+    grid-template-columns: 1.5fr repeat(3, 1fr);
+  }
+
+  .pitch {
+    grid-column: auto;
+  }
+}
+
+.pitchTitle {
+  max-width: 18ch;
+  font-family: var(--ff-display);
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.pitchBody {
+  max-width: 30rem;
+  margin-top: 0.9rem;
+  color: var(--text-muted);
+}
+
+.backToTop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  padding: 0.55rem 0.95rem;
+  font: 600 0.95rem/1 var(--ff-sans);
+  color: var(--text);
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.backToTop:hover {
+  border-color: var(--amber);
+  background: rgb(245 181 74 / 0.12);
+}
+
+.arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.backToTop:hover .arrow {
+  transform: translateY(-3px);
+}
+
+.heading {
+  margin-bottom: 1rem;
+  font: 500 0.78rem/1 var(--ff-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.list a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.list a:hover {
+  text-decoration: underline 2px solid var(--amber);
+  text-underline-offset: 5px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  margin-top: 3.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.made {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.flag {
+  width: 1.1rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  background: linear-gradient(#ff9933 0 33%, #ffffff 33% 66%, #138808 66%);
+}
+
+/* giant wordmark, cropped by the bottom edge */
+.wordmark {
+  margin-top: 1rem;
+  margin-bottom: -0.17em;
+  font-family: var(--ff-display);
+  font-size: clamp(5rem, 25vw, 22rem);
+  font-weight: 800;
+  line-height: 0.8;
+  letter-spacing: -0.045em;
+  text-align: center;
+  white-space: nowrap;
+  background: linear-gradient(95deg, #10b981 5%, #f5b54a 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.92;
+  user-select: none;
+}
