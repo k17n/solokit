@@ -11,7 +11,7 @@
 ## Plan roadmap
 
 1. Plan 3A (this plan): invoice domain, themes, repositories, backup.
-2. Plan 3B: PDF engine: fonts subsetted at dev time (Inter, Poppins, Source Serif 4, IBM Plex Mono, Geist Mono), `@react-pdf/renderer` documents for the 6 theme presets, logo and QR handling in PDFs.
+2. Plan 3B: PDF engine: fonts subsetted at dev time (Inter, Poppins, Source Serif 4, Inconsolata, Geist Mono), `@react-pdf/renderer` documents for the 6 theme presets, logo and QR handling in PDFs.
 3. Plan 3C: the screens: onboarding, seller profile, invoice editor, live preview, theme and logo editor, saved invoices, backup UI, registry flip to "available".
 
 ## Global Constraints
@@ -26,7 +26,7 @@ From the spec and earlier plans; every task's requirements include them.
 - **TDS** is a user-entered percentage on the value excluding GST; the document shows TDS and a "Net payable" line. **Advance received** is also subtracted for the net payable.
 - Invoice numbers are financial-year series within **16 characters** (letters, digits, `/`, `-`).
 - Supported invoice currencies (amount-in-words support and glyph coverage in the bundled fonts): **INR, USD, EUR, GBP**.
-- Invoice fonts (used from Plan 3B): Inter, Poppins (sans); Source Serif 4 (serif); IBM Plex Mono, Geist Mono (mono). Every one contains ₹, €, £ and $ (verified).
+- Invoice fonts (used from Plan 3B): Inter, Poppins (sans); Source Serif 4 (serif); Inconsolata, Geist Mono (mono). Every one contains ₹, €, £ and $ (verified).
 - Theme customisation is **colours plus a font choice** only; layout is fixed per preset. Presets: classic, modern, minimal, bold, consultant, formal. Text/background contrast must be at least 4.5:1.
 - Tax rules and thresholds are data with an "as of" date and are not tax advice.
 - Storage goes through `DataStore` (collections `profile`, `clients`, `invoices`, `themes`, `settings`).
@@ -1737,7 +1737,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Produces:
-  - `FONT_OPTIONS: readonly { id: FontId; label: string; group: 'sans' | 'serif' | 'mono' }[]`, `type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'ibm-plex-mono' | 'geist-mono'`
+  - `FONT_OPTIONS: readonly { id: FontId; label: string; group: 'sans' | 'serif' | 'mono' }[]`, `type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'inconsolata' | 'geist-mono'`
   - `type ThemeLayout = 'classic' | 'modern' | 'minimal' | 'bold' | 'consultant' | 'formal'`
   - `interface InvoiceTheme extends StoredRecord { id: string; name: string; layout: ThemeLayout; accent: string; text: string; background: string; fontId: FontId }`
   - `PRESET_THEMES: readonly InvoiceTheme[]` (ids `classic`, `modern`, `minimal`, `bold`, `consultant`, `formal`), `DEFAULT_THEME_ID = 'classic'`, `isPresetThemeId(id)`
@@ -1799,7 +1799,7 @@ describe('font options', () => {
   it('offers sans, serif and mono fonts', () => {
     const groups = new Set(FONT_OPTIONS.map((font) => font.group));
     expect([...groups].sort()).toEqual(['mono', 'sans', 'serif']);
-    expect(FONT_OPTIONS.map((font) => font.id)).toEqual(['inter', 'poppins', 'source-serif-4', 'ibm-plex-mono', 'geist-mono']);
+    expect(FONT_OPTIONS.map((font) => font.id)).toEqual(['inter', 'poppins', 'source-serif-4', 'inconsolata', 'geist-mono']);
   });
 });
 
@@ -1857,7 +1857,7 @@ Expected: FAIL (cannot resolve `./themes`).
 import type { StoredRecord } from '@solokit/storage';
 import type { Issue } from './validation';
 
-export type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'ibm-plex-mono' | 'geist-mono';
+export type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'inconsolata' | 'geist-mono';
 
 export interface FontOption {
   id: FontId;
@@ -1870,7 +1870,7 @@ export const FONT_OPTIONS: readonly FontOption[] = [
   { id: 'inter', label: 'Inter', group: 'sans' },
   { id: 'poppins', label: 'Poppins', group: 'sans' },
   { id: 'source-serif-4', label: 'Source Serif 4', group: 'serif' },
-  { id: 'ibm-plex-mono', label: 'IBM Plex Mono', group: 'mono' },
+  { id: 'inconsolata', label: 'Inconsolata', group: 'mono' },
   { id: 'geist-mono', label: 'Geist Mono', group: 'mono' },
 ];
 

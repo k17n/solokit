@@ -47,7 +47,7 @@ describe('font options', () => {
   it('offers sans, serif and mono fonts', () => {
     const groups = new Set(FONT_OPTIONS.map((font) => font.group));
     expect([...groups].sort()).toEqual(['mono', 'sans', 'serif']);
-    expect(FONT_OPTIONS.map((font) => font.id)).toEqual(['inter', 'poppins', 'source-serif-4', 'ibm-plex-mono', 'geist-mono']);
+    expect(FONT_OPTIONS.map((font) => font.id)).toEqual(['inter', 'poppins', 'source-serif-4', 'inconsolata', 'geist-mono']);
   });
 });
 

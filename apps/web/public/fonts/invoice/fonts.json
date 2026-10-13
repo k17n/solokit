@@ -1,0 +1,34 @@
+{
+  "families": [
+    {
+      "id": "inter",
+      "label": "Inter",
+      "modified": true,
+      "reservedFontName": null
+    },
+    {
+      "id": "poppins",
+      "label": "Poppins",
+      "modified": true,
+      "reservedFontName": null
+    },
+    {
+      "id": "source-serif-4",
+      "label": "Source Serif 4",
+      "modified": false,
+      "reservedFontName": "Source"
+    },
+    {
+      "id": "inconsolata",
+      "label": "Inconsolata",
+      "modified": true,
+      "reservedFontName": null
+    },
+    {
+      "id": "geist-mono",
+      "label": "Geist Mono",
+      "modified": true,
+      "reservedFontName": null
+    }
+  ]
+}
