@@ -184,3 +184,13 @@ describe('settings', () => {
     expect(withBackup.lastBackupAt).toBe('2026-10-14T12:00:00.000Z');
   });
 });
+
+describe('invoice repository methods can be used detached', () => {
+  it('cancel and save work when pulled off the object', async () => {
+    const storage = setup();
+    const { save, cancel } = storage.invoices;
+    await save(makeInvoice({ id: 'x', number: '2026-27/0001' }));
+    const cancelled = await cancel('x');
+    expect(cancelled.status).toBe('cancelled');
+  });
+});

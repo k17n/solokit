@@ -61,6 +61,17 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
     return all.sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.number.localeCompare(a.number, undefined, { numeric: true }));
   }
 
+  async function saveInvoice(invoice: InvoiceRecord): Promise<InvoiceRecord> {
+    const all = await store.list<InvoiceRecord>('invoices');
+    if (all.some((other) => other.id !== invoice.id && other.number === invoice.number)) {
+      throw new InvoiceNumberTakenError(`Invoice number ${invoice.number} is already used by another invoice`);
+    }
+    const stamp = now().toISOString();
+    const saved: InvoiceRecord = { ...invoice, createdAt: invoice.createdAt || stamp, updatedAt: stamp };
+    await store.put('invoices', saved);
+    return saved;
+  }
+
   return {
     profile: {
       get: () => store.get<SellerProfile>('profile', SELLER_ID),
@@ -80,16 +91,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
     invoices: {
       list: listInvoices,
       get: (id) => store.get<InvoiceRecord>('invoices', id),
-      async save(invoice) {
-        const all = await store.list<InvoiceRecord>('invoices');
-        if (all.some((other) => other.id !== invoice.id && other.number === invoice.number)) {
-          throw new InvoiceNumberTakenError(`Invoice number ${invoice.number} is already used by another invoice`);
-        }
-        const stamp = now().toISOString();
-        const saved: InvoiceRecord = { ...invoice, createdAt: invoice.createdAt || stamp, updatedAt: stamp };
-        await store.put('invoices', saved);
-        return saved;
-      },
+      save: saveInvoice,
       async remove(id) {
         const existing = await store.get<InvoiceRecord>('invoices', id);
         if (existing && existing.status !== 'draft') {
@@ -103,7 +105,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
         const existing = await store.get<InvoiceRecord>('invoices', id);
         if (!existing) throw new Error('Invoice not found');
         if (existing.status === 'draft') throw new Error('Only issued invoices can be cancelled; delete a draft instead');
-        return this.save({ ...existing, status: 'cancelled' });
+        return saveInvoice({ ...existing, status: 'cancelled' });
       },
       async nextNumber(issueDate) {
         const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
