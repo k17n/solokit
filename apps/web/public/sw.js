@@ -1,13 +1,16 @@
-// SoloKit service worker: makes the site installable and usable offline.
-// Bump CACHE when this file's strategy changes so old caches are removed.
-const CACHE = 'solokit-v1';
-const PRECACHE = ['/', '/privacy/', '/manifest.webmanifest'];
+// SoloKit service worker: makes the site installable and fully usable offline.
+// This file is a TEMPLATE. After `next build`, scripts/sw-precache.mjs replaces
+// the two tokens below in out/sw.js with a content hash and the list of every
+// exported file. It is only registered in production builds, never in dev.
+const BUILD_ID = '__BUILD_ID__';
+const PRECACHE_URLS = __PRECACHE_URLS__;
+const CACHE = 'solokit-' + BUILD_ID;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
+      .then((cache) => cache.addAll(PRECACHE_URLS))
       .then(() => self.skipWaiting()),
   );
 });
@@ -16,54 +19,54 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter((key) => key.startsWith('solokit-') && key !== CACHE).map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
 });
 
-async function networkFirst(request) {
-  const cache = await caches.open(CACHE);
-  try {
-    const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
-    return response;
-  } catch {
-    return (await cache.match(request)) || (await cache.match('/')) || Response.error();
+function store(event, cache, request, response) {
+  if (response.ok && response.type === 'basic') {
+    event.waitUntil(cache.put(request, response.clone()));
   }
 }
 
-async function cacheFirst(request) {
+async function networkFirst(event) {
+  const { request } = event;
   const cache = await caches.open(CACHE);
-  const hit = await cache.match(request);
-  if (hit) return hit;
-  const response = await fetch(request);
-  if (response.ok) cache.put(request, response.clone());
-  return response;
+  try {
+    const response = await fetch(request);
+    store(event, cache, request, response);
+    return response;
+  } catch {
+    return (
+      (await cache.match(request, { ignoreSearch: true })) ||
+      (await cache.match('/')) ||
+      Response.error()
+    );
+  }
 }
 
-async function staleWhileRevalidate(request) {
+async function cacheFirst(event) {
+  const { request } = event;
   const cache = await caches.open(CACHE);
-  const hit = await cache.match(request);
-  const refresh = fetch(request)
-    .then((response) => {
-      if (response.ok) cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => undefined);
-  return hit || (await refresh) || Response.error();
+  const hit = await cache.match(request, { ignoreSearch: true });
+  if (hit) return hit;
+  try {
+    const response = await fetch(request);
+    store(event, cache, request, response);
+    return response;
+  } catch {
+    return Response.error();
+  }
 }
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request));
-  } else if (url.pathname.startsWith('/_next/static/')) {
-    event.respondWith(cacheFirst(request));
-  } else {
-    event.respondWith(staleWhileRevalidate(request));
-  }
+  if (request.method !== 'GET' || request.headers.has('range')) return;
+  if (new URL(request.url).origin !== self.location.origin) return;
+  event.respondWith(request.mode === 'navigate' ? networkFirst(event) : cacheFirst(event));
 });

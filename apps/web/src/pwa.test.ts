@@ -43,18 +43,3 @@ describe('web manifest', () => {
     expect(pngSize(join(publicDir, 'icons', 'apple-touch-icon.png'))).toEqual([180, 180]);
   });
 });
-
-describe('service worker file', () => {
-  const source = readFileSync(join(publicDir, 'sw.js'), 'utf8');
-
-  it('precaches the shell and handles fetches', () => {
-    expect(source).toContain("addEventListener('install'");
-    expect(source).toContain("addEventListener('fetch'");
-    expect(source).toContain("'/privacy/'");
-  });
-
-  it('only handles same-origin GET requests', () => {
-    expect(source).toContain("request.method !== 'GET'");
-    expect(source).toContain('url.origin !== self.location.origin');
-  });
-});

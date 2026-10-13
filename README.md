@@ -1,6 +1,6 @@
 # SoloKit
 
-Free, local-first tools for freelancers, consultants and solopreneurs. Everything runs in the browser, works offline, and keeps your data on your device. India (GST) comes first; other countries are coming soon.
+Free, local-first tools for freelancers, consultants and solopreneurs. Everything runs in the browser, works offline, and keeps your data on your device; the service worker precaches the whole site at build time so it is fully usable offline. India (GST) comes first; other countries are coming soon.
 
 ## Status
 
