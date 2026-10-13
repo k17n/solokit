@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
-import { InvoiceNumberTakenError, IssuedInvoiceError, createInvoiceStorage } from './repositories';
+import { InvoiceLockedError, InvoiceNumberTakenError, IssuedInvoiceError, createInvoiceStorage } from './repositories';
 import { makeClient, makeInvoice, makeSeller } from './testing';
 import { PRESET_THEMES, createCustomTheme } from './themes';
 
@@ -192,5 +192,55 @@ describe('invoice repository methods can be used detached', () => {
     await save(makeInvoice({ id: 'x', number: '2026-27/0001' }));
     const cancelled = await cancel('x');
     expect(cancelled.status).toBe('cancelled');
+  });
+});
+
+describe('invoices: locking and number uniqueness', () => {
+  const locked = 'This invoice has been issued and cannot be changed this way';
+
+  it('rejects changing the number of an issued invoice', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice());
+    const attempt = storage.invoices.save(makeInvoice({ number: '2026-27/0002' }));
+    await expect(attempt).rejects.toBeInstanceOf(InvoiceLockedError);
+    await expect(attempt).rejects.toMatchObject({ name: 'InvoiceLockedError', message: locked });
+  });
+
+  it('rejects moving an issued or cancelled invoice back to draft', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice());
+    await expect(storage.invoices.save(makeInvoice({ status: 'draft' }))).rejects.toBeInstanceOf(InvoiceLockedError);
+    await storage.invoices.save(makeInvoice({ status: 'cancelled' }));
+    await expect(storage.invoices.save(makeInvoice({ status: 'draft' }))).rejects.toBeInstanceOf(InvoiceLockedError);
+  });
+
+  it('rejects reviving a cancelled invoice', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ status: 'cancelled' }));
+    await expect(storage.invoices.save(makeInvoice({ status: 'issued' }))).rejects.toBeInstanceOf(InvoiceLockedError);
+  });
+
+  it('allows re-saving issued, cancelling, and re-saving cancelled', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ status: 'draft' }));
+    await storage.invoices.save(makeInvoice());
+    await storage.invoices.save(makeInvoice({ notes: 'Thanks' }));
+    expect((await storage.invoices.cancel('inv-1')).status).toBe('cancelled');
+    await storage.invoices.save(makeInvoice({ status: 'cancelled', notes: 'Void' }));
+    expect((await storage.invoices.get('inv-1'))?.notes).toBe('Void');
+  });
+
+  it('lets a draft change its number', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ status: 'draft' }));
+    await storage.invoices.save(makeInvoice({ status: 'draft', number: '2026-27/0009' }));
+    expect((await storage.invoices.get('inv-1'))?.number).toBe('2026-27/0009');
+  });
+
+  it('compares numbers ignoring case and surrounding spaces', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', number: 'INV/0001' }));
+    await expect(storage.invoices.save(makeInvoice({ id: 'b', number: 'inv/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+    await expect(storage.invoices.save(makeInvoice({ id: 'b', number: ' INV/0001 ' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
   });
 });

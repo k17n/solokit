@@ -10,6 +10,13 @@ export class InvoiceNumberTakenError extends Error {
   }
 }
 
+export class InvoiceLockedError extends Error {
+  constructor(message = 'This invoice has been issued and cannot be changed this way') {
+    super(message);
+    this.name = 'InvoiceLockedError';
+  }
+}
+
 export class IssuedInvoiceError extends Error {
   constructor(message: string) {
     super(message);
@@ -63,7 +70,18 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
 
   async function saveInvoice(invoice: InvoiceRecord): Promise<InvoiceRecord> {
     const all = await store.list<InvoiceRecord>('invoices');
-    if (all.some((other) => other.id !== invoice.id && other.number === invoice.number)) {
+    const existing = all.find((other) => other.id === invoice.id);
+    if (existing && existing.status !== 'draft') {
+      if (
+        invoice.number !== existing.number ||
+        invoice.status === 'draft' ||
+        (existing.status === 'cancelled' && invoice.status !== 'cancelled')
+      ) {
+        throw new InvoiceLockedError();
+      }
+    }
+    const key = (number: string) => number.trim().toUpperCase();
+    if (all.some((other) => other.id !== invoice.id && key(other.number) === key(invoice.number))) {
       throw new InvoiceNumberTakenError(`Invoice number ${invoice.number} is already used by another invoice`);
     }
     const stamp = now().toISOString();
