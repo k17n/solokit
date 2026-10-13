@@ -23,6 +23,7 @@
 
 .pair {
   display: grid;
+  align-items: start;
   gap: 1rem;
   grid-template-columns: 1fr;
 }
