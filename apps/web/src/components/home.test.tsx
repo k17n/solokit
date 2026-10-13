@@ -29,7 +29,7 @@ describe('Home page', () => {
     const section = screen.getByRole('region', { name: 'Tools' });
     for (const tool of getTools()) {
       expect(within(section).getByText(tool.name)).toBeInTheDocument();
-      const link = within(section).queryByRole('link', { name: new RegExp(tool.name) });
+      const link = within(section).queryByRole('link', { name: tool.name });
       if (tool.status === 'available') expect(link).toBeInTheDocument();
       else expect(link).not.toBeInTheDocument();
     }

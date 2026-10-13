@@ -24,7 +24,7 @@ export function ToolGrid() {
         </h2>
         <p className={styles.intro}>Pick a tool. New ones land here as they are built.</p>
       </div>
-      <ul className={styles.grid}>
+      <ul role="list" className={styles.grid}>
         {getTools().map((tool) => (
           <li key={tool.slug}>
             {tool.status === 'available' ? (

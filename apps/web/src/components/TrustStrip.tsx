@@ -4,7 +4,7 @@ const POINTS = ['Free', 'No signup', 'Works offline', 'Data stays on your device
 
 export function TrustStrip() {
   return (
-    <ul className={styles.strip} aria-label="Why people trust it">
+    <ul role="list" className={styles.strip} aria-label="Why people trust it">
       {POINTS.map((point) => (
         <li key={point} className={styles.stamp}>
           {point}
