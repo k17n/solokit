@@ -424,3 +424,15 @@ describe('buildInvoiceDocument: status, kind and signatory', () => {
     expect(doc.signatory).toEqual({ forName: 'Asha Rao Consulting', label: 'Authorised signatory' });
   });
 });
+
+describe('buildInvoiceDocument: odd seller data that validation lets through', () => {
+  it('ignores a whitespace-only UPI id instead of throwing', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ seller: makeSeller({ upiId: '   ' }) }));
+    expect(doc.payment.upi).toBeUndefined();
+  });
+
+  it('trims a UPI id with stray spaces', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ seller: makeSeller({ upiId: ' asha@okhdfc ' }) }));
+    expect(doc.payment.upi?.id).toBe('asha@okhdfc');
+  });
+});

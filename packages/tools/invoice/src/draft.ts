@@ -56,5 +56,5 @@ export function issueInvoice(invoice: InvoiceRecord): InvoiceRecord {
   if (invoice.status !== 'draft') throw new InvoiceLockedError();
   const issues = validateInvoice(invoice);
   if (issues.length > 0) throw new InvoiceNotValidError(issues);
-  return { ...invoice, status: 'issued' };
+  return { ...structuredClone(invoice), status: 'issued' };
 }

@@ -84,3 +84,15 @@ describe('issueInvoice', () => {
     expect(() => issueInvoice(makeInvoice({ status: 'cancelled' }))).toThrow(InvoiceLockedError);
   });
 });
+
+describe('issueInvoice copies its input', () => {
+  it('does not share nested objects with the draft it was given', () => {
+    const draft = makeInvoice({ status: 'draft' });
+    const issued = issueInvoice(draft);
+    expect(issued.status).toBe('issued');
+    expect(issued.lines).not.toBe(draft.lines);
+    expect(issued.seller).not.toBe(draft.seller);
+    expect(issued.client).not.toBe(draft.client);
+    expect(draft.status).toBe('draft');
+  });
+});

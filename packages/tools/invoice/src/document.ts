@@ -188,11 +188,12 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
       { label: 'Bank', value: bank.branch ? `${bank.bankName}, ${bank.branch}` : bank.bankName },
     ];
   }
-  if (invoice.currency === 'INR' && invoice.seller.upiId && result.netPayable > 0) {
+  const upiId = invoice.seller.upiId?.trim();
+  if (invoice.currency === 'INR' && upiId && result.netPayable > 0) {
     payment.upi = {
-      id: invoice.seller.upiId,
+      id: upiId,
       payload: buildUpiPayload({
-        upiId: invoice.seller.upiId,
+        upiId,
         payeeName: invoice.seller.name,
         amountMinor: result.netPayable,
         note: `Invoice ${invoice.number}`,

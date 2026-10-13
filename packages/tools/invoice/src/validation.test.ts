@@ -253,3 +253,18 @@ describe('validateInvoice: quantity and line size', () => {
   });
 });
 
+
+describe('validateInvoice with an enormous total', () => {
+  it('reports a problem instead of throwing when many near-limit lines overflow the total', () => {
+    const lines = Array.from({ length: 1100 }, (_, index) => ({
+      id: `l${index}`,
+      description: 'Huge',
+      quantity: 1,
+      unit: 'fixed' as const,
+      rate: 9_000_000_000_000,
+      gstRate: 18,
+    }));
+    const issues = validateInvoice(makeInvoice({ lines }));
+    expect(issues.map((issue) => issue.path)).toContain('lines');
+  });
+});

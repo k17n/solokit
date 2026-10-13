@@ -1,4 +1,4 @@
-import { InvoiceNumberError, formatInvoiceNumber, indianFiscalYear, lineAmount } from '@solokit/core';
+import { InvoiceNumberError, MoneyError, formatInvoiceNumber, indianFiscalYear, lineAmount } from '@solokit/core';
 import { GstInputError, isAllowedGstRate, isValidStateCode, validateGstin } from '@solokit/tax-engines';
 import { isCurrencyCode } from './currencies';
 import { calculateInvoiceGst } from './gst-input';
@@ -169,8 +169,13 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
         add('advanceReceived', 'TDS and the advance together are more than the invoice total');
       }
     } catch (error) {
-      if (!(error instanceof GstInputError)) throw error;
-      add(/advance/i.test(error.message) ? 'advanceReceived' : 'lines', error.message);
+      if (error instanceof MoneyError) {
+        add('lines', 'The invoice total is too large to calculate');
+      } else if (error instanceof GstInputError) {
+        add(/advance/i.test(error.message) ? 'advanceReceived' : 'lines', error.message);
+      } else {
+        throw error;
+      }
     }
   }
   return issues;
