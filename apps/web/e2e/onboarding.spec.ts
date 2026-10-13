@@ -19,12 +19,12 @@ test.describe('first run of the invoice tool', () => {
     await page.screenshot({ path: `${shots}/onboarding-profile-unregistered.png`, fullPage: true });
     await page.getByRole('button', { name: 'Save and continue' }).click();
 
-    await expect(page.getByRole('tab', { name: 'Invoices' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
     await page.reload();
-    await expect(page.getByRole('tab', { name: 'Invoices' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Invoices' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Set up your business' })).toHaveCount(0);
 
-    await page.getByRole('tab', { name: 'Profile' }).click();
+    await page.getByRole('button', { name: 'Profile' }).click();
     await expect(page.getByLabel('Business or personal name')).toHaveValue('Ravi Kumar Design');
     await page.screenshot({ path: `${shots}/profile-after-reload.png`, fullPage: true });
   });
@@ -46,9 +46,9 @@ test.describe('first run of the invoice tool', () => {
     await page.getByLabel('GSTIN').fill('27aapfu0939f1zv');
     await expect(page.getByLabel('State')).toHaveValue('27');
     await page.getByRole('button', { name: 'Save and continue' }).click();
-    await expect(page.getByRole('tab', { name: 'Invoices' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Invoices' })).toBeVisible();
 
-    await page.getByRole('tab', { name: 'Profile' }).click();
+    await page.getByRole('button', { name: 'Profile' }).click();
     await expect(page.getByLabel('GSTIN')).toHaveValue('27AAPFU0939F1ZV');
   });
 

@@ -13,6 +13,7 @@ export function InvoiceToolLoader() {
   return (
     <StoreProvider>
       <InvoiceApp />
+      <noscript>The invoice tool needs JavaScript. Turn it on in your browser settings to use it.</noscript>
     </StoreProvider>
   );
 }

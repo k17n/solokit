@@ -26,7 +26,7 @@
   background: var(--surface-2);
 }
 
-.tab[aria-selected='true'] {
+.tab[aria-current='page'] {
   color: var(--text);
   background: var(--surface);
   border-color: var(--edge);

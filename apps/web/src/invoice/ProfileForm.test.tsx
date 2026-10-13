@@ -109,16 +109,19 @@ describe('ProfileForm behaviour', () => {
   });
 
   it('shows a danger notice when saving fails, and lets the user try again', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const onSave = vi.fn().mockRejectedValueOnce(new Error('Storage is full')).mockResolvedValue(undefined);
     render(<ProfileForm initial={emptyProfileForm('unregistered')} submitLabel="Save" onSave={onSave} />);
     await userEvent.type(screen.getByLabelText('Business or personal name'), 'Ravi');
     await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
     await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Storage is full')).toBeInTheDocument();
+    expect(await screen.findByText('Your profile could not be saved. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText('Storage is full')).not.toBeInTheDocument();
+    expect(logged).toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.queryByText('Storage is full')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Your profile could not be saved. Please try again.')).not.toBeInTheDocument());
   });
 
   it('keeps the user from saving twice at once', async () => {

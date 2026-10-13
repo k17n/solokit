@@ -76,7 +76,8 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
     try {
       await onSave(formToProfile(form));
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Your profile could not be saved.');
+      console.error('Could not save the profile', error);
+      setSaveError('Your profile could not be saved. Please try again.');
     } finally {
       setSaving(false);
     }

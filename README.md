@@ -12,7 +12,7 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - `apps/web` the website (Next.js, static export, installable PWA)
 - `packages/core` country-agnostic primitives (integer-paise money, amount in words, invoice numbering)
 - `packages/tax-engines` `TaxEngine` interface, country list, India GST engine
-- `packages/ui` design tokens and shared components (header, footer, buttons)
+- `packages/ui` design tokens and shared components (header, footer, buttons, form fields, radio cards, notices)
 - `packages/registry` the list of tools; drives the home page, tool routes and footer
 - `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters
 - `packages/tools/invoice` the invoice tool's domain logic: data model, validation, document builder, themes, saved data, backup

@@ -30,6 +30,12 @@ describe('fitWithin', () => {
     expect(fitWithin(200, 100, 600, 300)).toEqual({ width: 200, height: 100 });
   });
 
+  it('can enlarge to fill the box when asked', () => {
+    expect(fitWithin(100, 50, 600, 300, { enlarge: true })).toEqual({ width: 600, height: 300 });
+    expect(fitWithin(100, 100, 600, 300, { enlarge: true })).toEqual({ width: 300, height: 300 });
+    expect(fitWithin(1200, 600, 600, 300, { enlarge: true })).toEqual({ width: 600, height: 300 });
+  });
+
   it('rounds to whole pixels and never goes below 1', () => {
     expect(fitWithin(1000, 3, 600, 300)).toEqual({ width: 600, height: 2 });
     expect(fitWithin(1, 1000, 600, 300)).toEqual({ width: 1, height: 300 });
@@ -87,5 +93,20 @@ describe('processLogoFile', () => {
   it('rejects an image with no size', async () => {
     const { deps } = fakeDeps({ width: 0, height: 0 });
     await expect(processLogoFile(file('image/png'), deps)).rejects.toThrow('could not be read');
+  });
+
+  it('rasterises an SVG with no intrinsic size at 600 x 300', async () => {
+    const { deps, canvases } = fakeDeps({ width: 0, height: 0 });
+    await expect(processLogoFile(file('image/svg+xml'), deps)).resolves.toBe('data:image/png;base64,FAKE');
+    expect(canvases).toEqual([{ width: 600, height: 300 }]);
+  });
+
+  it('enlarges a small SVG but not a small PNG', async () => {
+    const svg = fakeDeps({ width: 100, height: 50 });
+    await processLogoFile(file('image/svg+xml'), svg.deps);
+    expect(svg.canvases).toEqual([{ width: 600, height: 300 }]);
+    const png = fakeDeps({ width: 100, height: 50 });
+    await processLogoFile(file('image/png'), png.deps);
+    expect(png.canvases).toEqual([{ width: 100, height: 50 }]);
   });
 });
