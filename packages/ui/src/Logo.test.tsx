@@ -10,6 +10,11 @@ describe('Logo', () => {
     expect(link).toHaveTextContent('SoloKit');
   });
 
+  it('keeps the same accessible name at size lg', () => {
+    render(<Logo size="lg" />);
+    expect(screen.getByRole('link', { name: 'SoloKit home' })).toHaveAttribute('href', '/');
+  });
+
   it('accepts a custom href', () => {
     render(<Logo href="/privacy/" />);
     expect(screen.getByRole('link', { name: 'SoloKit home' })).toHaveAttribute('href', '/privacy/');

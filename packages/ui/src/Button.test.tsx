@@ -22,6 +22,16 @@ describe('Button', () => {
     expect(link).toHaveAttribute('data-variant', 'secondary');
   });
 
+  it('merges a custom className onto the element', () => {
+    render(<Button className="extra">Save</Button>);
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveClass('extra');
+  });
+
+  it('sets data-variant to ghost for the ghost variant', () => {
+    render(<Button variant="ghost">Cancel</Button>);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveAttribute('data-variant', 'ghost');
+  });
+
   it('calls onClick', async () => {
     const onClick = vi.fn();
     render(<Button onClick={onClick}>Go</Button>);

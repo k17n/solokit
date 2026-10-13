@@ -49,3 +49,20 @@
   transform: none;
   box-shadow: none;
 }
+
+.ghost:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 3px 0 var(--edge);
+}
+
+.ghost:disabled {
+  box-shadow: none;
+}
