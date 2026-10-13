@@ -1,5 +1,5 @@
 import { Image, Text, View } from '@react-pdf/renderer';
-import type { InvoiceDocument, InvoiceTheme } from '@solokit/tool-invoice';
+import { contrastRatio, type InvoiceDocument, type InvoiceTheme } from '@solokit/tool-invoice';
 import { mixHex, readableOn } from './colors';
 import type { LayoutSpec } from './layouts';
 
@@ -7,19 +7,42 @@ export interface Palette {
   text: string;
   muted: string;
   accent: string;
+  /** The accent for small text: the accent itself when legible on the page and the table header tint, else the text colour. */
+  accentSmall: string;
   onAccent: string;
   tint: string;
   line: string;
   bg: string;
 }
 
+const MIN_TEXT_CONTRAST = 4.5;
+
+/** Secondary text: the text colour mixed towards the background, as little as needed to stay legible on the page and zebra rows. */
+function mutedFor(theme: InvoiceTheme): string {
+  const zebra = mixHex(theme.accent, theme.background, 0.1);
+  let weight = 0.62;
+  let muted = mixHex(theme.text, theme.background, weight);
+  while (
+    weight < 1 &&
+    (contrastRatio(muted, theme.background) < MIN_TEXT_CONTRAST || contrastRatio(muted, zebra) < MIN_TEXT_CONTRAST)
+  ) {
+    weight = Math.min(1, weight + 0.04);
+    muted = mixHex(theme.text, theme.background, weight);
+  }
+  return muted;
+}
+
 export function paletteFor(theme: InvoiceTheme): Palette {
+  const legibleAccent =
+    contrastRatio(theme.accent, theme.background) >= MIN_TEXT_CONTRAST &&
+    contrastRatio(theme.accent, mixHex(theme.accent, theme.background, 0.14)) >= MIN_TEXT_CONTRAST;
   return {
     text: theme.text,
     bg: theme.background,
     accent: theme.accent,
+    accentSmall: legibleAccent ? theme.accent : theme.text,
     onAccent: readableOn(theme.accent),
-    muted: mixHex(theme.text, theme.background, 0.62),
+    muted: mutedFor(theme),
     tint: mixHex(theme.accent, theme.background, 0.1),
     line: mixHex(theme.text, theme.background, 0.2),
   };
@@ -218,8 +241,8 @@ export function LinesTable({ doc, spec, palette }: SectionProps) {
     spec.tableHeader === 'fill'
       ? { backgroundColor: palette.accent, color: palette.onAccent }
       : spec.tableHeader === 'tint'
-        ? { backgroundColor: mixHex(palette.accent, palette.bg, 0.14), color: palette.accent }
-        : { color: palette.accent, borderBottomWidth: 1.2, borderBottomColor: palette.accent, borderBottomStyle: 'solid' as const };
+        ? { backgroundColor: mixHex(palette.accent, palette.bg, 0.14), color: palette.accentSmall }
+        : { color: palette.accentSmall, borderBottomWidth: 1.2, borderBottomColor: palette.accent, borderBottomStyle: 'solid' as const };
   return (
     <View style={{ marginBottom: 10 }}>
       <View style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 5, ...header }}>
@@ -285,10 +308,10 @@ export function SummaryBlock({ doc, spec, palette }: SectionProps) {
                 ...(isTotal && !boxed ? { borderTopWidth: 1, borderTopColor: palette.accent, borderTopStyle: 'solid' as const } : {}),
               }}
             >
-              <Text style={{ fontSize: isTotal ? 11 : 9, fontWeight: isTotal || isNet ? 700 : 400, color: row.emphasis === 'muted' ? palette.muted : isNet ? palette.accent : palette.text }}>
+              <Text style={{ fontSize: isTotal ? 11 : 9, fontWeight: isTotal || isNet ? 700 : 400, color: row.emphasis === 'muted' ? palette.muted : isNet ? palette.accentSmall : palette.text }}>
                 {row.label}
               </Text>
-              <Text style={{ fontSize: isTotal ? 11 : 9, fontWeight: isTotal || isNet ? 700 : 400, color: row.emphasis === 'muted' ? palette.muted : isNet ? palette.accent : palette.text }}>
+              <Text style={{ fontSize: isTotal ? 11 : 9, fontWeight: isTotal || isNet ? 700 : 400, color: row.emphasis === 'muted' ? palette.muted : isNet ? palette.accentSmall : palette.text }}>
                 {row.amount}
               </Text>
             </View>
