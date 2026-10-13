@@ -1400,7 +1400,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `buildInvoiceDocument`, `resolveTheme`, `type InvoiceRecord`, `type InvoiceTheme` from `@solokit/tool-invoice`.
-- Produces: `renderInvoicePdf(input: { invoice: InvoiceRecord; theme: InvoiceTheme; fontBase: string }): Promise<Blob>` and `pdfFilename(invoice: InvoiceRecord): string` (for example `Invoice-2026-27-0001.pdf`: the invoice number with `/` replaced by `-`, prefixed with "Invoice", "Bill-of-Supply" or "Proforma" according to the document title, `.pdf`).
+- Produces: `renderInvoicePdf(input: { invoice: InvoiceRecord; theme: InvoiceTheme; fontBase: string }): Promise<Blob>` and `pdfFilename(invoice: InvoiceRecord): string` (the document title with spaces turned into hyphens, then the invoice number with `/` replaced by `-`, then `.pdf`: `Tax-Invoice-2026-27-0001.pdf`, `Bill-of-Supply-...`, `Proforma-Invoice-...`, `Invoice-...` for an unregistered seller).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1467,8 +1467,8 @@ describe('renderInvoicePdf', () => {
 
 describe('pdfFilename', () => {
   it('turns the invoice number into a safe file name', () => {
-    expect(pdfFilename(makeInvoice())).toBe('Invoice-2026-27-0001.pdf');
-    expect(pdfFilename(makeInvoice({ number: 'INV/2026-27/0012' }))).toBe('Invoice-INV-2026-27-0012.pdf');
+    expect(pdfFilename(makeInvoice())).toBe('Tax-Invoice-2026-27-0001.pdf');
+    expect(pdfFilename(makeInvoice({ number: 'INV/2026-27/0012' }))).toBe('Tax-Invoice-INV-2026-27-0012.pdf');
   });
 
   it('names bills of supply and proforma invoices accordingly', () => {

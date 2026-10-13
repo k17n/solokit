@@ -5,7 +5,7 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 ## Status
 
 - Done: monorepo, core primitives, India GST/TDS engine, design system, app shell, tool registry, local storage layer, installable offline site.
-- Next: the invoice PDF engine, then the invoice screens.
+- Next: the invoice screens.
 
 ## Layout
 
@@ -16,6 +16,7 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - `packages/registry` the list of tools; drives the home page, tool routes and footer
 - `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters
 - `packages/tools/invoice` the invoice tool's domain logic: data model, validation, document builder, themes, saved data, backup
+- `packages/tools/invoice-pdf` renders invoices to PDF in the browser (six layouts, bundled fonts, UPI QR); fonts are built with `pnpm --filter @solokit/web fonts`
 - `docs/ideas.md` backlog of tool ideas
 - `docs/superpowers/specs` design specs
 - `docs/superpowers/plans` implementation plans

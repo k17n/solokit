@@ -113,7 +113,7 @@ export function Header({ doc, spec, palette }: SectionProps) {
             marginLeft: -PAGE_MARGIN,
             marginRight: -PAGE_MARGIN,
             marginBottom: 16,
-            paddingVertical: 20,
+            paddingVertical: 16,
             paddingHorizontal: PAGE_MARGIN,
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -351,9 +351,9 @@ export function NotesBlock({ doc, palette }: Pick<SectionProps, 'doc' | 'palette
 
 export function SignatoryBlock({ doc, palette }: Pick<SectionProps, 'doc' | 'palette'>) {
   return (
-    <View wrap={false} style={{ alignItems: 'flex-end', marginTop: 10 }}>
+    <View wrap={false} style={{ alignItems: 'flex-end', marginTop: 6 }}>
       <Text style={{ fontSize: SMALL }}>For {doc.signatory.forName}</Text>
-      <View style={{ height: 36 }} />
+      <View style={{ height: 28 }} />
       <View style={{ width: 150, borderTopWidth: 0.75, borderTopColor: palette.text, borderTopStyle: 'solid' }} />
       <Text style={{ fontSize: LABEL, color: palette.muted, marginTop: 2 }}>{doc.signatory.label}</Text>
     </View>

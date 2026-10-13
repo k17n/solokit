@@ -175,3 +175,20 @@ describe('InvoicePdf: long invoices', () => {
     expect(pages.join(' ')).toContain('END-MARKER');
   });
 });
+
+describe('InvoicePdf: a typical invoice fits on one page in every layout', () => {
+  for (const theme of PRESET_THEMES) {
+    it(`${theme.name} keeps TDS, notes, terms, bank details, the QR code and the signature on page 1`, async () => {
+      const qr = await buildQrDataUrl('upi://pay?pa=asha@okhdfc&pn=Asha&am=77760.00&cu=INR');
+      const invoice = makeInvoice({
+        tds: { ratePercent: 10 },
+        notes: 'Thank you for your business.',
+        terms: 'Payment within 15 days.',
+        dueDate: '2026-10-29',
+      });
+      const { pages } = await render(invoice, theme.id, qr);
+      expect(pages, `${theme.id} should be one page`).toHaveLength(1);
+      expect(pages[0]).toContain('Authorised signatory');
+    });
+  }
+});

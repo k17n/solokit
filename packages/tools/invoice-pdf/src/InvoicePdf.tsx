@@ -35,7 +35,7 @@ export function InvoicePdf({ doc, theme, qrDataUrl }: InvoicePdfProps) {
           color: palette.text,
           backgroundColor: palette.bg,
           padding: 36,
-          paddingBottom: 54,
+          paddingBottom: 48,
         }}
       >
         <Watermark doc={doc} palette={palette} />
