@@ -201,3 +201,66 @@ describe('indiaGstEngine', () => {
     expect(indiaGstEngine.calculate(intra()).totals.grandTotal).toBe(1_180_000);
   });
 });
+
+describe('calculateGst: reverse charge', () => {
+  it('shows the tax but leaves it out of the amount payable to the supplier', () => {
+    const result = calculateGst(intra({ reverseCharge: true }));
+    expect(result.reverseCharge).toBe(true);
+    expect(result.totals).toMatchObject({ cgst: 90_000, sgst: 90_000, totalTax: 180_000, grandTotal: 1_000_000 });
+    expect(result.netPayable).toBe(1_000_000);
+  });
+
+  it('is ignored when no tax is charged', () => {
+    const result = calculateGst({ sellerStatus: 'unregistered', reverseCharge: true, lines: [{ quantity: 1, unitRate: 1000 }] });
+    expect(result.reverseCharge).toBe(false);
+  });
+
+  it('defaults to off', () => {
+    expect(calculateGst(intra()).reverseCharge).toBe(false);
+  });
+});
+
+describe('calculateGst: TDS and advances', () => {
+  it('defaults to no TDS and no advance', () => {
+    const result = calculateGst(intra());
+    expect(result).toMatchObject({ tds: 0, advance: 0, netPayable: 1_180_000 });
+  });
+
+  it('deducts TDS on the value excluding GST', () => {
+    const result = calculateGst(intra({ tds: { ratePercent: 10 } }));
+    expect(result.tds).toBe(100_000);
+    expect(result.totals.grandTotal).toBe(1_180_000);
+    expect(result.netPayable).toBe(1_080_000);
+  });
+
+  it('supports TDS for unregistered consultants', () => {
+    const result = calculateGst({
+      sellerStatus: 'unregistered',
+      lines: [{ quantity: 10, unitRate: 50_000 }],
+      tds: { ratePercent: 10 },
+    });
+    expect(result.tds).toBe(50_000);
+    expect(result.netPayable).toBe(450_000);
+  });
+
+  it('subtracts an advance already received', () => {
+    const result = calculateGst(intra({ advanceReceived: 300_000 }));
+    expect(result.advance).toBe(300_000);
+    expect(result.netPayable).toBe(880_000);
+  });
+
+  it('combines TDS and an advance', () => {
+    const result = calculateGst(intra({ tds: { ratePercent: 10 }, advanceReceived: 300_000 }));
+    expect(result.netPayable).toBe(780_000);
+  });
+
+  it('rejects an invalid TDS rate', () => {
+    expect(() => calculateGst(intra({ tds: { ratePercent: -1 } }))).toThrow(GstInputError);
+    expect(() => calculateGst(intra({ tds: { ratePercent: 101 } }))).toThrow(GstInputError);
+  });
+
+  it('rejects an advance that is negative or exceeds the invoice total', () => {
+    expect(() => calculateGst(intra({ advanceReceived: -1 }))).toThrow(GstInputError);
+    expect(() => calculateGst(intra({ advanceReceived: 1_180_001 }))).toThrow(GstInputError);
+  });
+});

@@ -32,6 +32,12 @@ export interface GstInput {
   lines: GstLineInput[];
   /** Round the grand total to the nearest rupee. Defaults to true. */
   roundOff?: boolean;
+  /** Reverse charge: tax is shown but paid by the recipient, so it is left out of the grand total. */
+  reverseCharge?: boolean;
+  /** Tax deducted at source by the client, as a percent of the value excluding GST. */
+  tds?: { ratePercent: number };
+  /** Advance already received against this invoice, in paise. */
+  advanceReceived?: Minor;
 }
 
 export interface GstLineResult {
@@ -61,6 +67,12 @@ export interface GstResult {
   documentType: DocumentType;
   lines: GstLineResult[];
   totals: GstTotals;
+  reverseCharge: boolean;
+  /** TDS the client is expected to deduct. */
+  tds: Minor;
+  advance: Minor;
+  /** grandTotal - tds - advance: what should actually arrive. */
+  netPayable: Minor;
 }
 
 export class GstInputError extends Error {
@@ -127,6 +139,23 @@ function calculateLine(line: GstLineInput, mode: SupplyMode): GstLineResult {
   return { gross, discount, taxable, gstRate, cgst, sgst, igst, total: taxable + cgst + sgst + igst };
 }
 
+function tdsFor(taxable: Minor, tds: GstInput['tds']): Minor {
+  if (!tds) return 0;
+  if (tds.ratePercent < 0 || tds.ratePercent > 100) {
+    throw new GstInputError('TDS rate must be between 0 and 100');
+  }
+  return percentOf(taxable, tds.ratePercent);
+}
+
+function advanceFor(grandTotal: Minor, advance: Minor | undefined): Minor {
+  if (advance === undefined) return 0;
+  assertMinor(advance, 'advance');
+  if (advance < 0 || advance > grandTotal) {
+    throw new GstInputError('Advance must be between 0 and the invoice total');
+  }
+  return advance;
+}
+
 export function calculateGst(input: GstInput): GstResult {
   const mode = resolveMode(input);
   const lines = input.lines.map((line) => calculateLine(line, mode));
@@ -137,14 +166,25 @@ export function calculateGst(input: GstInput): GstResult {
   const igst = sum(lines.map((line) => line.igst));
   const totalTax = cgst + sgst + igst;
 
-  const beforeRounding = taxable + totalTax;
+  const reverseCharge = Boolean(input.reverseCharge) && (mode === 'intra-state' || mode === 'inter-state');
+  const payableTax = reverseCharge ? 0 : totalTax;
+
+  const beforeRounding = taxable + payableTax;
   const roundOff = (input.roundOff ?? true) ? roundToWhole(beforeRounding) - beforeRounding : 0;
+  const grandTotal = beforeRounding + roundOff;
+
+  const tds = tdsFor(taxable, input.tds);
+  const advance = advanceFor(grandTotal, input.advanceReceived);
 
   return {
     mode,
     documentType: documentTypeFor(input),
     lines,
-    totals: { taxable, cgst, sgst, igst, totalTax, roundOff, grandTotal: beforeRounding + roundOff },
+    totals: { taxable, cgst, sgst, igst, totalTax, roundOff, grandTotal },
+    reverseCharge,
+    tds,
+    advance,
+    netPayable: grandTotal - tds - advance,
   };
 }
 
