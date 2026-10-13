@@ -1,0 +1,22 @@
+{
+  "name": "@solokit/tool-invoice",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@solokit/core": "workspace:*",
+    "@solokit/storage": "workspace:*",
+    "@solokit/tax-engines": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
