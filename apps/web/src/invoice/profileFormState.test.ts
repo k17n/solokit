@@ -8,7 +8,7 @@ import {
   selectableStates,
   validateProfileForm,
   type ProfileFormState,
-} from './profileForm';
+} from './profileFormState';
 
 const filled = (overrides: Partial<ProfileFormState> = {}): ProfileFormState => ({
   ...emptyProfileForm('regular'),
