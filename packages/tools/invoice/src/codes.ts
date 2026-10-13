@@ -1,4 +1,7 @@
-/** Date this short list was last checked. It is not an official register. */
+/**
+ * Date this short list was compiled. It is not an official register and has not been verified against the
+ * official SAC list, so any screen that shows it must say so and let people type another code.
+ */
 export const SAC_AS_OF = '2026-10-14';
 
 export interface ServiceCode {
@@ -30,5 +33,5 @@ export function searchServiceCodes(query: string, limit = 8): ServiceCode[] {
     const description = entry.description.toLowerCase();
     return words.every((word) => description.includes(word));
   });
-  return matches.slice(0, limit).map((entry) => ({ ...entry }));
+  return matches.slice(0, Math.max(0, limit)).map((entry) => ({ ...entry }));
 }

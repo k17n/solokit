@@ -35,3 +35,20 @@ describe('service codes', () => {
     expect(searchServiceCodes('services', 2).length).toBeLessThanOrEqual(2);
   });
 });
+
+describe('searchServiceCodes edge cases', () => {
+  it('treats a negative limit as zero results', () => {
+    expect(searchServiceCodes('services', -3)).toEqual([]);
+  });
+
+  it('returns copies, so callers cannot change the list', () => {
+    const [first] = searchServiceCodes('998311');
+    expect(first).toBeDefined();
+    if (first) first.description = 'changed';
+    expect(searchServiceCodes('998311')[0]?.description).not.toBe('changed');
+  });
+
+  it('finds nothing for a code that is not in the list', () => {
+    expect(searchServiceCodes('123456')).toEqual([]);
+  });
+});
