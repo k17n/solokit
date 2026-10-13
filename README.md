@@ -27,7 +27,7 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
     pnpm test
     pnpm typecheck
     pnpm build        # static site in apps/web/out
-    pnpm preview      # serve apps/web/out (try the offline mode here)
+    pnpm preview      # http://localhost:4173 (serves apps/web/out; try the offline mode here)
 
 The service worker is stamped with the list of built files after `next build` and only registers in production builds, so test offline behaviour with `pnpm build` then `pnpm preview`.
 

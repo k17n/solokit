@@ -49,9 +49,14 @@ function pathOf(r: Req | string) {
 class FakeCache {
   store = new Map<string, Res>();
   failing = new Set<string>();
-  async addAll(urls: string[]) {
-    if (urls.some((u) => this.failing.has(u))) throw new TypeError('addAll: bad response status');
-    for (const u of urls) this.store.set(pathOf(u).full, res(`precached:${u}`));
+  requests: { url: string; cache?: string }[] = [];
+  async addAll(items: (string | { url: string; cache?: string })[]) {
+    const reqs = items.map((i) => (typeof i === 'string' ? { url: i } : i));
+    this.requests.push(...reqs);
+    if (reqs.some((r) => this.failing.has(pathOf(r.url).full))) {
+      throw new TypeError('addAll: bad response status');
+    }
+    for (const r of reqs) this.store.set(pathOf(r.url).full, res(`precached:${pathOf(r.url).full}`));
   }
   async put(r: Req | string, response: Res) {
     await Promise.resolve();
@@ -96,12 +101,21 @@ function setup(networkImpl: (r: Req) => Promise<Res>, failingUrls: string[] = []
   const source = rawSource
     .replaceAll('__BUILD_ID__', 'test123')
     .replaceAll('__PRECACHE_URLS__', JSON.stringify(PRECACHE));
-  new Function('self', 'caches', 'fetch', 'Response', 'URL', source)(
+  class RequestStub {
+    url: string;
+    cache?: string;
+    constructor(url: string, init: { cache?: string } = {}) {
+      this.url = url;
+      this.cache = init.cache;
+    }
+  }
+  new Function('self', 'caches', 'fetch', 'Response', 'URL', 'Request', source)(
     self,
     caches,
     fetchStub,
     ResponseStub,
     URL,
+    RequestStub,
   );
   return { handlers, store, self, fetchStub };
 }
@@ -154,6 +168,14 @@ describe('service worker behaviour', () => {
     expect([...store.keys()]).toEqual(['solokit-test123']);
     expect([...store.get('solokit-test123')!.store.keys()].sort()).toEqual([...PRECACHE].sort());
     expect(self.skipWaiting).toHaveBeenCalled();
+  });
+
+  it('precaches with cache: reload so the HTTP cache is bypassed', async () => {
+    const { handlers, store } = setup(network);
+    await runWaitUntil('install', handlers);
+    const requests = store.get('solokit-test123')!.requests;
+    expect(requests.map((r) => r.url).sort()).toEqual([...PRECACHE].sort());
+    expect(requests.every((r) => r.cache === 'reload')).toBe(true);
   });
 
   it('deletes old solokit caches on activate but keeps current and unrelated ones', async () => {
@@ -243,6 +265,15 @@ describe('service worker behaviour', () => {
     const empty = setup(offline);
     const none = await dispatchFetch(empty.handlers, req('/unknown/', { mode: 'navigate' }));
     expect(none.response!.type).toBe('error');
+  });
+
+  it('offline navigation to a slash-less URL finds the trailing-slash page', async () => {
+    const { handlers } = setup(offline);
+    await runWaitUntil('install', handlers);
+    const page = await dispatchFetch(handlers, req('/privacy?utm=1', { mode: 'navigate' }));
+    expect(page.response!.body).toBe('precached:/privacy/');
+    const home = await dispatchFetch(handlers, req('/nope', { mode: 'navigate' }));
+    expect(home.response!.body).toBe('precached:/');
   });
 
   it('serves a cached asset without touching the network', async () => {

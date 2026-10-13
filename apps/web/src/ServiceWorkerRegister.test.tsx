@@ -29,6 +29,33 @@ describe('ServiceWorkerRegister', () => {
     expect(register).not.toHaveBeenCalled();
   });
 
+  it('unregisters leftover workers in development and never registers', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    const unregister = vi.fn().mockResolvedValue(true);
+    const register = vi.fn();
+    const getRegistrations = vi.fn().mockResolvedValue([{ unregister }, { unregister }]);
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { register, getRegistrations },
+      configurable: true,
+    });
+    render(<ServiceWorkerRegister />);
+    await vi.waitFor(() => expect(unregister).toHaveBeenCalledTimes(2));
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it('tolerates a missing or rejecting getRegistrations in development', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    stubServiceWorker();
+    expect(() => render(<ServiceWorkerRegister />)).not.toThrow();
+    const getRegistrations = vi.fn().mockRejectedValue(new Error('nope'));
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { register: vi.fn(), getRegistrations },
+      configurable: true,
+    });
+    expect(() => render(<ServiceWorkerRegister />)).not.toThrow();
+    await vi.waitFor(() => expect(getRegistrations).toHaveBeenCalled());
+  });
+
   it('does nothing in browsers without service worker support', () => {
     vi.stubEnv('NODE_ENV', 'production');
     expect(() => render(<ServiceWorkerRegister />)).not.toThrow();

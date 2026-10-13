@@ -10,11 +10,16 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) => cache.addAll(PRECACHE_URLS.map((url) => new Request(url, { cache: 'reload' }))))
       .then(() => self.skipWaiting()),
   );
 });
 
+// Trade-off: skipWaiting + clients.claim + deleting the previous build's cache
+// can strand an already-open old page that later lazy-loads an old chunk (the
+// chunk is gone from the new cache and the new server). That is acceptable
+// while navigation uses plain full-page <a> links; revisit if client-side
+// navigation or dynamic imports are added.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -42,8 +47,11 @@ async function networkFirst(event) {
     store(event, cache, request, response);
     return response;
   } catch {
+    const url = new URL(request.url);
+    if (!url.pathname.endsWith('/')) url.pathname += '/';
     return (
       (await cache.match(request, { ignoreSearch: true })) ||
+      (await cache.match(url.pathname, { ignoreSearch: true })) ||
       (await cache.match('/')) ||
       Response.error()
     );
