@@ -62,7 +62,10 @@ export interface InvoiceDocument {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
-/** "2026-10-14" -> "14 Oct 2026". Pure string handling, so time zones cannot shift the day. */
+/**
+ * "2026-10-14" -> "14 Oct 2026". Pure string handling, so time zones cannot shift the day.
+ * Expects a well-formed ISO date (YYYY-MM-DD); callers validate first.
+ */
 export function formatDisplayDate(iso: string): string {
   const [year, month, day] = iso.split('-');
   return `${Number(day)} ${MONTHS[Number(month) - 1]} ${year}`;
@@ -96,7 +99,6 @@ function titleFor(invoice: InvoiceRecord, documentType: string): string {
 
 export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
   const money = (minor: number) => formatAmount(minor, invoice.currency);
-  const taxLines: GstLineResult[] = [];
 
   const result = calculateGst({
     sellerStatus: invoice.seller.gstStatus,
@@ -115,7 +117,9 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
     ...(invoice.tds ? { tds: invoice.tds } : {}),
     ...(invoice.advanceReceived !== undefined ? { advanceReceived: invoice.advanceReceived } : {}),
   });
-  taxLines.push(...result.lines);
+  if (result.lines.length !== invoice.lines.length) {
+    throw new Error('Tax engine returned a different number of lines than the invoice');
+  }
 
   const { mode, totals, reverseCharge } = result;
   const showTax = mode === 'intra-state' || mode === 'inter-state';
@@ -124,8 +128,8 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
   const discountTotal = result.lines.reduce((sum, line) => sum + line.discount, 0);
   const showDiscount = discountTotal > 0;
 
-  const lines: DocLine[] = invoice.lines.map((line, index) => {
-    const calculated = taxLines[index] as GstLineResult;
+  const lines: DocLine[] = result.lines.map((calculated, index) => {
+    const line = invoice.lines[index]!;
     const tax = calculated.cgst + calculated.sgst + calculated.igst;
     return {
       number: index + 1,
@@ -150,15 +154,17 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
     rows.push({ label: 'Taxable value', amount: money(totals.taxable) });
   } else if (showDiscount || totals.roundOff !== 0) {
     if (!showDiscount) rows.push({ label: 'Subtotal', amount: money(totals.taxable) });
-    else rows.push({ label: 'Taxable value', amount: money(totals.taxable) });
+    else rows.push({ label: 'Net amount', amount: money(totals.taxable) });
   }
 
   if (showTax) {
-    const rates = [...new Set(taxLines.map((line) => line.gstRate))].sort((a, b) => b - a);
+    const rates = [...new Set(result.lines.map((line) => line.gstRate))]
+      .filter((rate) => rate !== 0)
+      .sort((a, b) => b - a);
     const suffix = reverseCharge ? ' (reverse charge)' : '';
     const emphasis = reverseCharge ? ({ emphasis: 'muted' } as const) : {};
     for (const rate of rates) {
-      const atRate = taxLines.filter((line) => line.gstRate === rate);
+      const atRate = result.lines.filter((line) => line.gstRate === rate);
       const sum = (pick: (line: GstLineResult) => number) => atRate.reduce((total, line) => total + pick(line), 0);
       if (mode === 'intra-state') {
         rows.push({ label: `CGST @${rate / 2}%${suffix}`, amount: money(sum((line) => line.cgst)), ...emphasis });

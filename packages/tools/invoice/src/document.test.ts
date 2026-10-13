@@ -139,7 +139,7 @@ describe('buildInvoiceDocument: tax variations', () => {
       'SGST @9% (reverse charge)',
       'Total',
     ]);
-    expect(doc.totals[1]?.emphasis).toBe('muted');
+    expect(doc.totals.slice(1, 3).map((row) => row.emphasis)).toEqual(['muted', 'muted']);
     expect(doc.totals.at(-1)?.amount).toBe('₹72,000.00');
     expect(doc.lines[0]?.amount).toBe('₹72,000.00');
     expect(doc.declarations).toContain('Tax on this supply is payable on reverse charge basis by the recipient.');
@@ -152,6 +152,7 @@ describe('buildInvoiceDocument: TDS and advances', () => {
     expect(labels(doc).slice(-3)).toEqual(['Total', 'TDS @10% (deducted by client)', 'Net payable']);
     expect(amounts(doc).slice(-3)).toEqual(['₹84,960.00', '-₹7,200.00', '₹77,760.00']);
     expect(doc.totals.at(-1)?.emphasis).toBe('net');
+    expect(doc.totals.at(-2)?.emphasis).toBe('muted');
     expect(doc.payment.upi?.payload).toContain('am=77760.00');
     expect(doc.declarations).toEqual([
       'TDS at 10% is expected to be deducted by the client. Net payable is shown after this deduction.',
@@ -162,6 +163,7 @@ describe('buildInvoiceDocument: TDS and advances', () => {
     const doc = buildInvoiceDocument(makeInvoice({ advanceReceived: 3000000 }));
     expect(labels(doc).slice(-3)).toEqual(['Total', 'Advance received', 'Net payable']);
     expect(amounts(doc).slice(-2)).toEqual(['-₹30,000.00', '₹54,960.00']);
+    expect(doc.totals.slice(-2).map((row) => row.emphasis)).toEqual(['muted', 'net']);
   });
 
   it('leaves out the UPI block when nothing is left to pay', () => {
@@ -238,5 +240,137 @@ describe('buildInvoiceDocument: other seller types and documents', () => {
     expect(doc.notes).toBe('Thank you!');
     expect(doc.terms).toBe('Pay within 15 days.');
     expect(doc.dueDate).toBe('29 Oct 2026');
+  });
+});
+
+describe('buildInvoiceDocument: tax rows in depth', () => {
+  const line = (id: string, rate: number, gstRate: number, extra = {}) => ({
+    id,
+    description: id,
+    quantity: 1,
+    unit: 'items' as const,
+    rate,
+    gstRate,
+    ...extra,
+  });
+
+  it('groups lines at the same rate and lists the higher rate first', () => {
+    const doc = buildInvoiceDocument(
+      makeInvoice({ lines: [line('a', 1000000, 5), line('b', 1000000, 18), line('c', 500000, 18)] }),
+    );
+    expect(labels(doc)).toEqual(['Taxable value', 'CGST @9%', 'SGST @9%', 'CGST @2.5%', 'SGST @2.5%', 'Total']);
+    expect(amounts(doc)).toEqual(['₹25,000.00', '₹1,350.00', '₹1,350.00', '₹250.00', '₹250.00', '₹28,200.00']);
+  });
+
+  it('mutes every tax row under reverse charge', () => {
+    const doc = buildInvoiceDocument(
+      makeInvoice({ reverseCharge: true, lines: [line('a', 1000000, 5), line('b', 1000000, 18)] }),
+    );
+    const taxRows = doc.totals.filter((row) => /^(CGST|SGST|IGST)/.test(row.label));
+    expect(taxRows).toHaveLength(4);
+    for (const row of taxRows) {
+      expect(row.emphasis).toBe('muted');
+      expect(row.label.endsWith(' (reverse charge)')).toBe(true);
+    }
+  });
+
+  it('combines reverse charge with TDS', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ reverseCharge: true, tds: { ratePercent: 10 } }));
+    expect(labels(doc)).toEqual([
+      'Taxable value',
+      'CGST @9% (reverse charge)',
+      'SGST @9% (reverse charge)',
+      'Total',
+      'TDS @10% (deducted by client)',
+      'Net payable',
+    ]);
+    expect(amounts(doc)).toEqual(['₹72,000.00', '₹6,480.00', '₹6,480.00', '₹72,000.00', '-₹7,200.00', '₹64,800.00']);
+    expect(doc.totals.slice(-3).map((row) => row.emphasis)).toEqual(['total', 'muted', 'net']);
+  });
+
+  it('labels a 0.25% special rate as 0.125% each and keeps the line rate', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ lines: [line('Diamonds', 1000000, 0.25)] }));
+    expect(labels(doc)).toEqual(['Taxable value', 'CGST @0.125%', 'SGST @0.125%', 'Total']);
+    expect(amounts(doc)).toEqual(['₹10,000.00', '₹12.50', '₹12.50', '₹10,025.00']);
+    expect(doc.lines[0]?.taxRate).toBe('0.25%');
+  });
+
+  it('adds no @0% rows for a zero-rated line on a taxed invoice', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ lines: [line('a', 100000, 0), line('b', 1000000, 18)] }));
+    expect(labels(doc).some((label) => label.includes('@0%'))).toBe(false);
+    expect(labels(doc)).toEqual(['Taxable value', 'CGST @9%', 'SGST @9%', 'Total']);
+    expect(amounts(doc)).toEqual(['₹11,000.00', '₹900.00', '₹900.00', '₹12,800.00']);
+    expect(doc.lines[0]?.taxRate).toBe('0%');
+  });
+});
+
+describe('buildInvoiceDocument: documents without tax', () => {
+  const discounted = [
+    {
+      id: 'a',
+      description: 'Retainer',
+      quantity: 1,
+      unit: 'retainer' as const,
+      rate: 1000000,
+      discount: { kind: 'percent' as const, percent: 10 },
+    },
+  ];
+  const unregistered = { seller: makeSeller({ gstStatus: 'unregistered' as const, gstin: undefined }) };
+
+  it.each([
+    ['unregistered', unregistered],
+    ['composition', { seller: makeSeller({ gstStatus: 'composition' }) }],
+  ])('labels the post-discount row "Net amount" for a %s seller', (_name, overrides) => {
+    const doc = buildInvoiceDocument(makeInvoice({ ...overrides, lines: discounted }));
+    expect(doc.showTax).toBe(false);
+    expect(labels(doc)).toEqual(['Subtotal', 'Discount', 'Net amount', 'Total']);
+    expect(amounts(doc)).toEqual(['₹10,000.00', '-₹1,000.00', '₹9,000.00', '₹9,000.00']);
+  });
+
+  it('shows the round-off without a tax block', () => {
+    const doc = buildInvoiceDocument(
+      makeInvoice({
+        ...unregistered,
+        lines: [{ id: 'a', description: 'Item', quantity: 1, unit: 'items', rate: 33333 }],
+      }),
+    );
+    expect(labels(doc)).toEqual(['Subtotal', 'Round off', 'Total']);
+    expect(amounts(doc)).toEqual(['₹333.33', '-₹0.33', '₹333.00']);
+  });
+});
+
+describe('buildInvoiceDocument: currency and payment edge cases', () => {
+  const item = (rate: number, gstRate?: number) => ({
+    id: 'a',
+    description: 'Item',
+    quantity: 1,
+    unit: 'items' as const,
+    rate,
+    ...(gstRate !== undefined ? { gstRate } : {}),
+  });
+
+  it('omits UPI for a domestic invoice in USD', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ currency: 'USD', lines: [item(100000, 18)] }));
+    expect(doc.payment.upi).toBeUndefined();
+  });
+
+  it('writes EUR and GBP amounts in words', () => {
+    const eur = buildInvoiceDocument(makeInvoice({ currency: 'EUR', isExport: true, seller: makeSeller({ lutNumber: 'AD270326012345Z' }), lines: [item(100000)] }));
+    const gbp = buildInvoiceDocument(makeInvoice({ currency: 'GBP', isExport: true, seller: makeSeller({ lutNumber: 'AD270326012345Z' }), lines: [item(100000)] }));
+    expect(eur.amountInWords).toBe('One Thousand Euros Only');
+    expect(gbp.amountInWords).toBe('One Thousand Pounds Only');
+  });
+
+  it('handles a zero grand total', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ lines: [item(0, 18)] }));
+    expect(doc.amountInWords).toBe('Zero Rupees Only');
+    expect(doc.totals.at(-1)?.amount).toBe('₹0.00');
+    expect(doc.payment.upi).toBeUndefined();
+  });
+
+  it('shows a nil net payable when an advance covers the total', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ advanceReceived: 8496000 }));
+    expect(doc.totals.at(-1)).toMatchObject({ label: 'Net payable', amount: '₹0.00', emphasis: 'net' });
+    expect(doc.payment.upi).toBeUndefined();
   });
 });
