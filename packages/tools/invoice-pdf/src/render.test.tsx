@@ -2,7 +2,7 @@ import { PRESET_THEMES } from '@solokit/tool-invoice';
 import { makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { describe, expect, it } from 'vitest';
 import { pdfFilename, renderInvoicePdf } from './render';
-import { FONT_DIR, extractPdfText } from './testing';
+import { FONT_DIR, extractPdfItems, extractPdfText } from './testing';
 
 const theme = (id: string) => {
   const found = PRESET_THEMES.find((candidate) => candidate.id === id);
@@ -72,5 +72,54 @@ describe('pdfFilename', () => {
     expect(pdfFilename(makeInvoice({ seller: makeSeller({ gstStatus: 'unregistered', gstin: undefined }), placeOfSupplyStateCode: undefined }))).toBe(
       'Invoice-2026-27-0001.pdf',
     );
+  });
+});
+
+async function renderBytes(invoice: ReturnType<typeof makeInvoice>, themeId = 'classic') {
+  const blob = await renderInvoicePdf({ invoice, theme: theme(themeId), fontBase: FONT_DIR });
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+describe('renderInvoicePdf: robustness', () => {
+  it('recovers after a failed font download', async () => {
+    await expect(
+      renderInvoicePdf({ invoice: makeInvoice(), theme: theme('classic'), fontBase: '/does-not-exist' }),
+    ).rejects.toThrow();
+    const blob = await renderInvoicePdf({ invoice: makeInvoice(), theme: theme('classic'), fontBase: FONT_DIR });
+    expect(blob.type).toBe('application/pdf');
+    const [page] = await extractPdfText(new Uint8Array(await blob.arrayBuffer()));
+    expect(page).toContain('₹84,960.00');
+  });
+
+  it('keeps a 98-character unbroken word inside the description column', async () => {
+    const invoice = makeInvoice({
+      lines: [{ id: 'a', description: 'A'.repeat(98), quantity: 1, unit: 'fixed', rate: 100000, gstRate: 18 }],
+    });
+    const items = (await extractPdfItems(await renderBytes(invoice))).filter((item) => /^A+-?$/.test(item.str));
+    expect(items.length).toBeGreaterThan(1);
+    for (const item of items) expect(item.x + item.width, item.str).toBeLessThanOrEqual(250);
+    expect(items.reduce((total, item) => total + item.str.replace('-', '').length, 0)).toBe(98);
+  });
+
+  it('keeps a long unbroken token in the notes inside the page margin', async () => {
+    const invoice = makeInvoice({ notes: 'Q'.repeat(120) });
+    const items = (await extractPdfItems(await renderBytes(invoice))).filter((item) => /^Q+-?$/.test(item.str));
+    expect(items.reduce((total, item) => total + item.str.replace('-', '').length, 0)).toBe(120);
+    for (const item of items) expect(item.x + item.width, item.str).toBeLessThanOrEqual(559);
+  });
+
+  it('does not cut off a description taller than a page', async () => {
+    const words = Array.from({ length: 4000 }, (_, index) => `word${index}`);
+    const description = `${words.join(' ')} END-OF-SCOPE`;
+    const bytes = await renderBytes(
+      makeInvoice({ lines: [{ id: 'a', description, quantity: 1, unit: 'fixed', rate: 100000, gstRate: 18 }] }),
+    );
+    const pages = await extractPdfText(bytes);
+    expect(pages.length).toBeGreaterThan(1);
+    // The marker lands on the page where the description ends (the totals may follow on the same or the next page).
+    const all = pages.join(' ');
+    expect(all).toContain('word0 ');
+    expect(all).toContain('word3999 END-OF-SCOPE');
+    expect(pages.slice(1).join(' ')).toContain('END-OF-SCOPE');
   });
 });

@@ -34,6 +34,8 @@ export interface SectionProps {
 const SMALL = 8;
 const LABEL = 7;
 const PAGE_MARGIN = 36;
+/** Rows with longer descriptions may break across pages; react-pdf clips an unbreakable row taller than a page. */
+const MAX_UNBROKEN_DESCRIPTION = 600;
 
 function Label({ children, palette }: { children: string; palette: Palette }) {
   return <Text style={{ fontSize: LABEL, color: palette.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }}>{children}</Text>;
@@ -230,7 +232,7 @@ export function LinesTable({ doc, spec, palette }: SectionProps) {
       {doc.lines.map((line, index) => (
         <View
           key={line.number}
-          wrap={false}
+          wrap={line.description.length > MAX_UNBROKEN_DESCRIPTION}
           style={{
             flexDirection: 'row',
             paddingVertical: 5,

@@ -1,6 +1,6 @@
 import { pdf } from '@react-pdf/renderer';
 import { buildInvoiceDocument, type InvoiceRecord, type InvoiceTheme } from '@solokit/tool-invoice';
-import { registerInvoiceFonts } from './fonts';
+import { registerInvoiceFonts, resetInvoiceFonts } from './fonts';
 import { InvoicePdf } from './InvoicePdf';
 import { buildQrDataUrl } from './qr';
 
@@ -13,10 +13,16 @@ export interface RenderInvoiceInput {
 
 /** Builds the PDF for an invoice. Throws if the invoice is not valid enough to build (validate first). */
 export async function renderInvoicePdf({ invoice, theme, fontBase }: RenderInvoiceInput): Promise<Blob> {
-  registerInvoiceFonts(fontBase);
-  const doc = buildInvoiceDocument(invoice);
-  const qrDataUrl = doc.payment.upi ? await buildQrDataUrl(doc.payment.upi.payload) : undefined;
-  return pdf(<InvoicePdf doc={doc} theme={theme} {...(qrDataUrl ? { qrDataUrl } : {})} />).toBlob();
+  try {
+    registerInvoiceFonts(fontBase);
+    const doc = buildInvoiceDocument(invoice);
+    const qrDataUrl = doc.payment.upi ? await buildQrDataUrl(doc.payment.upi.payload) : undefined;
+    return await pdf(<InvoicePdf doc={doc} theme={theme} {...(qrDataUrl ? { qrDataUrl } : {})} />).toBlob();
+  } catch (error) {
+    // A failed font download stays cached inside react-pdf; forget the fonts so the next render starts clean.
+    resetInvoiceFonts();
+    throw error;
+  }
 }
 
 /** "Invoice-2026-27-0001.pdf": the document title and the number, safe for file systems. */

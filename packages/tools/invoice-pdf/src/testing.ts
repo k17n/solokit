@@ -17,3 +17,23 @@ export async function extractPdfText(data: Uint8Array): Promise<string[]> {
   }
   return pages;
 }
+
+export interface PdfTextItem {
+  str: string;
+  x: number;
+  y: number;
+  width: number;
+}
+
+/** Every text item on the first page of a PDF, with its position and width in points. */
+export async function extractPdfItems(data: Uint8Array): Promise<PdfTextItem[]> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const document = await pdfjs.getDocument({ data: new Uint8Array(data) }).promise;
+  const page = await document.getPage(1);
+  const content = await page.getTextContent();
+  const items: PdfTextItem[] = [];
+  for (const item of content.items) {
+    if ('str' in item) items.push({ str: item.str, x: item.transform[4] as number, y: item.transform[5] as number, width: item.width });
+  }
+  return items;
+}

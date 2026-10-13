@@ -35,3 +35,16 @@ describe('registerInvoiceFonts', () => {
     });
   }
 });
+
+describe('resetInvoiceFonts', () => {
+  it('removes the invoice families but keeps Helvetica, and lets the same base register again', async () => {
+    const { Font } = await import('@react-pdf/renderer');
+    const { resetInvoiceFonts } = await import('./fonts');
+    resetInvoiceFonts();
+    const registry = Font.getRegisteredFonts();
+    for (const font of FONT_OPTIONS) expect(registry[font.id], font.id).toBeUndefined();
+    expect(registry['Helvetica']).toBeDefined();
+    registerInvoiceFonts(FONT_DIR);
+    for (const font of FONT_OPTIONS) expect(registry[font.id], font.id).toBeDefined();
+  });
+});
