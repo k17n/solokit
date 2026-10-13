@@ -827,21 +827,21 @@ describe('buildUpiPayload', () => {
   });
 
   it('writes whole rupees with two decimals', () => {
-    expect(buildUpiPayload({ upiId: 'a@upi', payeeName: 'A', amountMinor: 100 })).toContain('am=1.00');
-    expect(buildUpiPayload({ upiId: 'a@upi', payeeName: 'A', amountMinor: 12345 })).toContain('am=123.45');
+    expect(buildUpiPayload({ upiId: 'ab@upi', payeeName: 'A', amountMinor: 100 })).toContain('am=1.00');
+    expect(buildUpiPayload({ upiId: 'ab@upi', payeeName: 'A', amountMinor: 12345 })).toContain('am=123.45');
   });
 
   it('encodes special characters in the payee name and note', () => {
-    const link = buildUpiPayload({ upiId: 'a@upi', payeeName: 'R&D Co.', amountMinor: 100, note: 'a&b=c' });
+    const link = buildUpiPayload({ upiId: 'ab@upi', payeeName: 'R&D Co.', amountMinor: 100, note: 'a&b=c' });
     expect(link).toContain('pn=R%26D%20Co.');
     expect(link).toContain('tn=a%26b%3Dc');
   });
 
   it('rejects a malformed UPI id or a non-positive amount', () => {
     expect(() => buildUpiPayload({ upiId: 'no-at', payeeName: 'A', amountMinor: 100 })).toThrow(RangeError);
-    expect(() => buildUpiPayload({ upiId: 'a@upi&x=1', payeeName: 'A', amountMinor: 100 })).toThrow(RangeError);
-    expect(() => buildUpiPayload({ upiId: 'a@upi', payeeName: 'A', amountMinor: 0 })).toThrow(RangeError);
-    expect(() => buildUpiPayload({ upiId: 'a@upi', payeeName: 'A', amountMinor: 1.5 })).toThrow(RangeError);
+    expect(() => buildUpiPayload({ upiId: 'ab@upi&x=1', payeeName: 'A', amountMinor: 100 })).toThrow(RangeError);
+    expect(() => buildUpiPayload({ upiId: 'ab@upi', payeeName: 'A', amountMinor: 0 })).toThrow(RangeError);
+    expect(() => buildUpiPayload({ upiId: 'ab@upi', payeeName: 'A', amountMinor: 1.5 })).toThrow(RangeError);
   });
 });
 ```
