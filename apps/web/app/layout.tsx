@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Geist, JetBrains_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { BRAND, SiteFooter, SiteHeader } from '@solokit/ui';
+import { ServiceWorkerRegister } from '../src/ServiceWorkerRegister';
 import { HEADER_PROPS, getFooterProps } from '../src/site';
 
 const display = Bricolage_Grotesque({ subsets: ['latin', 'latin-ext'], variable: '--font-display' });
@@ -14,6 +15,8 @@ export const metadata: Metadata = {
   description:
     'Free invoice, quote and contract tools that run in your browser. India GST ready. No signup, works offline, and your data stays on your device.',
   applicationName: BRAND.name,
+  manifest: '/manifest.webmanifest',
+  icons: { apple: '/icons/apple-touch-icon.png' },
 };
 
 export const viewport: Viewport = {
@@ -33,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SiteHeader {...HEADER_PROPS} />
         {children}
         <SiteFooter {...getFooterProps()} />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
