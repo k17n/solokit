@@ -5,7 +5,7 @@ import { IN_RULES_AS_OF, isAllowedGstRate } from './rules';
 import { isValidStateCode } from './states';
 
 export type SellerGstStatus = 'regular' | 'composition' | 'unregistered';
-export type DocumentType = 'tax-invoice' | 'bill-of-supply' | 'invoice';
+export type GstDocumentType = 'tax-invoice' | 'bill-of-supply' | 'invoice';
 export type SupplyMode = 'intra-state' | 'inter-state' | 'export-lut' | 'no-tax';
 
 export type Discount = { kind: 'percent'; percent: number } | { kind: 'amount'; amount: Minor };
@@ -30,7 +30,7 @@ export interface GstInput {
   /** Registered seller supplying exempt goods/services: issues a bill of supply. */
   exemptSupply?: boolean;
   lines: GstLineInput[];
-  /** Round the grand total to the nearest rupee. Defaults to true. */
+  /** Round the grand total to the nearest rupee. Defaults to true, except for export-lut where it defaults to false. */
   roundOff?: boolean;
   /** Reverse charge: tax is shown but paid by the recipient, so it is left out of the grand total. */
   reverseCharge?: boolean;
@@ -64,7 +64,7 @@ export interface GstTotals {
 
 export interface GstResult {
   mode: SupplyMode;
-  documentType: DocumentType;
+  documentType: GstDocumentType;
   lines: GstLineResult[];
   totals: GstTotals;
   reverseCharge: boolean;
@@ -84,6 +84,7 @@ export class GstInputError extends Error {
 
 function resolveMode(input: GstInput): SupplyMode {
   if (input.sellerStatus !== 'regular' || input.exemptSupply) return 'no-tax';
+  // isExport is ignored above for composition/unregistered sellers and exempt supplies: they charge no tax anyway.
   if (input.isExport) return 'export-lut';
   const seller = input.sellerStateCode;
   const supply = input.placeOfSupplyStateCode;
@@ -96,7 +97,7 @@ function resolveMode(input: GstInput): SupplyMode {
   return seller === supply ? 'intra-state' : 'inter-state';
 }
 
-function documentTypeFor(input: GstInput): DocumentType {
+function documentTypeFor(input: GstInput): GstDocumentType {
   if (input.sellerStatus === 'unregistered') return 'invoice';
   if (input.sellerStatus === 'composition' || input.exemptSupply) return 'bill-of-supply';
   return 'tax-invoice';
@@ -105,7 +106,7 @@ function documentTypeFor(input: GstInput): DocumentType {
 function discountFor(gross: Minor, discount: Discount | undefined): Minor {
   if (!discount) return 0;
   if (discount.kind === 'percent') {
-    if (discount.percent < 0 || discount.percent > 100) {
+    if (!Number.isFinite(discount.percent) || discount.percent < 0 || discount.percent > 100) {
       throw new GstInputError('Discount percent must be between 0 and 100');
     }
     return percentOf(gross, discount.percent);
@@ -123,10 +124,15 @@ function calculateLine(line: GstLineInput, mode: SupplyMode): GstLineResult {
   if (taxed && !isAllowedGstRate(gstRate)) {
     throw new GstInputError(`${gstRate}% is not a valid GST rate`);
   }
+  if (line.unitRate < 0) {
+    throw new GstInputError('Unit rate cannot be negative; issue a credit note instead');
+  }
   const gross = lineAmount(line.quantity, line.unitRate);
   const discount = discountFor(gross, line.discount);
   const taxable = gross - discount;
 
+  // Tax is computed per line, and CGST is rounded from the half-rate, so CGST + SGST can differ
+  // from IGST on the same value by a paisa.
   let cgst = 0;
   let sgst = 0;
   let igst = 0;
@@ -141,17 +147,17 @@ function calculateLine(line: GstLineInput, mode: SupplyMode): GstLineResult {
 
 function tdsFor(taxable: Minor, tds: GstInput['tds']): Minor {
   if (!tds) return 0;
-  if (tds.ratePercent < 0 || tds.ratePercent > 100) {
+  if (!Number.isFinite(tds.ratePercent) || tds.ratePercent < 0 || tds.ratePercent > 100) {
     throw new GstInputError('TDS rate must be between 0 and 100');
   }
   return percentOf(taxable, tds.ratePercent);
 }
 
-function advanceFor(grandTotal: Minor, advance: Minor | undefined): Minor {
+function advanceFor(grandTotal: Minor, tds: Minor, advance: Minor | undefined): Minor {
   if (advance === undefined) return 0;
   assertMinor(advance, 'advance');
-  if (advance < 0 || advance > grandTotal) {
-    throw new GstInputError('Advance must be between 0 and the invoice total');
+  if (advance < 0 || advance > grandTotal - tds) {
+    throw new GstInputError('Advance must be between 0 and the invoice total minus TDS, so the net payable is never negative');
   }
   return advance;
 }
@@ -170,11 +176,11 @@ export function calculateGst(input: GstInput): GstResult {
   const payableTax = reverseCharge ? 0 : totalTax;
 
   const beforeRounding = taxable + payableTax;
-  const roundOff = (input.roundOff ?? true) ? roundToWhole(beforeRounding) - beforeRounding : 0;
+  const roundOff = (input.roundOff ?? mode !== 'export-lut') ? roundToWhole(beforeRounding) - beforeRounding : 0;
   const grandTotal = beforeRounding + roundOff;
 
   const tds = tdsFor(taxable, input.tds);
-  const advance = advanceFor(grandTotal, input.advanceReceived);
+  const advance = advanceFor(grandTotal, tds, input.advanceReceived);
 
   return {
     mode,

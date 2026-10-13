@@ -48,6 +48,9 @@ function roundedDiv(numerator: bigint, denominator: bigint): number {
  */
 export function percentOf(amount: Minor, ratePercent: number): Minor {
   assertMinor(amount);
+  if (!Number.isFinite(ratePercent)) {
+    throw new MoneyError(`ratePercent must be a finite number, got ${ratePercent}`);
+  }
   const pips = Math.round(ratePercent * 10_000); // 1 pip = 0.0001 %
   return roundedDiv(BigInt(amount) * BigInt(pips), 1_000_000n);
 }

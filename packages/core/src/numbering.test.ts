@@ -68,3 +68,9 @@ describe('nextSequence', () => {
     expect(nextSequence(['INV/2026-27/0003', 'custom-number'], '2026-27')).toBe(4);
   });
 });
+
+describe('nextSequence: whitespace', () => {
+  it('counts numbers with surrounding whitespace', () => {
+    expect(nextSequence(['2026-27/0009 ', ' 2026-27/0003'], '2026-27')).toBe(10);
+  });
+});

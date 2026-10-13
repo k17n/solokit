@@ -168,7 +168,8 @@ describe('calculateGst: export under LUT', () => {
 
 describe('calculateGst: rates', () => {
   it('accepts legacy and special rates', () => {
-    expect(() => calculateGst(intra({ lines: [{ quantity: 1, unitRate: 1000, gstRate: 12 }] }))).not.toThrow();
+    const legacy = calculateGst(intra({ lines: [{ quantity: 1, unitRate: 1_000_000, gstRate: 12 }] }));
+    expect(legacy.lines[0]).toMatchObject({ gstRate: 12, cgst: 60_000, sgst: 60_000, total: 1_120_000 });
     expect(() => calculateGst(intra({ lines: [{ quantity: 1, unitRate: 1000, gstRate: 0.25 }] }))).not.toThrow();
   });
 
@@ -262,5 +263,107 @@ describe('calculateGst: TDS and advances', () => {
   it('rejects an advance that is negative or exceeds the invoice total', () => {
     expect(() => calculateGst(intra({ advanceReceived: -1 }))).toThrow(GstInputError);
     expect(() => calculateGst(intra({ advanceReceived: 1_180_001 }))).toThrow(GstInputError);
+  });
+});
+
+describe('calculateGst: export round-off default', () => {
+  const exportInput = (overrides: Partial<GstInput> = {}): GstInput => ({
+    sellerStatus: 'regular',
+    sellerStateCode: '27',
+    isExport: true,
+    lines: [{ quantity: 1, unitRate: 123_456, gstRate: 18 }],
+    ...overrides,
+  });
+
+  it('does not round off an export by default', () => {
+    const result = calculateGst(exportInput());
+    expect(result.totals).toMatchObject({ roundOff: 0, grandTotal: 123_456 });
+  });
+
+  it('rounds an export when explicitly asked', () => {
+    const result = calculateGst(exportInput({ roundOff: true }));
+    expect(result.totals).toMatchObject({ roundOff: 44, grandTotal: 123_500 });
+  });
+
+  it('still rounds domestic supplies by default', () => {
+    const result = calculateGst(intra({ lines: [{ quantity: 1, unitRate: 33_333, gstRate: 18 }] }));
+    expect(result.totals).toMatchObject({ roundOff: -33, grandTotal: 39_300 });
+  });
+});
+
+describe('calculateGst: net payable is never negative', () => {
+  it('accepts an advance equal to grand total minus TDS', () => {
+    const result = calculateGst(intra({ tds: { ratePercent: 10 }, advanceReceived: 1_080_000 }));
+    expect(result.netPayable).toBe(0);
+  });
+
+  it('rejects one paisa more', () => {
+    expect(() => calculateGst(intra({ tds: { ratePercent: 10 }, advanceReceived: 1_080_001 }))).toThrow(GstInputError);
+  });
+
+  it('rejects an advance equal to the full total when TDS applies', () => {
+    expect(() => calculateGst(intra({ tds: { ratePercent: 10 }, advanceReceived: 1_180_000 }))).toThrow(GstInputError);
+  });
+
+  it('checks the advance against the reduced total under reverse charge', () => {
+    const input = (advanceReceived: number) => intra({ reverseCharge: true, tds: { ratePercent: 10 }, advanceReceived });
+    expect(calculateGst(input(900_000)).netPayable).toBe(0);
+    expect(() => calculateGst(input(900_001))).toThrow(GstInputError);
+    expect(() => calculateGst(intra({ reverseCharge: true, advanceReceived: 1_000_001 }))).toThrow(GstInputError);
+  });
+});
+
+describe('calculateGst: non-finite and negative inputs', () => {
+  it('rejects a non-finite discount percent', () => {
+    const percent = (p: number) =>
+      intra({ lines: [{ quantity: 1, unitRate: 1000, gstRate: 18, discount: { kind: 'percent', percent: p } }] });
+    expect(() => calculateGst(percent(NaN))).toThrow(GstInputError);
+    expect(() => calculateGst(percent(Infinity))).toThrow(GstInputError);
+  });
+
+  it('rejects a non-finite TDS rate', () => {
+    expect(() => calculateGst(intra({ tds: { ratePercent: NaN } }))).toThrow(GstInputError);
+    expect(() => calculateGst(intra({ tds: { ratePercent: Infinity } }))).toThrow(GstInputError);
+  });
+
+  it('rejects a negative unit rate', () => {
+    expect(() => calculateGst(intra({ lines: [{ quantity: 1, unitRate: -100, gstRate: 18 }] }))).toThrow(GstInputError);
+  });
+});
+
+describe('calculateGst: additional coverage', () => {
+  it('combines reverse charge with round-off on the taxable value only', () => {
+    const result = calculateGst(intra({ reverseCharge: true, lines: [{ quantity: 1, unitRate: 33_333, gstRate: 18 }] }));
+    expect(result.totals).toMatchObject({
+      taxable: 33_333,
+      cgst: 3_000,
+      sgst: 3_000,
+      totalTax: 6_000,
+      roundOff: -33,
+      grandTotal: 33_300,
+    });
+    expect(result.netPayable).toBe(33_300);
+  });
+
+  it('computes special rates exactly', () => {
+    const at = (gstRate: number) => calculateGst(intra({ lines: [{ quantity: 1, unitRate: 1_000_000, gstRate }] }));
+    expect(at(0.25).lines[0]).toMatchObject({ cgst: 1_250, sgst: 1_250, total: 1_002_500 });
+    expect(at(3).lines[0]).toMatchObject({ cgst: 15_000, sgst: 15_000, total: 1_030_000 });
+  });
+
+  it('sums per-line rounded values across a multi-line invoice', () => {
+    const result = calculateGst(
+      intra({
+        roundOff: false,
+        lines: [
+          { quantity: 1, unitRate: 1010, gstRate: 5 }, // cgst 25.25 -> 25
+          { quantity: 1, unitRate: 3333, gstRate: 18 }, // cgst 299.97 -> 300
+          { quantity: 3, unitRate: 999, gstRate: 12 }, // taxable 2997, cgst 179.82 -> 180
+        ],
+      }),
+    );
+    expect(result.lines.map((l) => l.cgst)).toEqual([25, 300, 180]);
+    expect(result.totals).toMatchObject({ taxable: 7_340, cgst: 505, sgst: 505, totalTax: 1_010, grandTotal: 8_350 });
+    expect(result.totals.grandTotal).toBe(result.lines.reduce((s, l) => s + l.total, 0));
   });
 });

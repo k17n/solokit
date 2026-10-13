@@ -63,3 +63,10 @@ describe('amountInWords errors', () => {
     expect(() => amountInWords(100, 'XYZ')).toThrow(RangeError);
   });
 });
+
+describe('amountInWords: currency lookup', () => {
+  it('rejects inherited object keys as currencies', () => {
+    expect(() => amountInWords(100, 'constructor')).toThrow(RangeError);
+    expect(() => amountInWords(100, 'toString')).toThrow(RangeError);
+  });
+});

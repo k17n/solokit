@@ -51,7 +51,7 @@ export function formatInvoiceNumber({ prefix = '', fiscalYear, sequence, pad = 4
 export function nextSequence(existingNumbers: string[], fiscalYear: string): number {
   let highest = 0;
   for (const number of existingNumbers) {
-    const match = FISCAL_SEQUENCE.exec(number);
+    const match = FISCAL_SEQUENCE.exec(number.trim());
     if (match && match[1] === fiscalYear) {
       highest = Math.max(highest, Number(match[2]));
     }

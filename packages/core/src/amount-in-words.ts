@@ -61,7 +61,7 @@ function integerToWords(n: number, numbering: Numbering): string {
 export function amountInWords(minor: Minor, currency = 'INR'): string {
   assertMinor(minor);
   if (minor < 0) throw new RangeError('amountInWords does not support negative amounts');
-  const words = CURRENCIES[currency];
+  const words = Object.hasOwn(CURRENCIES, currency) ? CURRENCIES[currency] : undefined;
   if (!words) throw new RangeError(`Unsupported currency for amount in words: ${currency}`);
 
   const major = Math.floor(minor / 100);

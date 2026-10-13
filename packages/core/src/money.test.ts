@@ -111,3 +111,10 @@ describe('sum', () => {
     expect(sum([])).toBe(0);
   });
 });
+
+describe('percentOf: non-finite rate', () => {
+  it('throws MoneyError for NaN and Infinity', () => {
+    expect(() => percentOf(1000, NaN)).toThrow(MoneyError);
+    expect(() => percentOf(1000, Infinity)).toThrow(MoneyError);
+  });
+});
