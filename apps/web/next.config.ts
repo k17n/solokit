@@ -9,6 +9,8 @@ const config: NextConfig = {
     '@solokit/registry',
     '@solokit/storage',
     '@solokit/tax-engines',
+    '@solokit/tool-invoice',
+    '@solokit/tool-invoice-pdf',
     '@solokit/ui',
   ],
 };

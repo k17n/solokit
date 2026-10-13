@@ -180,6 +180,12 @@ importers:
       '@solokit/tax-engines':
         specifier: workspace:*
         version: link:../../packages/tax-engines
+      '@solokit/tool-invoice':
+        specifier: workspace:*
+        version: link:../../packages/tools/invoice
+      '@solokit/tool-invoice-pdf':
+        specifier: workspace:*
+        version: link:../../packages/tools/invoice-pdf
       '@solokit/ui':
         specifier: workspace:*
         version: link:../../packages/ui

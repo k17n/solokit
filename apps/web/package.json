@@ -15,6 +15,8 @@
     "@solokit/registry": "workspace:*",
     "@solokit/storage": "workspace:*",
     "@solokit/tax-engines": "workspace:*",
+    "@solokit/tool-invoice": "workspace:*",
+    "@solokit/tool-invoice-pdf": "workspace:*",
     "@solokit/ui": "workspace:*",
     "next": "^16.4.0",
     "react": "^19.3.0",

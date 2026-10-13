@@ -1,6 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { getTools } from '@solokit/registry';
+vi.mock('./tools', () => ({
+  TOOL_COMPONENTS: { invoice: () => <p>Invoice tool is here</p> },
+}));
+
 import ToolPage, { generateMetadata, generateStaticParams } from '../app/tools/[slug]/page';
 
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
@@ -25,5 +29,19 @@ describe('tool route', () => {
 
   it('answers 404 for an unknown tool', async () => {
     await expect(ToolPage(params('does-not-exist'))).rejects.toThrow();
+  });
+});
+
+describe('tool route with a registered tool component', () => {
+  it('shows the tool instead of the coming-soon notice', async () => {
+    render(await ToolPage(params('invoice')));
+    expect(screen.getByRole('heading', { level: 1, name: 'Invoice generator' })).toBeInTheDocument();
+    expect(screen.getByText('Invoice tool is here')).toBeInTheDocument();
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
+  });
+
+  it('keeps the coming-soon notice for tools without a component', async () => {
+    render(await ToolPage(params('quote')));
+    expect(screen.getByText('Coming soon')).toBeInTheDocument();
   });
 });
