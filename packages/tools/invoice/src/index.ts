@@ -7,3 +7,4 @@ export * from './declarations';
 export * from './document';
 export * from './codes';
 export * from './themes';
+export * from './repositories';
