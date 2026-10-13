@@ -1079,6 +1079,7 @@ export function SiteFooter({ tools, countries, projectLinks, rulesAsOf }: SiteFo
   --text-muted: #9fb0ce;
   --border: rgb(234 240 250 / 0.2);
   --accent-text: #34d399;
+  --edge: #eaf0fa; /* keeps the global focus ring visible on the dark footer */
   position: relative;
   isolation: isolate;
   overflow: hidden;
