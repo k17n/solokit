@@ -1,7 +1,7 @@
 import type { StoredRecord } from '@solokit/storage';
 import type { Issue } from './validation';
 
-export type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'ibm-plex-mono' | 'geist-mono';
+export type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'inconsolata' | 'geist-mono';
 
 export interface FontOption {
   id: FontId;
@@ -14,7 +14,7 @@ export const FONT_OPTIONS: readonly FontOption[] = [
   { id: 'inter', label: 'Inter', group: 'sans' },
   { id: 'poppins', label: 'Poppins', group: 'sans' },
   { id: 'source-serif-4', label: 'Source Serif 4', group: 'serif' },
-  { id: 'ibm-plex-mono', label: 'IBM Plex Mono', group: 'mono' },
+  { id: 'inconsolata', label: 'Inconsolata', group: 'mono' },
   { id: 'geist-mono', label: 'Geist Mono', group: 'mono' },
 ];
 

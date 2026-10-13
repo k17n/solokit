@@ -19,10 +19,10 @@
       "reservedFontName": "Source"
     },
     {
-      "id": "ibm-plex-mono",
-      "label": "IBM Plex Mono",
-      "modified": false,
-      "reservedFontName": "Plex"
+      "id": "inconsolata",
+      "label": "Inconsolata",
+      "modified": true,
+      "reservedFontName": null
     },
     {
       "id": "geist-mono",

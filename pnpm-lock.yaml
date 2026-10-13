@@ -196,9 +196,9 @@ importers:
       '@expo-google-fonts/geist-mono':
         specifier: ^0.4.3
         version: 0.4.3
-      '@expo-google-fonts/ibm-plex-mono':
-        specifier: ^0.4.1
-        version: 0.4.1
+      '@expo-google-fonts/inconsolata':
+        specifier: ^0.4.2
+        version: 0.4.2
       '@expo-google-fonts/inter':
         specifier: ^0.4.2
         version: 0.4.2
@@ -650,8 +650,8 @@ packages:
   '@expo-google-fonts/geist-mono@0.4.3':
     resolution: {integrity: sha512-gjnwv1QOG4meZpMhrLjTIPC/+lhyNu8EcXa2eJPVbPrYvguVjCfBq+Ezq6cWKWW8ung6fqb2TjvuTalE6lqlnw==}
 
-  '@expo-google-fonts/ibm-plex-mono@0.4.1':
-    resolution: {integrity: sha512-/yYz1mPZq8Nd4tSiH0SBDPEdJUqiOGBwVgSrQvLuw7SPh6C7ezBzmi6eFyHY4QaQwjHDmOLSBKsxzq8ZDFXVAg==}
+  '@expo-google-fonts/inconsolata@0.4.2':
+    resolution: {integrity: sha512-4U9XnnqMK30hbCrGoioCyHxzPdLorY7LV6toNKnBxjVJU04vv9GI/GA+0XjlrKev/iONL8kaPqXCETf52ocGFA==}
 
   '@expo-google-fonts/inter@0.4.2':
     resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
@@ -2439,7 +2439,7 @@ snapshots:
 
   '@expo-google-fonts/geist-mono@0.4.3': {}
 
-  '@expo-google-fonts/ibm-plex-mono@0.4.1': {}
+  '@expo-google-fonts/inconsolata@0.4.2': {}
 
   '@expo-google-fonts/inter@0.4.2': {}
 

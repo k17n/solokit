@@ -1,6 +1,6 @@
 Fonts used for invoice PDFs. All are licensed under the SIL Open Font License 1.1.
-Distributed unmodified (not subset, original names kept): Source Serif 4 (its licence reserves the name "Source"); IBM Plex Mono (its licence reserves the name "Plex").
-Modified (subset to Latin, Latin-ext and currency symbols; none of them reserves a font name): Inter, Poppins, Geist Mono.
+Distributed unmodified (not subset, original names kept): Source Serif 4 (its licence reserves the name "Source").
+Modified (subset to Latin, Latin-ext and currency symbols; none of them reserves a font name): Inter, Poppins, Inconsolata, Geist Mono.
 
 ==== Inter ====
 Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)
@@ -296,14 +296,14 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
 
-==== IBM Plex Mono ====
-Copyright 2017 IBM Corp. All rights reserved.
+==== Inconsolata ====
+Copyright 2006 The Inconsolata Project Authors (https://github.com/cyrealtype/Inconsolata)
 
-Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+Copyright 2006 The Inconsolata Project Authors
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
-
-This license is copied below, and is also available with a FAQ at: http://scripts.sil.org/OFL
+This license is copied below, and is also available with a FAQ at:
+http://scripts.sil.org/OFL
 
 
 -----------------------------------------------------------

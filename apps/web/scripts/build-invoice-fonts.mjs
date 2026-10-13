@@ -19,7 +19,7 @@ const FAMILIES = [
   { id: 'inter', pkg: 'inter', file: 'Inter', label: 'Inter' },
   { id: 'poppins', pkg: 'poppins', file: 'Poppins', label: 'Poppins' },
   { id: 'source-serif-4', pkg: 'source-serif-4', file: 'SourceSerif4', label: 'Source Serif 4' },
-  { id: 'ibm-plex-mono', pkg: 'ibm-plex-mono', file: 'IBMPlexMono', label: 'IBM Plex Mono' },
+  { id: 'inconsolata', pkg: 'inconsolata', file: 'Inconsolata', label: 'Inconsolata' },
   { id: 'geist-mono', pkg: 'geist-mono', file: 'GeistMono', label: 'Geist Mono' },
 ];
 const WEIGHTS = [
