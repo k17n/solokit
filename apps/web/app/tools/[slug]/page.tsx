@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { TOOL_CATEGORY_LABELS, getToolBySlug, getTools } from '@solokit/registry';
 import { Badge, Button } from '@solokit/ui';
 import { PageShell } from '../../../src/components/PageShell';
+import { TOOL_COMPONENTS } from '../../../src/tools';
 
 export const dynamicParams = false;
 
@@ -25,6 +26,15 @@ export default async function ToolPage({ params }: ToolPageProps) {
   const { slug } = await params;
   const tool = getToolBySlug(slug);
   if (!tool) notFound();
+
+  const Tool = TOOL_COMPONENTS[tool.slug];
+  if (Tool) {
+    return (
+      <PageShell eyebrow={TOOL_CATEGORY_LABELS[tool.category]} title={tool.name} lede={tool.tagline} wide>
+        <Tool />
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell eyebrow={TOOL_CATEGORY_LABELS[tool.category]} title={tool.name} lede={tool.tagline}>

@@ -5,14 +5,14 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 ## Status
 
 - Done: monorepo, core primitives, India GST/TDS engine, design system, app shell, tool registry, local storage layer, installable offline site.
-- Next: the invoice screens.
+- Next: the invoice editor, live preview and invoice list.
 
 ## Layout
 
 - `apps/web` the website (Next.js, static export, installable PWA)
 - `packages/core` country-agnostic primitives (integer-paise money, amount in words, invoice numbering)
 - `packages/tax-engines` `TaxEngine` interface, country list, India GST engine
-- `packages/ui` design tokens and shared components (header, footer, buttons)
+- `packages/ui` design tokens and shared components (header, footer, buttons, form fields, radio cards, notices)
 - `packages/registry` the list of tools; drives the home page, tool routes and footer
 - `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters
 - `packages/tools/invoice` the invoice tool's domain logic: data model, validation, document builder, themes, saved data, backup
@@ -30,6 +30,7 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
     pnpm typecheck
     pnpm build        # static site in apps/web/out
     pnpm preview      # http://localhost:4173 (serves apps/web/out; try the offline mode here)
+    pnpm e2e          # builds, then runs the browser tests (uses the Chrome installed on your machine)
 
 The service worker is stamped with the list of built files after `next build` and only registers in production builds, so test offline behaviour with `pnpm build` then `pnpm preview`.
 
