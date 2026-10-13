@@ -118,7 +118,7 @@ describe('TextField', () => {
     render(<TextField label="GSTIN" required value="" onChange={onChange} />);
     const input = screen.getByLabelText('GSTIN');
     expect(input).toHaveAttribute('aria-required', 'true');
-    expect(input).not.toBeRequired();
+    expect(input).not.toHaveAttribute('required');
     await userEvent.type(input, 'a');
     expect(onChange).toHaveBeenCalled();
   });

@@ -1,0 +1,153 @@
+.field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.label {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.label[data-required]::after {
+  content: ' *';
+  color: var(--text-muted);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-s);
+}
+
+.textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--text-muted);
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+  border-color: var(--edge);
+}
+
+.input[aria-invalid='true'],
+.select[aria-invalid='true'],
+.textarea[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.error {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+.checkbox {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.6rem;
+  align-items: start;
+}
+
+.checkbox input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.2rem;
+  accent-color: var(--emerald);
+}
+
+.checkbox label {
+  font-weight: 600;
+}
+
+.checkbox .hint {
+  grid-column: 2;
+}
+
+.cards {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.75rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+}
+
+.card:has(input:checked) {
+  border-color: var(--edge);
+  box-shadow: 3px 3px 0 var(--edge);
+}
+
+.card input {
+  grid-row: 1 / span 2;
+  margin-top: 0.25rem;
+  accent-color: var(--emerald);
+}
+
+.cardLabel {
+  font-weight: 700;
+}
+
+.cardDescription {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.notice {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.notice[data-tone='warning'] {
+  background: var(--warning-bg);
+  border-color: color-mix(in srgb, var(--amber) 70%, transparent);
+}
+
+.notice[data-tone='danger'] {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
+.noticeTitle {
+  font-weight: 700;
+}
