@@ -48,10 +48,14 @@ function pathOf(r: Req | string) {
 
 class FakeCache {
   store = new Map<string, Res>();
+  failing = new Set<string>();
   async addAll(urls: string[]) {
+    if (urls.some((u) => this.failing.has(u))) throw new TypeError('addAll: bad response status');
     for (const u of urls) this.store.set(pathOf(u).full, res(`precached:${u}`));
   }
   async put(r: Req | string, response: Res) {
+    await Promise.resolve();
+    await Promise.resolve();
     this.store.set(pathOf(r).full, response);
   }
   async match(r: Req | string, opts: { ignoreSearch?: boolean } = {}) {
@@ -64,7 +68,7 @@ class FakeCache {
   }
 }
 
-function setup(networkImpl: (r: Req) => Promise<Res>) {
+function setup(networkImpl: (r: Req) => Promise<Res>, failingUrls: string[] = []) {
   const handlers: Record<string, Handler> = {};
   const store = new Map<string, FakeCache>();
   const self = {
@@ -77,7 +81,11 @@ function setup(networkImpl: (r: Req) => Promise<Res>) {
   };
   const caches = {
     open: async (name: string) => {
-      if (!store.has(name)) store.set(name, new FakeCache());
+      if (!store.has(name)) {
+        const c = new FakeCache();
+        for (const u of failingUrls) c.failing.add(u);
+        store.set(name, c);
+      }
       return store.get(name)!;
     },
     keys: async () => [...store.keys()],
@@ -116,7 +124,7 @@ async function dispatchFetch(handlers: Record<string, Handler>, request: Req) {
   });
   const response = responded ? await responded : undefined;
   await Promise.all(waits);
-  return { intercepted: responded !== undefined, response };
+  return { intercepted: responded !== undefined, response, waits };
 }
 
 const offline = async (): Promise<Res> => {
@@ -175,6 +183,44 @@ describe('service worker behaviour', () => {
     const { response } = await dispatchFetch(handlers, req('/privacy/', { mode: 'navigate' }));
     expect(response!.body).toBe('network:/privacy/');
     expect((await store.get('solokit-test123')!.match('/privacy/'))!.body).toBe('network:/privacy/');
+  });
+
+  it('stores responses only through event.waitUntil', async () => {
+    for (const [path, mode] of [
+      ['/privacy/', 'navigate'],
+      ['/_next/static/new.js', 'no-cors'],
+    ] as const) {
+      const { handlers, store } = setup(network);
+      const { waits, response } = await dispatchFetch(handlers, req(path, { mode }));
+      expect(response).toBeDefined();
+      expect(waits).toHaveLength(1);
+      await Promise.all(waits);
+      expect((await store.get('solokit-test123')!.match(path))!.body).toBe(`network:${path}`);
+    }
+  });
+
+  it('does not store before the waitUntil promise settles (async put)', async () => {
+    const { handlers, store } = setup(network);
+    let responded: Promise<Res> | undefined;
+    const waits: Promise<unknown>[] = [];
+    handlers.fetch!({
+      request: req('/_next/static/late.js'),
+      respondWith: (p: Promise<Res>) => {
+        responded = p;
+      },
+      waitUntil: (p: Promise<unknown>) => waits.push(p),
+    });
+    await responded;
+    expect(store.get('solokit-test123')!.store.has('/_next/static/late.js')).toBe(false);
+    await Promise.all(waits);
+    expect(store.get('solokit-test123')!.store.has('/_next/static/late.js')).toBe(true);
+  });
+
+  it('install rejects when any precache URL cannot be fetched (addAll is all-or-nothing)', async () => {
+    const { handlers, store, self } = setup(network, ['/privacy/']);
+    await expect(runWaitUntil('install', handlers)).rejects.toThrow('addAll');
+    expect(store.get('solokit-test123')!.store.size).toBe(0);
+    expect(self.skipWaiting).not.toHaveBeenCalled();
   });
 
   it('navigation does not cache non-ok or non-basic responses', async () => {

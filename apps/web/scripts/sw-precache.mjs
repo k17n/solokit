@@ -6,7 +6,11 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const isPrecached = (path) => path !== 'sw.js' && !path.endsWith('.map');
+// Error pages are skipped: some static hosts serve them with a 404 status,
+// which would make cache.addAll() reject and block the worker from installing.
+const isErrorPage = (path) => /^(404\.html|404\/index\.html|_not-found(\.|\/))/.test(path);
+
+const isPrecached = (path) => path !== 'sw.js' && !path.endsWith('.map') && !isErrorPage(path);
 
 function toUrl(path) {
   if (path === 'index.html') return '/';
@@ -35,7 +39,9 @@ export function injectPrecache(source, id, urls) {
   for (const token of ['__BUILD_ID__', '__PRECACHE_URLS__']) {
     if (!source.includes(token)) throw new Error(`sw.js is missing the ${token} token`);
   }
-  return source.replaceAll('__BUILD_ID__', id).replaceAll('__PRECACHE_URLS__', JSON.stringify(urls));
+  // Function replacers: a string replacement would interpret $&, $$, $` and $'.
+  const json = JSON.stringify(urls);
+  return source.replaceAll('__BUILD_ID__', () => id).replaceAll('__PRECACHE_URLS__', () => json);
 }
 
 function walk(dir, base = '') {
