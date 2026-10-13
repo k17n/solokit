@@ -1,5 +1,5 @@
 import { renderToBuffer } from '@react-pdf/renderer';
-import { PRESET_THEMES, buildInvoiceDocument, type InvoiceRecord } from '@solokit/tool-invoice';
+import { PRESET_THEMES, buildInvoiceDocument, type InvoiceRecord, type InvoiceTheme } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { InvoicePdf } from './InvoicePdf';
@@ -9,9 +9,9 @@ import { FONT_DIR, extractPdfText } from './testing';
 
 beforeAll(() => registerInvoiceFonts(FONT_DIR));
 
-async function render(invoice: InvoiceRecord = makeInvoice(), themeId = 'classic', qrDataUrl?: string) {
-  const theme = PRESET_THEMES.find((candidate) => candidate.id === themeId);
-  if (!theme) throw new Error(`Unknown theme ${themeId}`);
+async function render(invoice: InvoiceRecord = makeInvoice(), themeOrId: string | InvoiceTheme = 'classic', qrDataUrl?: string) {
+  const theme = typeof themeOrId === 'string' ? PRESET_THEMES.find((candidate) => candidate.id === themeOrId) : themeOrId;
+  if (!theme) throw new Error(`Unknown theme ${String(themeOrId)}`);
   const buffer = await renderToBuffer(
     <InvoicePdf doc={buildInvoiceDocument(invoice)} theme={theme} {...(qrDataUrl ? { qrDataUrl } : {})} />,
   );
@@ -191,4 +191,106 @@ describe('InvoicePdf: a typical invoice fits on one page in every layout', () =>
       expect(pages[0]).toContain('Authorised signatory');
     });
   }
+});
+
+describe('InvoicePdf: columns, declarations and optional blocks', () => {
+  const noSpaces = (text: string) => text.replace(/\s+/g, '');
+
+  it('shows a Discount column with the negative amount when a line has a discount, and none otherwise', async () => {
+    const discounted = makeInvoice({
+      lines: [{ id: 'a', description: 'Consulting', code: '998312', quantity: 24, unit: 'hours', rate: 300000, gstRate: 18, discount: { kind: 'percent', percent: 10 } }],
+    });
+    const withDiscount = (await render(discounted)).pages[0] as string;
+    expect(withDiscount).toContain('Discount');
+    expect(noSpaces(withDiscount)).toContain('-₹7,200.00');
+    const without = (await render()).pages[0] as string;
+    expect(without).not.toContain('Discount');
+  });
+
+  it("titles a composition seller's invoice a Bill of Supply and adds the composition declaration", async () => {
+    const { pages } = await render(makeInvoice({ seller: makeSeller({ gstStatus: 'composition' }) }), 'classic');
+    const text = pages[0] as string;
+    expect(squash(text)).toContain('billofsupply');
+    expect(squash(text)).not.toContain('taxinvoice');
+    expect(text).toContain('Composition taxable person, not eligible to collect tax on supplies.');
+    expect(text).not.toContain('CGST');
+  });
+
+  it('leaves out the bank and UPI blocks when the seller has neither, and still renders', async () => {
+    const seller = makeSeller({ upiId: undefined });
+    delete (seller as { bank?: unknown }).bank;
+    const { pages } = await render(makeInvoice({ seller }), 'classic');
+    const text = pages[0] as string;
+    expect(text).not.toContain('Bank details');
+    expect(squash(text)).not.toContain('bankdetails');
+    expect(text).not.toContain('Scan to pay');
+    expect(text).toContain('₹84,960.00');
+  });
+
+  it('labels the tax rows "(reverse charge)" on a reverse charge invoice', async () => {
+    const { pages } = await render(makeInvoice({ reverseCharge: true }), 'classic');
+    expect(pages[0]).toContain('CGST @9% (reverse charge)');
+    expect(pages[0]).toContain('SGST @9% (reverse charge)');
+  });
+
+  it('shows a Round off row when rounding the total changes it', async () => {
+    const invoice = makeInvoice({
+      roundOff: true,
+      lines: [{ id: 'a', description: 'Part', quantity: 1, unit: 'fixed', rate: 33333, gstRate: 18 }],
+    });
+    expect(buildInvoiceDocument(invoice).totals.some((row) => row.label === 'Round off')).toBe(true);
+    const { pages } = await render(invoice, 'classic');
+    expect(pages[0]).toContain('Round off');
+  });
+
+  it('shows the per-line tax amount and the CGST amount', async () => {
+    const text = (await render()).pages[0] as string;
+    expect(text).toContain('₹12,960.00');
+    expect(text).toContain('₹6,480.00');
+  });
+});
+
+describe('InvoicePdf: stress and theming', () => {
+  it('renders 100 lines with "Page N of M" at the foot of every page', async () => {
+    const lines = Array.from({ length: 100 }, (_, index) => ({
+      id: `l${index}`,
+      description: `Work package ${index + 1}`,
+      quantity: 1,
+      unit: 'items' as const,
+      rate: 100000,
+      gstRate: 18,
+    }));
+    const { pages } = await render(makeInvoice({ lines }), 'classic');
+    expect(pages.length).toBeGreaterThan(2);
+    pages.forEach((page, index) => {
+      expect(page.endsWith(`Page ${index + 1} of ${pages.length}`), `page ${index + 1}`).toBe(true);
+    });
+    expect(pages.join(' ')).toContain('Work package 100');
+  });
+
+  it('renders a custom dark theme with its amounts', async () => {
+    const dark: InvoiceTheme = {
+      id: 'custom-dark',
+      name: 'Dark',
+      layout: 'modern',
+      accent: '#34D399',
+      text: '#F5F5F5',
+      background: '#111827',
+      fontId: 'inter',
+    };
+    const { pages } = await render(makeInvoice(), dark);
+    expect(pages).toHaveLength(1);
+    expect(pages[0]).toContain('₹84,960.00');
+    expect(pages[0]).toContain('₹72,000.00');
+  });
+
+  it('falls back to the classic layout for an unknown layout', async () => {
+    const { pages } = await render(makeInvoice(), { ...(PRESET_THEMES[1] as InvoiceTheme), layout: 'gone' } as never);
+    expect(pages[0]).toContain('₹84,960.00');
+  });
+
+  it('falls back to Inter for an unknown font', async () => {
+    const { pages } = await render(makeInvoice(), { ...(PRESET_THEMES[1] as InvoiceTheme), fontId: 'gone' } as never);
+    expect(pages[0]).toContain('₹84,960.00');
+  });
 });
