@@ -91,3 +91,11 @@ describe('resolveTheme and createCustomTheme', () => {
     expect(custom).toMatchObject({ id: 'custom-2', name: 'Teal', layout: 'modern', accent: '#0F766E', fontId: 'poppins', text: modern.text });
   });
 });
+
+describe('contrastRatio with saturated colours', () => {
+  it('weights the red, green and blue channels correctly', () => {
+    expect(contrastRatio('#FF0000', '#FFFFFF')).toBeCloseTo(3.998, 2);
+    expect(contrastRatio('#0000FF', '#FFFFFF')).toBeCloseTo(8.592, 2);
+    expect(contrastRatio('#00FF00', '#FFFFFF')).toBeCloseTo(1.372, 2);
+  });
+});
