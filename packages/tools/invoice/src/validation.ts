@@ -1,4 +1,4 @@
-import { InvoiceNumberError, formatInvoiceNumber } from '@solokit/core';
+import { InvoiceNumberError, formatInvoiceNumber, lineAmount } from '@solokit/core';
 import { isAllowedGstRate, isValidStateCode, validateGstin } from '@solokit/tax-engines';
 import { isCurrencyCode } from './currencies';
 import type { Client, InvoiceRecord, SellerProfile } from './model';
@@ -119,17 +119,28 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
   invoice.lines.forEach((line, index) => {
     const at = `lines[${index}]`;
     if (blank(line.description)) add(`${at}.description`, 'Describe what you are charging for');
-    if (!Number.isFinite(line.quantity) || line.quantity <= 0) add(`${at}.quantity`, 'Quantity must be more than 0');
-    if (!Number.isSafeInteger(line.rate) || line.rate < 0) add(`${at}.rate`, 'Enter the rate as an amount of 0 or more');
-    if (taxed && line.gstRate !== undefined && !isAllowedGstRate(line.gstRate)) {
+    const quantityOk = Number.isFinite(line.quantity) && line.quantity > 0;
+    const rateOk = Number.isSafeInteger(line.rate) && line.rate >= 0;
+    if (!quantityOk) add(`${at}.quantity`, 'Quantity must be more than 0');
+    if (!rateOk) add(`${at}.rate`, 'Enter the rate as an amount of 0 or more');
+    if (taxed && line.gstRate === undefined) add(`${at}.gstRate`, 'Choose a GST rate');
+    else if (taxed && line.gstRate !== undefined && !isAllowedGstRate(line.gstRate)) {
       add(`${at}.gstRate`, `${line.gstRate}% is not a GST rate`);
     }
     if (line.discount) {
-      const bad =
-        line.discount.kind === 'percent'
-          ? !Number.isFinite(line.discount.percent) || line.discount.percent < 0 || line.discount.percent > 100
-          : !Number.isSafeInteger(line.discount.amount) || line.discount.amount < 0;
-      if (bad) add(`${at}.discount`, 'Enter a discount between 0 and the line amount');
+      if (line.discount.kind === 'percent') {
+        const { percent } = line.discount;
+        if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+          add(`${at}.discount`, 'Enter a discount percentage between 0 and 100');
+        }
+      } else {
+        const { amount } = line.discount;
+        if (!Number.isSafeInteger(amount) || amount < 0) {
+          add(`${at}.discount`, 'Enter the discount as an amount of 0 or more');
+        } else if (quantityOk && rateOk && amount > lineAmount(line.quantity, line.rate)) {
+          add(`${at}.discount`, 'The discount cannot be more than the line amount');
+        }
+      }
     }
   });
 

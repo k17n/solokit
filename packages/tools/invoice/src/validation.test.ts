@@ -39,6 +39,20 @@ describe('validateSeller', () => {
     expect(paths(validateSeller(missing))).toContain('address.stateCode');
   });
 
+  it('flags the state exactly once when it is blank and the GSTIN is invalid', () => {
+    const seller = makeSeller({ gstin: '27AAPFU0939F1ZX', address: { line1: 'x', city: 'Pune', country: 'India' } });
+    expect(validateSeller(seller).filter((i) => i.path === 'address.stateCode')).toHaveLength(1);
+  });
+
+  it('flags a mismatched state exactly once when the GSTIN is valid', () => {
+    const seller = makeSeller({ address: { line1: 'x', city: 'Bengaluru', stateCode: '29', country: 'India' } });
+    expect(validateSeller(seller).filter((i) => i.path === 'address.stateCode')).toHaveLength(1);
+  });
+
+  it('flags a whitespace-only GSTIN on a regular seller', () => {
+    expect(paths(validateSeller(makeSeller({ gstin: '   ' })))).toContain('gstin');
+  });
+
   it('does not allow a GSTIN for an unregistered seller', () => {
     const seller = makeSeller({ gstStatus: 'unregistered' });
     expect(paths(validateSeller(seller))).toContain('gstin');
@@ -113,6 +127,32 @@ describe('validateInvoice', () => {
       lines: [{ id: 'a', description: 'x', quantity: 1, unit: 'items', rate: 1000, gstRate: 18, discount: { kind: 'percent', percent: 150 } }],
     });
     expect(paths(validateInvoice(bad))).toContain('lines[0].discount');
+  });
+
+  it('flags a fixed discount larger than the line, but not one equal to it', () => {
+    const line = (discount: never) => ({ id: 'a', description: 'x', quantity: 2, unit: 'items', rate: 1000, gstRate: 18, discount }) as never;
+    const over = makeInvoice({ lines: [line({ kind: 'amount', amount: 2001 } as never)] });
+    expect(paths(validateInvoice(over))).toContain('lines[0].discount');
+    expect(validateInvoice(makeInvoice({ lines: [line({ kind: 'amount', amount: 2000 } as never)] }))).toEqual([]);
+    expect(paths(validateInvoice(makeInvoice({ lines: [line({ kind: 'amount', amount: -1 } as never)] })))).toContain('lines[0].discount');
+  });
+
+  it('accepts a valid percent discount and flags one above 100', () => {
+    const line = (percent: number) =>
+      ({ id: 'a', description: 'x', quantity: 1, unit: 'items', rate: 1000, gstRate: 18, discount: { kind: 'percent', percent } }) as never;
+    expect(validateInvoice(makeInvoice({ lines: [line(10)] }))).toEqual([]);
+    expect(paths(validateInvoice(makeInvoice({ lines: [line(100.5)] })))).toContain('lines[0].discount');
+  });
+
+  it('requires a GST rate on taxed lines only', () => {
+    const noRate = [{ id: 'a', description: 'x', quantity: 1, unit: 'items' as const, rate: 1000 }];
+    expect(paths(validateInvoice(makeInvoice({ lines: noRate })))).toContain('lines[0].gstRate');
+    const unregistered = makeSeller({ gstStatus: 'unregistered', gstin: undefined });
+    const composition = makeSeller({ gstStatus: 'composition' });
+    expect(validateInvoice(makeInvoice({ seller: unregistered, lines: noRate }))).toEqual([]);
+    expect(validateInvoice(makeInvoice({ seller: composition, lines: noRate }))).toEqual([]);
+    expect(validateInvoice(makeInvoice({ isExport: true, lines: noRate }))).toEqual([]);
+    expect(validateInvoice(makeInvoice({ exemptSupply: true, lines: noRate }))).toEqual([]);
   });
 
   it('requires a place of supply only for taxed domestic supplies', () => {
