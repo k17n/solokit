@@ -38,4 +38,8 @@ describe('invoiceFileName', () => {
   it('turns an odd number into a safe file name', () => {
     expect(invoiceFileName(makeInvoice({ number: 'INV 1/' }))).toBe('Tax-Invoice-INV-1.pdf');
   });
+
+  it('falls back to a plain name for an invoice that cannot be built', () => {
+    expect(invoiceFileName(makeInvoice({ lines: [{ ...makeInvoice().lines[0]!, rate: -100 }] }))).toBe('invoice.pdf');
+  });
 });
