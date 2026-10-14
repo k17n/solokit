@@ -1,9 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
 import { createInvoiceStorage } from '@solokit/tool-invoice';
-import { makeSeller } from '@solokit/tool-invoice/testing';
+import { makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { StoreProvider } from '../store/StoreProvider';
 import { InvoiceApp } from './InvoiceApp';
 
@@ -166,7 +166,7 @@ describe('InvoiceApp when storage misbehaves', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     renderApp(store);
     expect(await screen.findByText('Your saved details could not be opened')).toBeInTheDocument();
-    expect(screen.queryByText('Opening your invoices�')).not.toBeInTheDocument();
+    expect(screen.queryByText('Opening your invoices…')).not.toBeInTheDocument();
     expect(error).toHaveBeenCalled();
     failures.get = false;
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
@@ -189,5 +189,76 @@ describe('InvoiceApp when storage misbehaves', () => {
     expect(await screen.findByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
     expect(error).toHaveBeenCalled();
     expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Ravi Kumar');
+  });
+});
+
+describe('InvoiceApp: invoices', () => {
+  const fakeRender = async () => new Blob(['pdf'], { type: 'application/pdf' });
+
+  beforeEach(() => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:app'), revokeObjectURL: vi.fn() });
+  });
+
+  async function openApp(invoices: ReturnType<typeof makeInvoice>[] = []) {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    const storage = createInvoiceStorage(store);
+    for (const invoice of invoices) await storage.invoices.save(invoice);
+    render(
+      <StoreProvider factory={() => store}>
+        <InvoiceApp renderPdf={fakeRender} />
+      </StoreProvider>,
+    );
+    await screen.findByRole('navigation', { name: 'Invoice tool' });
+    return { store, storage };
+  }
+
+  it('shows the invoice list first, with the navigation buttons', async () => {
+    await openApp();
+    expect(screen.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'New invoice' })).not.toHaveAttribute('aria-current');
+    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+  });
+
+  it('opens the editor from the list and from the navigation, and goes back', async () => {
+    await openApp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Create your first invoice' }));
+    expect(await screen.findByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New invoice', current: 'page' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
+    expect(await screen.findByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
+  });
+
+  it('opens a draft from the list in the editor', async () => {
+    await openApp([makeInvoice({ id: 'd1', number: '2026-27/0005', status: 'draft' })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Open 2026-27/0005' }));
+    expect(await screen.findByRole('heading', { name: 'Edit draft' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0005');
+  });
+
+  it('opens an issued invoice in the viewer', async () => {
+    await openApp([makeInvoice({ id: 'i1', status: 'issued' })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Open 2026-27/0001' }));
+    expect(await screen.findByRole('heading', { name: '2026-27/0001' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows the viewer after an invoice is issued', async () => {
+    await openApp();
+    await userEvent.click(await screen.findByRole('button', { name: 'Create your first invoice' }));
+    await userEvent.type(await screen.findByLabelText('Client name'), 'Northwind Traders');
+    await userEvent.type(screen.getByLabelText('Address line 1'), '4 MG Road');
+    await userEvent.type(screen.getByLabelText('City'), 'Pune');
+    await userEvent.selectOptions(screen.getByLabelText('State'), '27');
+    const item = within(screen.getByRole('group', { name: 'Item 1' }));
+    await userEvent.type(item.getByLabelText('Description'), 'Consulting');
+    await userEvent.clear(item.getByLabelText('Quantity'));
+    await userEvent.type(item.getByLabelText('Quantity'), '24');
+    await userEvent.type(item.getByLabelText('Rate (₹)'), '3000');
+    await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
+    expect(await screen.findByRole('button', { name: 'Duplicate as new draft' })).toBeInTheDocument();
+    expect(screen.getByText('Issued')).toBeInTheDocument();
   });
 });

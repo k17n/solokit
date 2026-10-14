@@ -3,24 +3,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SellerProfile } from '@solokit/tool-invoice';
 import { Button, Notice } from '@solokit/ui';
+import { InvoiceEditor } from './InvoiceEditor';
+import { InvoiceList } from './InvoiceList';
+import { InvoiceViewer } from './InvoiceViewer';
 import { Onboarding } from './Onboarding';
 import { ProfileForm } from './ProfileForm';
 import { profileToForm } from './profileFormState';
 import { requestPersistentStorage } from './persist';
+import type { PdfRenderer } from './usePdfPreview';
 import { useInvoiceStorage } from './useInvoiceStorage';
 import styles from './InvoiceApp.module.css';
 
-type ViewName = 'list' | 'profile';
+type View = { name: 'list' } | { name: 'new' } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' };
 
-const TABS: { name: ViewName; label: string }[] = [
-  { name: 'list', label: 'Invoices' },
-  { name: 'profile', label: 'Profile' },
+const TABS: { label: string; target: View; current: View['name'][] }[] = [
+  { label: 'Invoices', target: { name: 'list' }, current: ['list', 'view'] },
+  { label: 'New invoice', target: { name: 'new' }, current: ['new', 'edit'] },
+  { label: 'Profile', target: { name: 'profile' }, current: ['profile'] },
 ];
 
-export function InvoiceApp() {
+export function InvoiceApp({ renderPdf }: { renderPdf?: PdfRenderer } = {}) {
   const { storage, ready, persistent } = useInvoiceStorage();
   const [profile, setProfile] = useState<SellerProfile | null | undefined>(undefined);
-  const [view, setView] = useState<ViewName>('list');
+  const [view, setView] = useState<View>({ name: 'list' });
   const [savedNotice, setSavedNotice] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -89,7 +94,7 @@ export function InvoiceApp() {
     );
   }
 
-  if (!ready || profile === undefined) return <p>Opening your invoices…</p>;
+  if (!ready || !storage || profile === undefined) return <p>Opening your invoices…</p>;
 
   const storageWarning = !persistent ? (
     <Notice tone="danger" title="Your browser is not saving data">
@@ -113,12 +118,12 @@ export function InvoiceApp() {
         <div className={styles.tabs}>
           {TABS.map((tab) => (
             <button
-              key={tab.name}
+              key={tab.label}
               type="button"
-              aria-current={view === tab.name ? 'page' : undefined}
+              aria-current={tab.current.includes(view.name) ? 'page' : undefined}
               className={styles.tab}
               onClick={() => {
-                setView(tab.name);
+                setView(tab.target);
                 setSavedNotice(false);
               }}
             >
@@ -128,9 +133,36 @@ export function InvoiceApp() {
         </div>
       </nav>
       <div className={styles.panel}>
-        {view === 'list' ? (
-          <p className={styles.empty}>Your invoices will appear here.</p>
-        ) : (
+        {view.name === 'list' ? (
+          <InvoiceList
+            storage={storage}
+            onNew={() => setView({ name: 'new' })}
+            onEdit={(id) => setView({ name: 'edit', id })}
+            onView={(id) => setView({ name: 'view', id })}
+            {...(renderPdf ? { renderPdf } : {})}
+          />
+        ) : null}
+        {view.name === 'new' || view.name === 'edit' ? (
+          <InvoiceEditor
+            key={view.name === 'edit' ? view.id : 'new'}
+            storage={storage}
+            profile={profile}
+            invoiceId={view.name === 'edit' ? view.id : undefined}
+            onBack={() => setView({ name: 'list' })}
+            onIssued={(id) => setView({ name: 'view', id })}
+            {...(renderPdf ? { renderPdf } : {})}
+          />
+        ) : null}
+        {view.name === 'view' ? (
+          <InvoiceViewer
+            storage={storage}
+            invoiceId={view.id}
+            onBack={() => setView({ name: 'list' })}
+            onEdit={(id) => setView({ name: 'edit', id })}
+            {...(renderPdf ? { renderPdf } : {})}
+          />
+        ) : null}
+        {view.name === 'profile' ? (
           <div style={{ display: 'grid', gap: '1rem' }}>
             {savedNotice ? <Notice tone="info">Saved</Notice> : null}
             <ProfileForm
@@ -145,7 +177,7 @@ export function InvoiceApp() {
               }}
             />
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

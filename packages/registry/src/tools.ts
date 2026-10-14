@@ -27,7 +27,7 @@ const TOOLS: readonly ToolDefinition[] = [
     description:
       'Create tax invoices, bills of supply and plain invoices for India. Works for GST-registered, composition and unregistered sellers, with TDS, advances and export invoices for consultants.',
     category: 'money',
-    status: 'coming-soon',
+    status: 'available',
     featured: true,
   },
   {
