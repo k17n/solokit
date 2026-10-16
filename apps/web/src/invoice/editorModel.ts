@@ -58,6 +58,11 @@ export interface EditorState {
   createdAt: string;
 }
 
+/** The financial year of an ISO date, or null when the date is not a real one (yet). */
+export function fiscalYearOf(isoDate: string): string | null {
+  return isRealIsoDate(isoDate) ? indianFiscalYear(isoDate) : null;
+}
+
 export function todayIso(now: Date): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
@@ -290,8 +295,16 @@ export function validateEditor(state: EditorState, profile: SellerProfile, now: 
     }
   };
   add(parseIssues);
+  if (state.isExport && state.client.country.trim().toLowerCase() === 'india') {
+    add([{ path: 'address.country', message: "Enter the client's country outside India" }], 'client.');
+  }
   add(validateClientForm(clientFormFor(state)), 'client.');
   add(validateInvoice(invoice));
+  const numberYear = /^(\d{4}-\d{2})\//.exec(invoice.number)?.[1];
+  const dateYear = fiscalYearOf(state.issueDate);
+  if (numberYear && dateYear && numberYear !== dateYear) {
+    add([{ path: 'number', message: `This number belongs to financial year ${numberYear} but the date is in ${dateYear}` }]);
+  }
   return issues;
 }
 

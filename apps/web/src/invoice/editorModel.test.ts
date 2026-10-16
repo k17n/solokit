@@ -257,6 +257,29 @@ describe('invoiceToEditor', () => {
   });
 });
 
+describe('validateEditor: export country and number year', () => {
+  it('rejects an export whose client country is India', () => {
+    const state = complete({ isExport: true, client: { ...clientToForm(makeClient()), country: 'India', stateCode: '' } });
+    const issue = validateEditor(state, regular, NOW).find((found) => found.path === 'client.address.country');
+    expect(issue?.message).toBe("Enter the client's country outside India");
+  });
+
+  it('accepts an export to another country', () => {
+    const state = complete({ isExport: true, currency: 'USD', client: { ...clientToForm(makeClient()), country: 'United States', stateCode: '' } });
+    expect(validateEditor(state, regular, NOW).map((found) => found.path)).not.toContain('client.address.country');
+  });
+
+  it('flags a number from another financial year than the issue date', () => {
+    const issue = validateEditor(complete({ number: '2025-26/0007' }), regular, NOW).find((found) => found.path === 'number');
+    expect(issue?.message).toBe('This number belongs to financial year 2025-26 but the date is in 2026-27');
+  });
+
+  it('accepts a number that matches the date, and numbers without a year', () => {
+    expect(validateEditor(complete({ number: '2026-27/0009' }), regular, NOW).map((found) => found.path)).not.toContain('number');
+    expect(validateEditor(complete({ number: 'MINE-1' }), regular, NOW).map((found) => found.path)).not.toContain('number');
+  });
+});
+
 describe('validateEditor', () => {
   it('accepts a complete invoice', () => {
     expect(validateEditor(complete(), regular, NOW)).toEqual([]);
