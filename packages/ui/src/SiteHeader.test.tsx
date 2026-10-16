@@ -19,4 +19,11 @@ describe('SiteHeader', () => {
     expect(within(nav).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy/');
     expect(screen.getByRole('link', { name: 'Create an invoice' })).toHaveAttribute('href', '/tools/invoice/');
   });
+
+  it('shows an extra control before the call to action', () => {
+    render(<SiteHeader {...props} extra={<button type="button">Business</button>} />);
+    const button = screen.getByRole('button', { name: 'Business' });
+    const cta = screen.getByRole('link', { name: 'Create an invoice' });
+    expect(button.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });

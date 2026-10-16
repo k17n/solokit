@@ -1,14 +1,15 @@
 import { indianFiscalYear } from '@solokit/core';
-import type { Client, InvoiceKind, InvoiceRecord, SellerProfile } from './model';
+import type { BusinessProfile, Issue } from '@solokit/profile';
+import type { Client, InvoiceKind, InvoiceRecord } from './model';
 import { InvoiceLockedError } from './repositories';
 import { resolveTheme, type InvoiceTheme } from './themes';
-import { validateInvoice, type Issue } from './validation';
+import { validateInvoice } from './validation';
 
 export interface DraftInput {
   id: string;
   number: string;
   issueDate: string;
-  seller: SellerProfile;
+  seller: BusinessProfile;
   client: Client;
   /** Defaults to a tax invoice. */
   kind?: InvoiceKind;

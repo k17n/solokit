@@ -27,5 +27,6 @@ export function parseSnapshot(input: unknown): Snapshot {
       collections[name].push(record as unknown as StoredRecord);
     }
   }
-  return { version: 1, exportedAt: input.exportedAt, collections };
+  const workspaceName = isObject(input.workspace) && typeof input.workspace.name === 'string' ? input.workspace.name : undefined;
+  return { version: 1, exportedAt: input.exportedAt, ...(workspaceName !== undefined ? { workspace: { name: workspaceName } } : {}), collections };
 }

@@ -1,19 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DEFAULT_THEME_ID,
-  FONT_OPTIONS,
-  PRESET_THEMES,
-  createCustomTheme,
-  isPresetThemeId,
-  validateTheme,
-  type FontId,
-  type InvoiceStorage,
-  type InvoiceTheme,
-  type SellerProfile,
-} from '@solokit/tool-invoice';
+import { DEFAULT_THEME_ID, FONT_OPTIONS, PRESET_THEMES, createCustomTheme, isPresetThemeId, validateTheme, type FontId, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import { Badge, Button, Notice, SelectField, TextField } from '@solokit/ui';
+import { BrandThemeCard } from '../business/BrandThemeCard';
 import { todayIso } from './editorModel';
 import { newId } from './ids';
 import { PdfPreview } from './PdfPreview';
@@ -23,7 +14,9 @@ import styles from './ThemesScreen.module.css';
 
 export interface ThemesScreenProps {
   storage: InvoiceStorage;
-  profile: SellerProfile;
+  profile: BusinessProfile;
+  /** Called when the brand theme changed the profile (it links to the theme), so the app keeps its copy current. */
+  onProfileChanged?: (profile: BusinessProfile) => void;
   renderPdf?: PdfRenderer;
   now?: () => Date;
 }
@@ -50,7 +43,7 @@ function toForm(theme: InvoiceTheme, name: string): Form {
   return { name, accent: theme.accent, text: theme.text, background: theme.background, fontId: theme.fontId };
 }
 
-export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer, now = realNow }: ThemesScreenProps) {
+export function ThemesScreen({ storage, profile, onProfileChanged, renderPdf = defaultPdfRenderer, now = realNow }: ThemesScreenProps) {
   const [custom, setCustom] = useState<InvoiceTheme[] | null>(null);
   /** Issued or cancelled invoices from before invoices kept their own theme copy, by the theme they use. */
   const [exposed, setExposed] = useState<Record<string, number>>({});
@@ -261,6 +254,13 @@ export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer,
           Pick a starting point, change its colours and font, and watch the sample invoice update. The six presets cannot be changed, but you can save your own version. New invoices use your default theme, and you can choose another on any invoice.
         </p>
       </div>
+
+      <BrandThemeCard
+        storage={storage}
+        profile={profile}
+        onThemeChanged={() => setAttempt((count) => count + 1)}
+        {...(onProfileChanged ? { onChanged: onProfileChanged } : {})}
+      />
 
       <div className={styles.layout}>
         <div className={styles.controls}>

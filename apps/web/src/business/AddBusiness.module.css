@@ -1,0 +1,55 @@
+.section {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 40rem;
+}
+
+.heading {
+  font-size: 1.8rem;
+}
+
+.heading:focus {
+  outline: none;
+}
+
+.heading:focus-visible {
+  outline: 3px solid var(--edge);
+  outline-offset: 3px;
+}
+
+.lede {
+  color: var(--text-muted);
+}
+
+.card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.sub {
+  font-size: 1.2rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.fileRow {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.fileRow label {
+  font-weight: 600;
+}
+
+.chosen {
+  display: grid;
+  gap: 0.9rem;
+}

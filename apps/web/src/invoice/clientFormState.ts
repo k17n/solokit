@@ -1,5 +1,6 @@
 import { validateGstin } from '@solokit/tax-engines';
-import { normaliseClient, validateClient, type Client, type Issue } from '@solokit/tool-invoice';
+import { normaliseClient, validateClient, type Client } from '@solokit/tool-invoice';
+import { type Issue } from '@solokit/profile';
 
 export interface ClientFormState {
   name: string;

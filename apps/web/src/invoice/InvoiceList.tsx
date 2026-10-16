@@ -1,19 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ConversionError,
-  buildInvoiceDocument,
-  KIND_LABEL,
-  isBackupDue,
-  resolveTheme,
-  seriesOf,
-  type InvoiceKind,
-  type InvoiceRecord,
-  type InvoiceStorage,
-  type InvoiceTheme,
-  type SellerProfile,
-} from '@solokit/tool-invoice';
+import { ConversionError, buildInvoiceDocument, KIND_LABEL, isBackupDue, resolveTheme, seriesOf, type InvoiceKind, type InvoiceRecord, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import { Badge, Button, Notice, formatIsoDate } from '@solokit/ui';
 import { KindBadge, KindCards, convertLabel, kindClasses } from './kinds';
 import { downloadBlob } from './downloads';
@@ -80,7 +69,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
   const [invoices, setInvoices] = useState<InvoiceRecord[] | null>(null);
   const [customThemes, setCustomThemes] = useState<InvoiceTheme[]>([]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
-  const [profile, setProfile] = useState<SellerProfile | null>(null);
+  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [pending, setPending] = useState<Pending>(null);

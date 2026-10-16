@@ -3,7 +3,7 @@
 import type { Client } from '@solokit/tool-invoice';
 import { CheckboxField, SelectField, TextField } from '@solokit/ui';
 import { applyClientGstin, type ClientFormState } from './clientFormState';
-import { selectableStates } from './profileFormState';
+import { selectableStates } from '../business/profileFormState';
 
 export interface ClientSectionProps {
   value: ClientFormState;

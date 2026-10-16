@@ -1,6 +1,7 @@
 import { indianFiscalYear } from '@solokit/core';
 import { seriesOf } from './series';
-import type { InvoiceRecord, SellerProfile } from './model';
+import type { BusinessProfile } from '@solokit/profile';
+import type { InvoiceRecord } from './model';
 
 export interface ConvertInput {
   id: string;
@@ -8,7 +9,7 @@ export interface ConvertInput {
   number: string;
   issueDate: string;
   /** The seller as saved now. Falls back to the seller on the quote. */
-  seller?: SellerProfile;
+  seller?: BusinessProfile;
   now?: Date;
 }
 

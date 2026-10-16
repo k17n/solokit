@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, type KeyboardEvent } from 'react';
-import { KIND_LABEL, type InvoiceKind, type SellerProfile } from '@solokit/tool-invoice';
+import { KIND_LABEL, type InvoiceKind } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import styles from './kinds.module.css';
 
 /** The order kinds are offered in: bill, offer, ask for payment first. */
@@ -20,7 +21,7 @@ export const KIND_USE: Record<InvoiceKind, string> = {
  * What a document is called for this seller. An ordinary invoice is a Tax invoice for a regular GST seller,
  * a Bill of supply for a composition seller (or an exempt supply), and plain Invoice when not registered.
  */
-export function documentName(kind: InvoiceKind, gstStatus?: SellerProfile['gstStatus'], exempt = false): string {
+export function documentName(kind: InvoiceKind, gstStatus?: BusinessProfile['gstStatus'], exempt = false): string {
   if (kind === 'quote') return KIND_LABEL.quote;
   if (kind === 'proforma') return KIND_LABEL.proforma;
   if (gstStatus === undefined || gstStatus === 'unregistered') return 'Invoice';
@@ -29,7 +30,7 @@ export function documentName(kind: InvoiceKind, gstStatus?: SellerProfile['gstSt
 }
 
 /** The button that turns a quotation or proforma into an invoice: "Convert to invoice", or "Convert to tax invoice" for a proforma from a regular GST seller. */
-export function convertLabel(record: { kind?: InvoiceKind | undefined; seller: Pick<SellerProfile, 'gstStatus'>; exemptSupply?: boolean }): string {
+export function convertLabel(record: { kind?: InvoiceKind | undefined; seller: Pick<BusinessProfile, 'gstStatus'>; exemptSupply?: boolean }): string {
   if (record.kind !== 'proforma') return 'Convert to invoice';
   return `Convert to ${documentName('invoice', record.seller.gstStatus, record.exemptSupply).toLowerCase()}`;
 }
@@ -57,7 +58,7 @@ export const kindClasses = {
 } as const;
 
 export interface KindCardsProps {
-  gstStatus?: SellerProfile['gstStatus'] | undefined;
+  gstStatus?: BusinessProfile['gstStatus'] | undefined;
   /** The kind already chosen, which is marked and focused first. */
   current?: InvoiceKind | undefined;
   onPick: (kind: InvoiceKind) => void;

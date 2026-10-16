@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { formatMoney } from '@solokit/core';
 import { IN_RULES_AS_OF, REGISTRATION_THRESHOLDS, type SellerGstStatus } from '@solokit/tax-engines';
-import type { SellerProfile } from '@solokit/tool-invoice';
+import type { BrandColours, BusinessProfile, PaletteDeps } from '@solokit/profile';
 import {
+  Badge,
   Button,
   CheckboxField,
   Notice,
@@ -14,6 +15,7 @@ import {
   TextField,
   formatIsoDate,
 } from '@solokit/ui';
+import { BrandColoursField, NO_BRAND, type BrandFormValue } from './BrandColoursField';
 import { LogoField } from './LogoField';
 import {
   applyGstin,
@@ -23,6 +25,7 @@ import {
   validateProfileForm,
   type ProfileFormState,
 } from './profileFormState';
+import { TOOL_LABELS, toolsUsing, type BusinessSection } from './usage';
 import styles from './ProfileForm.module.css';
 
 export const GST_STATUS_OPTIONS: { value: SellerGstStatus; label: string; description: string }[] = [
@@ -44,11 +47,33 @@ const rupees = (paise: number) => formatMoney(paise).replace(/\.00$/, '');
 export interface ProfileFormProps {
   initial: ProfileFormState;
   submitLabel: string;
-  onSave: (profile: SellerProfile) => Promise<void> | void;
+  onSave: (profile: BusinessProfile) => Promise<void> | void;
   processLogo?: (file: File) => Promise<string>;
+  /** How the logo's colours are read. Tests pass fakes; the default is the browser's canvas. */
+  brandDeps?: PaletteDeps | null;
+  /** Shown under the brand colours, for example the button that makes a theme from them. Gets the colours as they are in the form now. */
+  brandThemeSlot?: (draftBrand: BrandColours | undefined) => ReactNode;
+  /** Lets a page start a section with a heading id so it can link to it. */
+  idPrefix?: string;
 }
 
-export function ProfileForm({ initial, submitLabel, onSave, processLogo }: ProfileFormProps) {
+/** Small tags saying which tools read a section, so people know why a field is asked. */
+function UsedBy({ section }: { section: BusinessSection }) {
+  const tools = toolsUsing(section);
+  if (tools.length === 0) return null;
+  return (
+    <p className={styles.usedBy}>
+      <span>Used by</span>
+      {tools.map((tool) => (
+        <Badge key={tool}>{TOOL_LABELS[tool]}</Badge>
+      ))}
+    </p>
+  );
+}
+
+export function ProfileForm({ initial, submitLabel, onSave, processLogo, brandDeps, brandThemeSlot, idPrefix }: ProfileFormProps) {
+  const fallbackId = useId();
+  const prefix = idPrefix ?? fallbackId;
   const [form, setForm] = useState<ProfileFormState>(initial);
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -62,6 +87,10 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
     onChange: (event: { target: { value: string } }) => set(key, event.target.value as never),
   });
   const taxRegistered = form.gstStatus !== 'unregistered';
+  const brand: BrandFormValue = { primary: form.brandPrimary, secondary: form.brandSecondary, text: form.brandText, background: form.brandBackground, source: form.brandSource };
+  const setBrand = (next: BrandFormValue) =>
+    setForm((current) => ({ ...current, brandPrimary: next.primary, brandSecondary: next.secondary, brandText: next.text, brandBackground: next.background, brandSource: next.source }));
+  const draftBrand = formToProfile(form).brand;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -85,16 +114,24 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
 
   return (
     <form ref={formRef} className={styles.form} onSubmit={handleSubmit} noValidate>
-      <fieldset className={styles.section}>
-        <legend className={styles.legend}>Your business</legend>
+      <fieldset className={styles.section} aria-labelledby={`${prefix}-details`}>
+        <legend id={`${prefix}-details`} className={styles.legend}>
+          Business details
+        </legend>
+        <UsedBy section="details" />
         <RadioCards
           legend="How are you registered for GST?"
-          name="gstStatus"
-          value={form.gstStatus}
-          onChange={(value) => set('gstStatus', value as SellerGstStatus)}
+          name={`${prefix}-gstStatus`}
+          value={form.gstUnconfirmed ? undefined : form.gstStatus}
+          onChange={(value) =>
+            setForm((current) => {
+              const { gstUnconfirmed: _placeholder, ...rest } = current;
+              return { ...rest, gstStatus: value as SellerGstStatus };
+            })
+          }
           options={GST_STATUS_OPTIONS}
         />
-        {form.gstStatus === 'unregistered' ? (
+        {form.gstStatus === 'unregistered' && !form.gstUnconfirmed ? (
           <Notice title="Check your turnover limit">
             You can stay unregistered while your yearly turnover is below {rupees(REGISTRATION_THRESHOLDS.services)} for services or{' '}
             {rupees(REGISTRATION_THRESHOLDS.goods)} for goods (lower in some states). Rules last checked {formatIsoDate(IN_RULES_AS_OF)}.
@@ -112,7 +149,7 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
             onChange={(event) => setForm((current) => applyGstin(current, event.target.value))}
             error={errors['gstin']}
           />
-        ) : (
+        ) : form.gstUnconfirmed ? null : (
           <CheckboxField
             label="Print “Not registered under GST” on invoices"
             hint="Some clients like to see it. You can switch it off."
@@ -124,11 +161,8 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
           <TextField label="PAN" hint="For example ABCDE1234F" autoComplete="off" {...text('pan')} error={errors['pan']} />
           <TextField label="UDYAM number" hint="Optional, for example UDYAM-MH-19-0012345" autoComplete="off" {...text('udyam')} error={errors['udyam']} />
         </div>
-        <LogoField value={form.logoDataUrl} onChange={(dataUrl) => set('logoDataUrl', dataUrl)} {...(processLogo ? { process: processLogo } : {})} />
-      </fieldset>
 
-      <fieldset className={styles.section}>
-        <legend className={styles.legend}>Address</legend>
+        <h4 className={styles.sub}>Address</h4>
         <TextField label="Address line 1" required autoComplete="address-line1" {...text('line1')} error={errors['address.line1']} />
         <TextField label="Address line 2" autoComplete="address-line2" {...text('line2')} />
         <div className={styles.pair}>
@@ -143,10 +177,8 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
           {...text('stateCode')}
           error={errors['address.stateCode']}
         />
-      </fieldset>
 
-      <fieldset className={styles.section}>
-        <legend className={styles.legend}>Contact</legend>
+        <h4 className={styles.sub}>Contact</h4>
         <div className={styles.pair}>
           <TextField label="Email" type="email" autoComplete="email" {...text('email')} error={errors['email']} />
           <TextField label="Phone" type="tel" autoComplete="tel" {...text('phone')} />
@@ -154,8 +186,21 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
         <TextField label="Website" type="url" autoComplete="url" {...text('website')} />
       </fieldset>
 
-      <fieldset className={styles.section}>
-        <legend className={styles.legend}>Payment details</legend>
+      <fieldset className={styles.section} aria-labelledby={`${prefix}-logo`}>
+        <legend id={`${prefix}-logo`} className={styles.legend}>
+          Logo and brand colours
+        </legend>
+        <UsedBy section="logo" />
+        <LogoField value={form.logoDataUrl} onChange={(dataUrl) => set('logoDataUrl', dataUrl)} {...(processLogo ? { process: processLogo } : {})} />
+        <BrandColoursField logoDataUrl={form.logoDataUrl} value={brand} onChange={setBrand} errors={errors} {...(brandDeps !== undefined ? { deps: brandDeps } : {})} />
+        {brandThemeSlot ? brandThemeSlot(draftBrand) : null}
+      </fieldset>
+
+      <fieldset className={styles.section} aria-labelledby={`${prefix}-payments`}>
+        <legend id={`${prefix}-payments`} className={styles.legend}>
+          Payment details
+        </legend>
+        <UsedBy section="payments" />
         <p>Printed on your invoices so clients know where to pay. All optional.</p>
         <div className={styles.pair}>
           <TextField label="Account holder name" autoComplete="off" {...text('bankAccountName')} error={errors['bank.accountName']} />
@@ -167,8 +212,11 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
         <TextField label="UPI ID" hint="Adds a QR code to your rupee invoices, for example name@bank" autoComplete="off" {...text('upiId')} error={errors['upiId']} />
       </fieldset>
 
-      <fieldset className={styles.section}>
-        <legend className={styles.legend}>Invoice defaults</legend>
+      <fieldset className={styles.section} aria-labelledby={`${prefix}-defaults`}>
+        <legend id={`${prefix}-defaults`} className={styles.legend}>
+          Invoice defaults
+        </legend>
+        <UsedBy section="defaults" />
         <TextField
           label="Invoice number prefix"
           hint="Optional, up to 4 characters, for example INV/. Numbers look like INV/2026-27/0001."
@@ -176,7 +224,7 @@ export function ProfileForm({ initial, submitLabel, onSave, processLogo }: Profi
           {...text('invoicePrefix')}
           error={errors['invoicePrefix']}
         />
-        {form.gstStatus === 'regular' ? (
+        {form.gstStatus === 'regular' && !form.gstUnconfirmed ? (
           <TextField label="LUT number" hint="Only needed if you export services without paying GST." autoComplete="off" {...text('lutNumber')} />
         ) : null}
         <TextAreaField label="Default notes" hint="Printed on every new invoice, for example a thank-you." {...text('defaultNotes')} />

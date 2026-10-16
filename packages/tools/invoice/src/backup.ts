@@ -1,5 +1,5 @@
 import { checkContractRecords, type Contract } from '@solokit/tool-contract';
-import { StorageError, parseSnapshot, type DataStore, type Snapshot } from '@solokit/storage';
+import { StorageError, parseSnapshot, type DataStore, type Snapshot, type Workspace, type WorkspaceManager } from '@solokit/storage';
 import { createInvoiceStorage } from './repositories';
 import { numberSeriesOf } from './series';
 import type { InvoiceKind, InvoiceRecord } from './model';
@@ -12,6 +12,12 @@ export interface BackupFile {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Optional extras written at the top of a backup file. Older files and older readers simply do without them. */
+export interface BackupHeader {
+  /** The Business (workspace) the backup was taken from, so a restore into a new Business can name it. */
+  workspaceName?: string;
+}
+
 /**
  * Exports everything on this device as one JSON file. Nothing on the device changes: the file carries the
  * backup time (so a restore on another device shows the right "last backed up" date), but this device only
@@ -20,8 +26,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * The file is plain, unencrypted JSON. It holds the seller's bank details, UPI id, logo and every client, so
  * the screen that offers it should tell people to keep it private. The filename date is UTC.
  */
-export async function createBackup(store: DataStore, now: Date = new Date()): Promise<BackupFile> {
+export async function createBackup(store: DataStore, now: Date = new Date(), header: BackupHeader = {}): Promise<BackupFile> {
   const [snapshot, settings] = await Promise.all([store.exportAll(), createInvoiceStorage(store).settings.get()]);
+  if (header.workspaceName) snapshot.workspace = { name: header.workspaceName };
   const stamped = { ...settings, lastBackupAt: now.toISOString() };
   snapshot.collections.settings = [...snapshot.collections.settings.filter((record) => record.id !== stamped.id), stamped];
   snapshot.exportedAt = now.toISOString();
@@ -46,6 +53,8 @@ export interface BackupSummary {
   themes: number;
   hasProfile: boolean;
   profileName?: string;
+  /** The Business the file was taken from, when the file says so. */
+  workspaceName?: string;
 }
 
 function parseBackupText(text: string): unknown {
@@ -158,6 +167,7 @@ export function inspectBackup(text: string): BackupSummary {
     themes: snapshot.collections.themes.length,
     hasProfile: profile !== undefined,
     ...(typeof profile?.name === 'string' ? { profileName: profile.name } : {}),
+    ...(snapshot.workspace ? { workspaceName: snapshot.workspace.name } : {}),
   };
 }
 
@@ -220,7 +230,10 @@ export async function restoreBackup(store: DataStore, text: string): Promise<voi
   const parsed = parseBackupText(text);
   checkRecords(parseSnapshot(parsed));
   await store.importAll(parsed);
+  await adoptBackupTime(store, parsed);
+}
 
+async function adoptBackupTime(store: DataStore, parsed: unknown): Promise<void> {
   const exportedAt = (parsed as { exportedAt?: unknown }).exportedAt;
   if (typeof exportedAt === 'string') {
     const settings = createInvoiceStorage(store);
@@ -228,6 +241,32 @@ export async function restoreBackup(store: DataStore, text: string): Promise<voi
       await settings.settings.update({ lastBackupAt: exportedAt });
     }
   }
+}
+
+export const RESTORED_BUSINESS_NAME = 'Restored business';
+
+/**
+ * Restores a backup file into a brand new Business and leaves every existing Business untouched. The file is checked
+ * first, so an invalid file creates nothing; if the import itself fails the new Business is removed again. The new
+ * Business is named `options.name`, else the Business named in the file, else the file's business profile, else
+ * "Restored business". It does not become the current Business: the caller decides whether to switch.
+ */
+export async function restoreIntoNewWorkspace(workspaces: WorkspaceManager, text: string, options: { name?: string } = {}): Promise<Workspace> {
+  const parsed = parseBackupText(text);
+  const snapshot = parseSnapshot(parsed);
+  checkRecords(snapshot);
+  const profileName = (snapshot.collections.profile[0] as unknown as { name?: unknown } | undefined)?.name;
+  const wanted = [options.name, snapshot.workspace?.name, typeof profileName === 'string' ? profileName : undefined].find((name) => name !== undefined && name.trim() !== '');
+  const created = await workspaces.create((wanted ?? RESTORED_BUSINESS_NAME).trim().slice(0, 80));
+  try {
+    const store = await workspaces.openStore(created.id);
+    await store.importAll(parsed);
+    await adoptBackupTime(store, parsed);
+  } catch (error) {
+    await workspaces.remove(created.id).catch(() => undefined);
+    throw error;
+  }
+  return created;
 }
 
 /** True when there is data worth protecting and no recent, believable backup. */

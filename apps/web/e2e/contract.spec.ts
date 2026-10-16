@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import { FIRST, SECOND, docxXml, downloadFrom, fillJurisdiction, fillParty, noOverflow, pdfText, squash, startAgreement } from './contract-helpers';
+import { FIRST, SECOND, docxXml, downloadFrom, fillJurisdiction, fillParty, noOverflow, pdfText, squash, startAgreement, gotoContract } from './contract-helpers';
 
 const shots = 'test-results';
 
@@ -12,7 +12,7 @@ async function fillNda(page: Page) {
 }
 
 async function createMutualNda(page: Page) {
-  await page.goto('/tools/contract/');
+  await gotoContract(page);
   await expect(page.getByRole('heading', { name: 'Start your first agreement' })).toBeVisible();
   await startAgreement(page, 'Mutual NDA');
   await expect(page.getByRole('heading', { level: 2, name: 'New mutual nda' })).toBeVisible();
@@ -79,7 +79,7 @@ test.describe('contracts in a real browser', () => {
   });
 
   test('a services agreement with milestones prints the schedule and the milestone amounts', async ({ page }) => {
-    await page.goto('/tools/contract/');
+    await gotoContract(page);
     await startAgreement(page, 'Freelance services');
     await fillServices(page);
     const text = squash(await pdfText(await downloadFrom(page, page.getByRole('button', { name: 'Download PDF' }))));
@@ -113,7 +113,7 @@ test.describe('contracts in a real browser', () => {
   });
 
   test('shows what is missing and focuses the first problem', async ({ page }) => {
-    await page.goto('/tools/contract/');
+    await gotoContract(page);
     await startAgreement(page, 'One-way NDA');
     await page.getByRole('button', { name: 'Finalise agreement' }).click();
     await expect(page.getByText(/Fix \d+ things before you finalise or download/)).toBeVisible();
@@ -158,7 +158,7 @@ test.describe('contracts in a real browser', () => {
     await page.getByLabel('Backup file').setInputFiles(path);
     const summary = page.getByRole('region', { name: 'Restore this backup?' });
     await expect(summary).toContainText('1 agreement');
-    await summary.getByRole('button', { name: 'Yes, replace my data' }).click();
+    await summary.getByRole('button', { name: /^Yes, replace/ }).click();
     await page.getByRole('button', { name: 'Agreements' }).click();
     await expect(page.getByRole('listitem').filter({ hasText: 'Mutual NDA with Northwind' })).toBeVisible();
   });
@@ -166,14 +166,14 @@ test.describe('contracts in a real browser', () => {
   test('an agreement can be created and downloaded offline', async ({ page, context }) => {
     await page.goto('/');
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
-    await page.goto('/tools/contract/');
+    await gotoContract(page);
     for (let i = 0; i < 5; i++) {
       if (await page.evaluate(() => navigator.serviceWorker.controller !== null)) break;
       await page.reload();
     }
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.goto('/tools/contract/');
+    await gotoContract(page);
     await startAgreement(page, 'Mutual NDA');
     await fillNda(page);
     const text = squash(await pdfText(await downloadFrom(page, page.getByRole('button', { name: 'Download PDF' }))));
@@ -212,7 +212,7 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`screenshots ${scheme} ${label}`, async ({ browser }) => {
       const context = await browser.newContext({ colorScheme: scheme, viewport });
       const page = await context.newPage();
-      await page.goto('/tools/contract/');
+      await gotoContract(page);
       await expect(page.getByRole('heading', { name: 'Start your first agreement' })).toBeVisible();
       await page.screenshot({ path: `${shots}/contract-empty-${scheme}-${label}.png` });
       await startAgreement(page, 'Freelance services');

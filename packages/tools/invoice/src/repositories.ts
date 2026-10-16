@@ -1,6 +1,7 @@
 import { formatInvoiceNumber, indianFiscalYear, nextSequence } from '@solokit/core';
 import type { DataStore } from '@solokit/storage';
-import { SELLER_ID, SETTINGS_ID, type Client, type InvoiceKind, type InvoiceRecord, type InvoiceSettings, type SellerProfile } from './model';
+import { createProfileRepository, type BusinessProfile } from '@solokit/profile';
+import { SETTINGS_ID, type Client, type InvoiceKind, type InvoiceRecord, type InvoiceSettings } from './model';
 import { numberSeriesOf, seriesOf, seriesPrefix } from './series';
 import { convertToInvoice } from './convert';
 import { DEFAULT_THEME_ID, type InvoiceTheme } from './themes';
@@ -39,8 +40,8 @@ export interface InvoiceStorageOptions {
 
 export interface InvoiceStorage {
   profile: {
-    get(): Promise<SellerProfile | undefined>;
-    save(profile: SellerProfile): Promise<void>;
+    get(): Promise<BusinessProfile | undefined>;
+    save(profile: BusinessProfile): Promise<void>;
   };
   clients: {
     list(): Promise<Client[]>;
@@ -77,6 +78,7 @@ const DEFAULT_SETTINGS: InvoiceSettings = { id: SETTINGS_ID, defaultThemeId: DEF
 
 export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOptions = {}): InvoiceStorage {
   const now = options.now ?? (() => new Date());
+  const profileRepo = createProfileRepository(store);
 
   async function listInvoices(): Promise<InvoiceRecord[]> {
     const all = await store.list<InvoiceRecord>('invoices');
@@ -106,7 +108,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
   }
 
   async function nextNumber(issueDate: string, kind: InvoiceKind = 'invoice'): Promise<string> {
-    const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
+    const [existing, profile] = await Promise.all([listInvoices(), profileRepo.get()]);
     const fiscalYear = indianFiscalYear(issueDate);
     const sequence = nextSequence(
       existing.filter((invoice) => numberSeriesOf(invoice) === kind).map((invoice) => invoice.number),
@@ -116,10 +118,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
   }
 
   return {
-    profile: {
-      get: () => store.get<SellerProfile>('profile', SELLER_ID),
-      save: (profile) => store.put('profile', { ...profile, id: SELLER_ID }),
-    },
+    profile: profileRepo,
 
     clients: {
       list: async () => {
@@ -169,7 +168,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
           await saveInvoice({ ...source, convertedToId: earlier.id });
           return earlier;
         }
-        const [number, profile] = await Promise.all([nextNumber(input.issueDate, 'invoice'), store.get<SellerProfile>('profile', SELLER_ID)]);
+        const [number, profile] = await Promise.all([nextNumber(input.issueDate, 'invoice'), profileRepo.get()]);
         const draft = convertToInvoice(source, { id: input.id, number, issueDate: input.issueDate, now: now(), ...(profile ? { seller: profile } : {}) });
         // Check again just before writing: the document may have been converted while the number was worked out.
         const latest = await store.get<InvoiceRecord>('invoices', id);

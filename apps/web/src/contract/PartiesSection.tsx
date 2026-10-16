@@ -158,7 +158,7 @@ export function PartiesSection({ contract, errors, choices, hasProfile, onChange
       ) : null}
       {!hasProfile ? (
         <Notice tone="info" title="Save your details once">
-          SoloKit can fill in your own details from your business profile. Set it up in the <a href="/tools/invoice/">invoice tool</a> and it appears here, in your invoices and in every agreement. Until then, type the details below.
+          SoloKit can fill in your own details from your business profile. Add them once under <a href="/business/">Your business</a> and they appear here, in your invoices and in every agreement. Until then, type the details below.
         </Notice>
       ) : null}
       {contract.parties.map((party, index) => (

@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import { BRAND, SiteFooter, SiteHeader } from '@solokit/ui';
 import { ServiceWorkerRegister } from '../src/ServiceWorkerRegister';
 import { HEADER_PROPS, getFooterProps } from '../src/site';
+import { AppProviders } from '../src/workspace/AppProviders';
+import { BusinessSwitcher } from '../src/workspace/BusinessSwitcher';
 
 const display = Bricolage_Grotesque({ subsets: ['latin', 'latin-ext'], variable: '--font-display' });
 const sans = Geist({ subsets: ['latin', 'latin-ext'], variable: '--font-sans' });
@@ -33,9 +35,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <SiteHeader {...HEADER_PROPS} />
-        {children}
-        <SiteFooter {...getFooterProps()} />
+        <AppProviders>
+          <SiteHeader {...HEADER_PROPS} extra={<BusinessSwitcher />} />
+          {children}
+          <SiteFooter {...getFooterProps()} />
+        </AppProviders>
         <ServiceWorkerRegister />
       </body>
     </html>

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@solokit/core": "workspace:*",
+    "@solokit/profile": "workspace:*",
     "@solokit/registry": "workspace:*",
     "@solokit/storage": "workspace:*",
     "@solokit/tax-engines": "workspace:*",

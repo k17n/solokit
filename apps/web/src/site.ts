@@ -5,9 +5,11 @@ import type { SiteFooterProps, SiteHeaderProps } from '@solokit/ui';
 export const HEADER_PROPS: SiteHeaderProps = {
   links: [
     { label: 'Tools', href: '/#tools' },
+    { label: 'Your business', href: '/business/' },
     { label: 'Privacy', href: '/privacy/' },
   ],
-  cta: { label: 'Create an invoice', href: toolHref('invoice') },
+  // Several tools share the site, so the call to action does not name one.
+  cta: { label: 'Open a tool', href: '/#tools' },
 };
 
 export function getFooterProps(): SiteFooterProps {
@@ -16,6 +18,7 @@ export function getFooterProps(): SiteFooterProps {
     countries: getCountries().map((country) => ({ code: country.code, name: country.name, status: country.status })),
     projectLinks: [
       { label: 'Home', href: '/' },
+      { label: 'Your business', href: '/business/' },
       { label: 'Privacy', href: '/privacy/' },
     ],
     rulesAsOf: IN_RULES_AS_OF,

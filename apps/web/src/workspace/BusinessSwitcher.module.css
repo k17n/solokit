@@ -1,0 +1,171 @@
+.wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 14rem;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.8rem;
+  font: 600 0.95rem/1.1 var(--ff-sans);
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+}
+
+.trigger:hover {
+  border-color: var(--text-muted);
+}
+
+.trigger[aria-expanded='true'] {
+  border-color: var(--edge);
+  box-shadow: 0 2px 0 var(--edge);
+}
+
+.caption {
+  flex: none;
+  font: 500 0.7rem/1 var(--ff-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: none;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 60;
+  display: grid;
+  gap: 0.5rem;
+  width: max-content;
+  min-width: 16rem;
+  max-width: min(24rem, calc(100vw - 2rem));
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-card);
+}
+
+.list {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font: 600 0.98rem/1.2 var(--ff-sans);
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--surface-2);
+}
+
+.item[aria-current='true'] {
+  border-color: var(--edge);
+  background: var(--surface-2);
+}
+
+.itemName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.here {
+  flex: none;
+  font: 500 0.7rem/1 var(--ff-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.links {
+  display: grid;
+  gap: 0.1rem;
+  padding-top: 0.4rem;
+  border-top: 1.5px solid var(--border);
+}
+
+.links a {
+  padding: 0.55rem 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--radius-s);
+}
+
+.links a:hover {
+  background: var(--surface-2);
+  text-decoration: underline;
+}
+
+.problem {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 40rem) {
+  .wrap {
+    position: static;
+  }
+
+  .wrap {
+    display: block;
+  }
+
+  .trigger {
+    max-width: 100%;
+    padding-inline: 0.6rem;
+  }
+
+  /* the caption is still read out; it is only dropped from view to save width */
+  .caption {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .panel {
+    left: 1rem;
+    right: 1rem;
+    top: calc(100% - 0.25rem);
+    width: auto;
+    max-width: none;
+  }
+}

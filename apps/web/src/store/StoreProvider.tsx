@@ -23,6 +23,10 @@ export interface StoreProviderProps {
   factory?: () => DataStore;
   /** What the Reload button does. Default: reload the page. */
   reload?: () => void;
+  /** Read once, when the provider mounts. True: nothing is opened and `ready` stays false (the Business is still being chosen). */
+  pending?: boolean;
+  /** Read once, when the provider mounts. False when the store keeps its data in memory only (no IndexedDB), so the "not saving" notice shows. Default true. */
+  persistent?: boolean;
 }
 
 /** Tells the provider when a request fails because the database was upgraded by a newer SoloKit, then passes the failure on. */
@@ -61,11 +65,14 @@ export function OutdatedNotice({ reload }: { reload: () => void }) {
 
 const reloadPage = () => window.location.reload();
 
-export function StoreProvider({ children, factory = createIndexedDbStore, reload = reloadPage }: StoreProviderProps) {
+export function StoreProvider({ children, factory = createIndexedDbStore, reload = reloadPage, pending = false, persistent = true }: StoreProviderProps) {
   const [state, setState] = useState<StoreState>(INITIAL);
   const factoryRef = useRef(factory);
+  const pendingRef = useRef(pending);
+  const persistentRef = useRef(persistent);
 
   useEffect(() => {
+    if (pendingRef.current) return;
     let cancelled = false;
     const markOutdated = () => {
       if (!cancelled) setState((current) => (current.outdated ? current : { ...current, outdated: true }));
@@ -75,7 +82,7 @@ export function StoreProvider({ children, factory = createIndexedDbStore, reload
       try {
         const store = watchForUpgrade(factoryRef.current(), markOutdated);
         await store.list('settings');
-        next = { store, persistent: true, ready: true, outdated: false };
+        next = { store, persistent: persistentRef.current, ready: true, outdated: false };
       } catch (error) {
         if (isOutdatedStoreError(error)) {
           // The saved data belongs to a newer SoloKit than this page. Writing to a temporary copy would hide that, so ask for a reload.

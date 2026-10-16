@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { makeSeller } from '@solokit/tool-invoice/testing';
 import {
   applyGstin,
   emptyProfileForm,
@@ -166,5 +167,27 @@ describe('selectableStates', () => {
     expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
     expect(states.find((state) => state.value === '27')?.label).toBe('Maharashtra');
     for (const code of ['25', '28', '99']) expect(states.some((state) => state.value === code)).toBe(false);
+  });
+});
+
+describe('brand colours in the form', () => {
+  it('round-trips brand colours, their source, the theme link and the GST placeholder', () => {
+    const profile = makeSeller({ brand: { primary: '#7C2D12', secondary: '#0F766E' }, brandSource: 'logo', brandTheme: { themeId: 't', signature: 's' }, gstStatus: 'unregistered', gstin: undefined, gstUnconfirmed: true });
+    const form = profileToForm(profile);
+    expect(form).toMatchObject({ brandPrimary: '#7C2D12', brandSecondary: '#0F766E', brandSource: 'logo', gstUnconfirmed: true });
+    expect(formToProfile(form)).toMatchObject({ brand: { primary: '#7C2D12', secondary: '#0F766E' }, brandSource: 'logo', brandTheme: { themeId: 't', signature: 's' }, gstUnconfirmed: true });
+  });
+
+  it('accepts short and lower-case colours, and drops the brand when every colour is empty', () => {
+    const form = { ...emptyProfileForm('unregistered'), name: 'A', line1: 'x', city: 'y', brandPrimary: '#fa0', brandSource: 'manual' as const };
+    expect(formToProfile(form).brand).toEqual({ primary: '#FFAA00' });
+    const none = formToProfile({ ...form, brandPrimary: '', brandSource: 'logo' });
+    expect(none.brand).toBeUndefined();
+    expect(none.brandSource).toBeUndefined();
+  });
+
+  it('reports a colour that is not a colour', () => {
+    const form = { ...emptyProfileForm('unregistered'), name: 'A', line1: 'x', city: 'y', brandPrimary: 'blue' };
+    expect(issuesByField(validateProfileForm(form))['brand.primary']).toBe('Use a colour like #0B1B3A');
   });
 });

@@ -1,16 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { InvoiceKind, SellerProfile } from '@solokit/tool-invoice';
+import type { InvoiceKind } from '@solokit/tool-invoice';
+import { missingFields, type BusinessProfile } from '@solokit/profile';
 import { Button, Notice } from '@solokit/ui';
-import { BackupScreen } from './BackupScreen';
+import { BackupScreen } from '../business/BackupScreen';
 import { InvoiceEditor } from './InvoiceEditor';
 import { InvoiceList } from './InvoiceList';
 import { InvoiceViewer } from './InvoiceViewer';
-import { Onboarding } from './Onboarding';
+import { Onboarding } from '../business/Onboarding';
 import { ThemesScreen } from './ThemesScreen';
-import { ProfileForm } from './ProfileForm';
-import { profileToForm } from './profileFormState';
+import { ProfileForm } from '../business/ProfileForm';
+import { profileToForm } from '../business/profileFormState';
+import { useProfileSaver } from '../business/useProfileSaver';
 import { requestPersistentStorage } from './persist';
 import type { PdfRenderer } from './usePdfPreview';
 import { useInvoiceStorage } from './useInvoiceStorage';
@@ -27,7 +29,7 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
 
 export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
   const { storage, store, ready, persistent } = useInvoiceStorage();
-  const [profile, setProfile] = useState<SellerProfile | null | undefined>(undefined);
+  const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
   const [view, setView] = useState<View>({ name: 'list' });
   const [savedNotice, setSavedNotice] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
@@ -71,20 +73,14 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     }
   }, [ready, persistent, profile]);
 
+  const saveBusiness = useProfileSaver(storage);
   const saveProfile = useCallback(
-    async (next: SellerProfile) => {
-      if (!storage) return;
-      await storage.profile.save(next);
+    async (next: BusinessProfile) => {
+      const saved = await saveBusiness(next, profile);
       setRestoredNotice(null);
-      try {
-        await storage.settings.update({ onboarded: true });
-      } catch (error) {
-        // The profile is saved; losing the flag must not keep the user on onboarding.
-        console.error('Could not record that setup is finished', error);
-      }
-      setProfile(next);
+      setProfile(saved);
     },
-    [storage],
+    [saveBusiness, profile],
   );
 
   if (loadFailed && profile === undefined) {
@@ -127,7 +123,9 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     </div>
   ) : null;
 
-  if (profile === null) {
+  // Nothing saved yet, or a profile that another tool started and the invoice tool still needs more of (the GST status, say).
+  const setupFields = profile === null ? [] : missingFields(profile, 'invoice');
+  if (profile === null || setupFields.length > 0) {
     return (
       <div className={styles.app}>
         {storageWarning}
@@ -152,12 +150,14 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
           </>
         ) : (
           <>
-            <Onboarding onDone={saveProfile} />
-            <div>
-              <Button variant="ghost" onClick={() => setRestoring(true)}>
-                Already use SoloKit? Restore a backup
-              </Button>
-            </div>
+            <Onboarding tool="invoice" profile={profile ?? undefined} onDone={saveProfile} />
+            {profile === null ? (
+              <div>
+                <Button variant="ghost" onClick={() => setRestoring(true)}>
+                  Already use SoloKit? Restore a backup
+                </Button>
+              </div>
+            ) : null}
           </>
         )}
       </div>
@@ -227,12 +227,15 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
             {...(now ? { now } : {})}
           />
         ) : null}
-        {view.name === 'themes' ? <ThemesScreen storage={storage} profile={profile} {...(renderPdf ? { renderPdf } : {})} {...(now ? { now } : {})} /> : null}
+        {view.name === 'themes' ? <ThemesScreen storage={storage} profile={profile} onProfileChanged={setProfile} {...(renderPdf ? { renderPdf } : {})} {...(now ? { now } : {})} /> : null}
         {view.name === 'backup' && store ? (
           <BackupScreen store={store} onRestored={() => setLoadAttempt((attempt) => attempt + 1)} {...(now ? { now } : {})} />
         ) : null}
         {view.name === 'profile' ? (
           <div style={{ display: 'grid', gap: '1rem' }}>
+            <p>
+              This is your business profile. The contract tool uses it too, and the <a href="/business/">Your business</a> page has the same details with backups and your other businesses.
+            </p>
             {savedNotice ? <Notice tone="info">Saved</Notice> : null}
             <ProfileForm
               key={saveCount}

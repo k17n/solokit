@@ -15,8 +15,13 @@ export default function PrivacyPage() {
     >
       <h2>What stays on your device</h2>
       <p>
-        Your business details, clients, invoices and themes are saved in your browser's own storage (IndexedDB). They are
-        read and written by the page on your device. There is no SoloKit server that receives them.
+        Your business details, clients, invoices, agreements and themes are saved in your browser's own storage (IndexedDB).
+        They are read and written by the page on your device. There is no SoloKit server that receives them.
+      </p>
+      <p>
+        Each business you add on the Your business page is a separate database in your browser, so nothing is shared between
+        businesses. Deleting a business erases its data from this device only. Any backup file you downloaded stays where you
+        saved it, so delete those yourself if you want them gone.
       </p>
 
       <h2>What we do not collect</h2>
@@ -27,9 +32,10 @@ export default function PrivacyPage() {
 
       <h2>Back up your data</h2>
       <p>
-        Because the data lives in your browser, clearing your browser data erases it. In the invoice tool, open
-        Backup &amp; restore to download a backup file regularly and keep it somewhere safe. You can restore it on any
-        device. The file is not encrypted and contains your bank details and clients, so treat it like a bank
+        Because the data lives in your browser, clearing your browser data erases it. On the Your business page (or in a
+        tool's Backup &amp; restore tab), download a backup file regularly and keep it somewhere safe. A backup covers one
+        business and records its name. You can restore it on any device, either as a new business or in place of the
+        current one. The file is not encrypted and contains your bank details and clients, so treat it like a bank
         statement.
       </p>
 

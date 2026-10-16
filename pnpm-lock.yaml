@@ -171,6 +171,9 @@ importers:
       '@solokit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@solokit/profile':
+        specifier: workspace:*
+        version: link:../../packages/profile
       '@solokit/registry':
         specifier: workspace:*
         version: link:../../packages/registry
@@ -276,6 +279,25 @@ importers:
         version: 2.1.9(@types/node@22.20.5)(jsdom@25.0.1(supports-color@7.2.0))(supports-color@7.2.0)
 
   packages/core:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.5)(jsdom@25.0.1(supports-color@7.2.0))(supports-color@7.2.0)
+
+  packages/profile:
+    dependencies:
+      '@solokit/core':
+        specifier: workspace:*
+        version: link:../core
+      '@solokit/storage':
+        specifier: workspace:*
+        version: link:../storage
+      '@solokit/tax-engines':
+        specifier: workspace:*
+        version: link:../tax-engines
     devDependencies:
       typescript:
         specifier: ^5.6.0
@@ -394,6 +416,9 @@ importers:
       '@solokit/core':
         specifier: workspace:*
         version: link:../../core
+      '@solokit/profile':
+        specifier: workspace:*
+        version: link:../../profile
       '@solokit/storage':
         specifier: workspace:*
         version: link:../../storage
@@ -416,6 +441,9 @@ importers:
       '@react-pdf/renderer':
         specifier: ^4.9.0
         version: 4.9.0(react@19.3.0)
+      '@solokit/profile':
+        specifier: workspace:*
+        version: link:../../profile
       '@solokit/tool-invoice':
         specifier: workspace:*
         version: link:../invoice

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { StoreProvider } from '../store/StoreProvider';
+import { WorkspaceStore } from '../workspace/WorkspaceProvider';
 
 // The contract tool is client-only and loaded on demand, so the home page and the other tool pages stay light.
 const ContractApp = dynamic(() => import('./ContractApp').then((module) => module.ContractApp), {
@@ -11,9 +11,9 @@ const ContractApp = dynamic(() => import('./ContractApp').then((module) => modul
 
 export function ContractToolLoader() {
   return (
-    <StoreProvider>
+    <WorkspaceStore>
       <ContractApp />
       <noscript>The contract tool needs JavaScript. Turn it on in your browser settings to use it.</noscript>
-    </StoreProvider>
+    </WorkspaceStore>
   );
 }

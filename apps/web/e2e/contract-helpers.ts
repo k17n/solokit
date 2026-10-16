@@ -95,3 +95,15 @@ export const noOverflow = (page: Page) => page.evaluate(() => document.documentE
 export async function expectEditorOpen(page: Page, heading: RegExp) {
   await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible();
 }
+
+/**
+ * Opens the contract tool the way a returning user sees it. A brand new Business is first asked for its details; these
+ * tests are about agreements, so they skip that step (it has its own tests in business.spec.ts).
+ */
+export async function gotoContract(page: Page) {
+  await page.goto('/tools/contract/');
+  const setup = page.getByRole('heading', { name: 'Set up your business' });
+  const agreements = page.getByRole('button', { name: 'Agreements', exact: true });
+  await setup.or(agreements).first().waitFor();
+  if (await setup.count()) await page.getByRole('button', { name: 'Skip for now' }).click();
+}

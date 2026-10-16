@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { StorageError, createMemoryStore } from '@solokit/storage';
-import { MAX_BACKUP_BYTES, compareWithDevice, createBackup, inspectBackup, isBackupDue, recordBackup, restoreBackup } from './backup';
+import { StorageError, createMemoryStore, createWorkspaceManager } from '@solokit/storage';
+import { MAX_BACKUP_BYTES, compareWithDevice, createBackup, inspectBackup, isBackupDue, recordBackup, restoreBackup, restoreIntoNewWorkspace } from './backup';
 import { createContractStorage } from '@solokit/tool-contract';
 import { makeContract } from '@solokit/tool-contract/testing';
 import { createInvoiceStorage } from './repositories';
@@ -421,5 +421,76 @@ describe('agreements in backups', () => {
     expect(() => inspectBackup(damaged)).toThrow(StorageError);
     await expect(restoreBackup(target, damaged)).rejects.toBeInstanceOf(StorageError);
     expect((await createInvoiceStorage(target).invoices.list()).map((invoice) => invoice.id)).toEqual(['keep']);
+  });
+});
+
+describe('workspace backups', () => {
+  const NOW = new Date('2026-10-17T10:00:00.000Z');
+  const manager = () => createWorkspaceManager({ factory: null, storage: null, broadcast: false });
+
+  async function sourceBackup(header?: { workspaceName?: string }) {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => NOW });
+    await storage.profile.save(makeSeller({ name: 'Asha Rao Consulting' }));
+    await storage.clients.save(makeClient({ id: 'c1' }));
+    await storage.invoices.save(makeInvoice({ id: 'i1' }));
+    return (await createBackup(store, NOW, header)).json;
+  }
+
+  it('writes the business name at the top of the file and keeps the format version', async () => {
+    const parsed = JSON.parse(await sourceBackup({ workspaceName: 'Studio One' }));
+    expect(parsed.version).toBe(1);
+    expect(parsed.workspace).toEqual({ name: 'Studio One' });
+    expect(inspectBackup(JSON.stringify(parsed)).workspaceName).toBe('Studio One');
+  });
+
+  it('files without the header (every older backup) still inspect and restore into the current business', async () => {
+    const json = await sourceBackup();
+    expect(JSON.parse(json).workspace).toBeUndefined();
+    expect(inspectBackup(json).workspaceName).toBeUndefined();
+    const target = createMemoryStore();
+    await restoreBackup(target, json);
+    expect(await target.list('invoices')).toHaveLength(1);
+  });
+
+  it('restores into a new business named after the file, leaving the current one untouched', async () => {
+    const workspaces = manager();
+    const [first] = await workspaces.list();
+    const firstStore = await workspaces.openStore(first!.id);
+    await firstStore.put('clients', { id: 'keep', name: 'Keep me', address: { line1: 'a', city: 'b', country: 'c' } } as never);
+
+    const created = await restoreIntoNewWorkspace(workspaces, await sourceBackup({ workspaceName: 'Studio One' }));
+    expect(created.name).toBe('Studio One');
+    const restored = await workspaces.openStore(created.id);
+    expect((await restored.list('invoices')).map((invoice) => invoice.id)).toEqual(['i1']);
+    expect((await restored.list('clients')).map((client) => client.id)).toEqual(['c1']);
+    expect((await firstStore.list('clients')).map((client) => client.id)).toEqual(['keep']);
+    expect(await firstStore.list('invoices')).toEqual([]);
+    expect((await createInvoiceStorage(restored).settings.get()).lastBackupAt).toBe(NOW.toISOString());
+    expect((await workspaces.current()).id).toBe(first!.id);
+  });
+
+  it('names the new business after the profile for an older file, or by the name given', async () => {
+    const workspaces = manager();
+    expect((await restoreIntoNewWorkspace(workspaces, await sourceBackup())).name).toBe('Asha Rao Consulting');
+    expect((await restoreIntoNewWorkspace(workspaces, await sourceBackup(), { name: 'Chosen' })).name).toBe('Chosen');
+    const empty = JSON.stringify({ version: 1, exportedAt: NOW.toISOString(), collections: {} });
+    expect((await restoreIntoNewWorkspace(workspaces, empty)).name).toBe('Restored business');
+  });
+
+  it('creates nothing when the file is not a usable backup', async () => {
+    const workspaces = manager();
+    await expect(restoreIntoNewWorkspace(workspaces, 'not json')).rejects.toBeInstanceOf(StorageError);
+    await expect(restoreIntoNewWorkspace(workspaces, JSON.stringify({ version: 1, exportedAt: 'x', collections: { clients: [{ id: 'c', name: 1 }] } }))).rejects.toBeInstanceOf(StorageError);
+    expect(await workspaces.list()).toHaveLength(1);
+  });
+
+  it('removes the new business again if the import fails part way', async () => {
+    const workspaces = manager();
+    await workspaces.list();
+    const real = workspaces.openStore.bind(workspaces);
+    workspaces.openStore = async (id) => ({ ...(await real(id)), importAll: () => Promise.reject(new StorageError('disk full')) });
+    await expect(restoreIntoNewWorkspace(workspaces, await sourceBackup())).rejects.toThrow('disk full');
+    expect(await workspaces.list()).toHaveLength(1);
   });
 });

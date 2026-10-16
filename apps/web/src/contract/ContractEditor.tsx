@@ -12,13 +12,15 @@ import {
   type ContractKind,
   type ContractStorage,
 } from '@solokit/tool-contract';
-import type { Client, InvoiceSettings, InvoiceStorage, InvoiceTheme, SellerProfile } from '@solokit/tool-invoice';
+import type { Client, InvoiceSettings, InvoiceStorage, InvoiceTheme } from '@solokit/tool-invoice';
+import type { BusinessProfile } from '@solokit/profile';
 import { Button, Notice, TextField } from '@solokit/ui';
 import { downloadBlob } from '../invoice/downloads';
 import { todayIso } from '../invoice/editorModel';
 import { newId } from '../invoice/ids';
 import { requestPersistentStorage } from '../invoice/persist';
 import { useUnloadGuard } from '../components/useUnloadGuard';
+import { useUnsavedGuard } from '../workspace/unsavedGuard';
 import styles from './ContractEditor.module.css';
 import { ClausesSection } from './ClausesSection';
 import { ExportBar } from './ExportBar';
@@ -56,11 +58,11 @@ export interface ContractEditorProps {
 const realNow = () => new Date();
 
 type Loaded =
-  | { kind: 'ready'; profile: SellerProfile | undefined; clients: Client[]; settings: InvoiceSettings; customThemes: InvoiceTheme[] }
+  | { kind: 'ready'; profile: BusinessProfile | undefined; clients: Client[]; settings: InvoiceSettings; customThemes: InvoiceTheme[] }
   | { kind: 'cannot-edit' }
   | { kind: 'failed' };
 
-function choicesFrom(profile: SellerProfile | undefined, clients: Client[]): PartyChoice[] {
+function choicesFrom(profile: BusinessProfile | undefined, clients: Client[]): PartyChoice[] {
   const choices: PartyChoice[] = [];
   if (profile) choices.push({ id: 'profile', label: `My business profile (${profile.name})`, source: { name: profile.name, address: profile.address, email: profile.email, pan: profile.pan, gstin: profile.gstin } });
   for (const client of clients) {
@@ -170,6 +172,9 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
   }, [confirming]);
 
   useUnloadGuard(dirty);
+  // Switching to another business replaces this editor, so it asks first, and can save the draft on the way out.
+  const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
+  useUnsavedGuard('editor', dirty, () => saveDraftRef.current());
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -229,6 +234,8 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
       setBusy(false);
     }
   }
+
+  saveDraftRef.current = saveDraft;
 
   function startFinalise() {
     setAttempted(true);

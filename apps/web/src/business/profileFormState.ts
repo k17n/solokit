@@ -1,5 +1,5 @@
 import { INDIAN_STATES, validateGstin, type SellerGstStatus } from '@solokit/tax-engines';
-import { normaliseSeller, validateSeller, type Issue, type SellerProfile } from '@solokit/tool-invoice';
+import { normaliseHex, normaliseProfile, validateProfile, type BrandSource, type BrandThemeLink, type Issue, type BusinessProfile } from '@solokit/profile';
 
 export interface ProfileFormState {
   name: string;
@@ -27,6 +27,16 @@ export interface ProfileFormState {
   defaultTerms: string;
   unregisteredNote: boolean;
   logoDataUrl: string;
+  brandPrimary: string;
+  brandSecondary: string;
+  brandText: string;
+  brandBackground: string;
+  /** Where the brand colours came from. Empty while there are none. */
+  brandSource: BrandSource | '';
+  /** Carried through unchanged so saving the form never loses the link to the brand theme. */
+  brandTheme?: BrandThemeLink;
+  /** True while the GST status is only a placeholder (the person has not chosen one yet). */
+  gstUnconfirmed?: boolean;
 }
 
 export function emptyProfileForm(gstStatus: SellerGstStatus): ProfileFormState {
@@ -56,10 +66,15 @@ export function emptyProfileForm(gstStatus: SellerGstStatus): ProfileFormState {
     defaultTerms: '',
     unregisteredNote: true,
     logoDataUrl: '',
+    brandPrimary: '',
+    brandSecondary: '',
+    brandText: '',
+    brandBackground: '',
+    brandSource: '',
   };
 }
 
-export function profileToForm(profile: SellerProfile): ProfileFormState {
+export function profileToForm(profile: BusinessProfile): ProfileFormState {
   return {
     name: profile.name,
     gstStatus: profile.gstStatus,
@@ -86,6 +101,13 @@ export function profileToForm(profile: SellerProfile): ProfileFormState {
     defaultTerms: profile.defaultTerms ?? '',
     unregisteredNote: profile.unregisteredNote !== false,
     logoDataUrl: profile.logoDataUrl ?? '',
+    brandPrimary: profile.brand?.primary ?? '',
+    brandSecondary: profile.brand?.secondary ?? '',
+    brandText: profile.brand?.text ?? '',
+    brandBackground: profile.brand?.background ?? '',
+    brandSource: profile.brand ? (profile.brandSource ?? 'manual') : '',
+    ...(profile.brandTheme ? { brandTheme: profile.brandTheme } : {}),
+    ...(profile.gstUnconfirmed ? { gstUnconfirmed: true } : {}),
   };
 }
 
@@ -95,10 +117,10 @@ function hasBankDetails(form: ProfileFormState): boolean {
   return BANK_FIELDS.some((field) => form[field].trim() !== '');
 }
 
-/** Turns what was typed into a normalised SellerProfile. Run `validateProfileForm` first. */
-export function formToProfile(form: ProfileFormState): SellerProfile {
+/** Turns what was typed into a normalised BusinessProfile. Run `validateProfileForm` first. */
+export function formToProfile(form: ProfileFormState): BusinessProfile {
   const taxRegistered = form.gstStatus !== 'unregistered';
-  const profile: SellerProfile = {
+  const profile: BusinessProfile = {
     id: 'me',
     name: form.name,
     gstStatus: form.gstStatus,
@@ -133,11 +155,24 @@ export function formToProfile(form: ProfileFormState): SellerProfile {
       branch: form.branch,
     };
   }
-  return normaliseSeller(profile);
+  const colour = (value: string) => normaliseHex(value) ?? value;
+  const brand = {
+    ...(form.brandPrimary.trim() ? { primary: colour(form.brandPrimary) } : {}),
+    ...(form.brandSecondary.trim() ? { secondary: colour(form.brandSecondary) } : {}),
+    ...(form.brandText.trim() ? { text: colour(form.brandText) } : {}),
+    ...(form.brandBackground.trim() ? { background: colour(form.brandBackground) } : {}),
+  };
+  if (Object.keys(brand).length > 0) {
+    profile.brand = brand;
+    profile.brandSource = form.brandSource || 'manual';
+  }
+  if (form.brandTheme) profile.brandTheme = form.brandTheme;
+  if (form.gstUnconfirmed) profile.gstUnconfirmed = true;
+  return normaliseProfile(profile);
 }
 
 export function validateProfileForm(form: ProfileFormState): Issue[] {
-  const issues = validateSeller(formToProfile(form));
+  const issues = validateProfile(formToProfile(form));
   const seen = new Set(issues.map((issue) => issue.path));
   if (hasBankDetails(form)) {
     const required: [string, string, string][] = [

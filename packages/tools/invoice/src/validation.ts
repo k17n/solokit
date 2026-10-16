@@ -1,19 +1,11 @@
-import { InvoiceNumberError, MoneyError, formatInvoiceNumber, indianFiscalYear, lineAmount } from '@solokit/core';
+import { MoneyError, indianFiscalYear, lineAmount } from '@solokit/core';
 import { GstInputError, isAllowedGstRate, isValidStateCode, validateGstin } from '@solokit/tax-engines';
+import { isBlank, validateProfile, type Issue } from '@solokit/profile';
 import { isCurrencyCode } from './currencies';
 import { calculateInvoiceGst } from './gst-input';
-import type { Client, InvoiceRecord, SellerProfile } from './model';
-
-export interface Issue {
-  path: string;
-  message: string;
-}
+import type { Client, InvoiceRecord } from './model';
 
 const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-const IFSC = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-const ACCOUNT_NUMBER = /^\d{9,18}$/;
-const UPI_ID = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
-const UDYAM = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVOICE_NUMBER = /^[A-Za-z0-9/-]{1,16}$/;
 
@@ -27,55 +19,7 @@ export function isRealIsoDate(value: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-const blank = (value: string | undefined) => value === undefined || value.trim() === '';
-
-export function validateSeller(seller: SellerProfile): Issue[] {
-  const issues: Issue[] = [];
-  const add = (path: string, message: string) => issues.push({ path, message });
-
-  if (blank(seller.name)) add('name', 'Enter your name or business name');
-  if (blank(seller.address.line1)) add('address.line1', 'Enter the first line of your address');
-  if (blank(seller.address.city)) add('address.city', 'Enter your city');
-
-  if (seller.gstStatus === 'unregistered') {
-    if (!blank(seller.gstin)) {
-      add('gstin', 'Remove the GSTIN, or choose Regular or Composition as your GST status');
-    }
-  } else if (blank(seller.gstin)) {
-    add('gstin', 'Enter your GSTIN');
-  } else {
-    const result = validateGstin(seller.gstin ?? '');
-    if (!result.valid) {
-      add('gstin', result.reason);
-    } else if (seller.address.stateCode !== result.stateCode) {
-      add('address.stateCode', 'The state must match the first two digits of your GSTIN');
-    }
-  }
-
-  if (seller.gstStatus !== 'unregistered' && blank(seller.address.stateCode)) {
-    if (!issues.some((issue) => issue.path === 'address.stateCode')) add('address.stateCode', 'Choose your state');
-  }
-
-  if (!blank(seller.pan) && !PAN.test(seller.pan ?? '')) add('pan', 'PAN looks like ABCDE1234F');
-  if (!blank(seller.udyam) && !UDYAM.test(seller.udyam ?? '')) add('udyam', 'UDYAM number looks like UDYAM-MH-19-0012345');
-  if (!blank(seller.email) && !EMAIL.test(seller.email ?? '')) add('email', 'Enter a valid email address');
-  if (!blank(seller.upiId) && !UPI_ID.test(seller.upiId ?? '')) add('upiId', 'UPI ID looks like name@bank');
-
-  if (seller.invoicePrefix) {
-    try {
-      formatInvoiceNumber({ prefix: seller.invoicePrefix, fiscalYear: '2026-27', sequence: 1 });
-    } catch (error) {
-      if (!(error instanceof InvoiceNumberError)) throw error;
-      add('invoicePrefix', 'Use at most 4 letters, digits, "/" or "-" so the number stays within 16 characters');
-    }
-  }
-
-  if (seller.bank) {
-    if (!ACCOUNT_NUMBER.test(seller.bank.accountNumber)) add('bank.accountNumber', 'Account number has 9 to 18 digits');
-    if (!IFSC.test(seller.bank.ifsc)) add('bank.ifsc', 'IFSC looks like HDFC0001234');
-  }
-  return issues;
-}
+const blank = isBlank;
 
 export function validateClient(client: Client): Issue[] {
   const issues: Issue[] = [];
@@ -122,7 +66,11 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
     add('currency', 'Domestic invoices are issued in rupees (INR). Use another currency only for exports.');
   }
 
-  for (const issue of validateSeller(invoice.seller)) add(`seller.${issue.path}`, issue.message);
+  for (const issue of validateProfile(invoice.seller)) add(`seller.${issue.path}`, issue.message);
+  // A GST status that was only a placeholder (the profile was started in the contract tool) must not end up on a tax document.
+  if (invoice.seller.gstUnconfirmed === true && !issues.some((issue) => issue.path === 'seller.gstStatus')) {
+    add('seller.gstStatus', 'Confirm your GST status in Your business before you issue this. It was not asked when your details were first saved.');
+  }
   for (const issue of validateClient(invoice.client)) add(`client.${issue.path}`, issue.message);
 
   const taxed = invoice.seller.gstStatus === 'regular' && !invoice.isExport && !invoice.exemptSupply;

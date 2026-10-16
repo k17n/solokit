@@ -8,6 +8,8 @@ export interface StoredRecord {
 export interface Snapshot {
   version: 1;
   exportedAt: string;
+  /** Which Business (workspace) the backup came from. Optional: older files do not have it. */
+  workspace?: { name: string };
   collections: Record<CollectionName, StoredRecord[]>;
 }
 
@@ -37,9 +39,22 @@ export class StorageBlockedError extends StorageError {
   }
 }
 
+/** The Business this store belongs to was deleted (here or in another tab). Writing now would bring back an empty database, so every request fails instead. */
+export class StorageDeletedError extends StorageError {
+  constructor(message = 'This business was deleted in another tab') {
+    super(message);
+    this.name = 'StorageDeletedError';
+  }
+}
+
 /** True when the error means "reload this page": the data was upgraded, or an upgrade is waiting on this tab. */
 export function isOutdatedStoreError(error: unknown): boolean {
   return error instanceof StorageVersionError || error instanceof StorageBlockedError || (error instanceof Error && error.name === 'VersionError');
+}
+
+/** A store that can be told its data is gone. Afterwards every request rejects with a {@link StorageDeletedError}. */
+export interface RemovableStore extends DataStore {
+  markRemoved(): Promise<void>;
 }
 
 /** Where SoloKit keeps the user's data. Today: this device. Later: an optional synced adapter. */

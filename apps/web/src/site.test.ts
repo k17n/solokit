@@ -3,9 +3,10 @@ import { IN_RULES_AS_OF } from '@solokit/tax-engines';
 import { HEADER_PROPS, getFooterProps } from './site';
 
 describe('site config', () => {
-  it('points the header call to action at the invoice tool', () => {
-    expect(HEADER_PROPS.cta).toEqual({ label: 'Create an invoice', href: '/tools/invoice/' });
-    expect(HEADER_PROPS.links.map((link) => link.label)).toEqual(['Tools', 'Privacy']);
+  it('points the header call to action at the list of tools, not at one of them', () => {
+    expect(HEADER_PROPS.cta).toEqual({ label: 'Open a tool', href: '/#tools' });
+    expect(HEADER_PROPS.links.map((link) => link.label)).toEqual(['Tools', 'Your business', 'Privacy']);
+    expect(HEADER_PROPS.links.find((link) => link.label === 'Your business')?.href).toBe('/business/');
   });
 
   it('builds footer tool links from the registry', () => {
@@ -28,6 +29,7 @@ describe('site config', () => {
   it('offers project links to pages that exist', () => {
     expect(getFooterProps().projectLinks).toEqual([
       { label: 'Home', href: '/' },
+      { label: 'Your business', href: '/business/' },
       { label: 'Privacy', href: '/privacy/' },
     ]);
   });

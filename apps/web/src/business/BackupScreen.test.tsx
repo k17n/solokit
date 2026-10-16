@@ -7,7 +7,7 @@ import { makeContract } from '@solokit/tool-contract/testing';
 import { createBackup, createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { BackupScreen } from './BackupScreen';
-import * as downloads from './downloads';
+import * as downloads from '../invoice/downloads';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -51,7 +51,7 @@ describe('BackupScreen: download', () => {
 
   it('shows that nothing has been backed up yet', async () => {
     await setup();
-    expect(screen.getByText(/never backed up/i)).toBeInTheDocument();
+    expect(await screen.findByText(/never backed up/i)).toBeInTheDocument();
   });
 
   it('creates the backup only when the download starts, then records and shows the time', async () => {
@@ -276,7 +276,7 @@ describe('BackupScreen: restoring an older backup', () => {
     const download = vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {});
     const { storage } = await deviceWithMore();
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
-    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the current data first' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the data on this device first' }));
     await waitFor(() => expect(download).toHaveBeenCalledOnce());
     const ids = (JSON.parse(await textOf(download.mock.calls[0]![0])).collections.invoices as { id: string }[]).map((invoice) => invoice.id).sort();
     expect(ids).toEqual(['b', 'c', 'one']);
@@ -292,8 +292,8 @@ describe('BackupScreen: restoring an older backup', () => {
     });
     const { storage } = await deviceWithMore();
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
-    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the current data first' }));
-    expect(await screen.findByText(/current data could not be created/i)).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the data on this device first' }));
+    expect(await screen.findByText(/backup of the data on this device could not be created/i)).toBeInTheDocument();
     expect((await storage.settings.get()).lastBackupAt).toBeUndefined();
   });
 });
