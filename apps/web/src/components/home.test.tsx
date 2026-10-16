@@ -29,10 +29,17 @@ describe('Home page', () => {
     const section = screen.getByRole('region', { name: 'Tools' });
     for (const tool of getTools()) {
       expect(within(section).getByText(tool.name)).toBeInTheDocument();
-      const link = within(section).queryByRole('link', { name: tool.name });
+      const link = within(section).queryByRole('link', { name: new RegExp(tool.name) });
       if (tool.status === 'available') expect(link).toBeInTheDocument();
       else expect(link).not.toBeInTheDocument();
     }
+  });
+
+  it('links the invoice generator now that it is available', () => {
+    render(<Home />);
+    const section = screen.getByRole('region', { name: 'Tools' });
+    expect(within(section).getByRole('link', { name: /Invoice generator/ })).toHaveAttribute('href', '/tools/invoice/');
+    expect(within(section).getByText('Ready')).toBeInTheDocument();
   });
 
   it('explains why local-first matters', () => {

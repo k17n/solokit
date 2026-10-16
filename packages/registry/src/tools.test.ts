@@ -34,8 +34,11 @@ describe('tool registry', () => {
     expect(getToolBySlug('nope')).toBeUndefined();
   });
 
-  it('lists only available tools', () => {
-    expect(getAvailableTools().every((tool) => tool.status === 'available')).toBe(true);
+  it('has the invoice generator available, and every other tool still coming soon', () => {
+    const available = getAvailableTools().map((tool) => tool.slug);
+    expect(available).toEqual(['invoice']);
+    expect(getToolBySlug('invoice')?.status).toBe('available');
+    expect(getToolBySlug('quote')?.status).toBe('coming-soon');
   });
 
   it('builds trailing-slash hrefs', () => {

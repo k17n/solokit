@@ -5,7 +5,8 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 ## Status
 
 - Done: monorepo, core primitives, India GST/TDS engine, design system, app shell, tool registry, local storage layer, installable offline site.
-- Next: the invoice editor, live preview and invoice list.
+- Done: invoice editor with live PDF preview, issuing, PDF download, and the invoice list (duplicate, cancel).
+- Next: invoice themes and the backup export and restore screens.
 
 ## Layout
 
