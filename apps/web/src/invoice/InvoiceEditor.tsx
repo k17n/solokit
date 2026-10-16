@@ -5,12 +5,14 @@ import {
   InvoiceNotValidError,
   InvoiceNumberTakenError,
   DEFAULT_THEME_ID,
+  KIND_LABEL,
   PRESET_THEMES,
   buildInvoiceDocument,
   issueInvoice,
   resolveTheme,
   type Client,
   type InvoiceDocument,
+  type InvoiceKind,
   type InvoiceRecord,
   type InvoiceStorage,
   type InvoiceTheme,
@@ -36,6 +38,8 @@ export interface InvoiceEditorProps {
   profile: SellerProfile;
   /** An existing draft to edit. A new invoice is started when this is absent. */
   invoiceId?: string | undefined;
+  /** The type of a new document. Defaults to a tax invoice. */
+  initialKind?: InvoiceKind | undefined;
   onBack: () => void;
   onIssued: (id: string) => void;
   renderPdf?: PdfRenderer;
@@ -65,7 +69,7 @@ function safeDocument(invoice: InvoiceRecord | null): InvoiceDocument | null {
   }
 }
 
-export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceEditorProps) {
+export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invoice', onBack, onIssued, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceEditorProps) {
   const isNew = invoiceId === undefined;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [state, setState] = useState<EditorState | null>(null);
@@ -77,8 +81,8 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
   const [numberPending, setNumberPending] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
-  /** The financial year the current number was worked out for. */
-  const numberFyRef = useRef<string | null>(null);
+  /** The series (document type and financial year) the current number was worked out for. */
+  const numberSeriesRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,11 +103,11 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
         setState({ ...invoiceToEditor(existing), themeId: knownTheme(existing.themeId, settings.defaultThemeId, customThemes) });
       } else {
         const today = todayIso(now());
-        const number = await storage.invoices.nextNumber(today);
+        const number = await storage.invoices.nextNumber(today, initialKind);
         if (cancelled) return;
-        numberFyRef.current = fiscalYearOf(today);
+        numberSeriesRef.current = `${initialKind}|${fiscalYearOf(today)}`;
         setState(
-          newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: knownTheme(settings.defaultThemeId, DEFAULT_THEME_ID, customThemes) }),
+          newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: knownTheme(settings.defaultThemeId, DEFAULT_THEME_ID, customThemes), kind: initialKind }),
         );
       }
       setLoaded({ kind: 'ready', clients, customThemes });
@@ -118,22 +122,24 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storage, invoiceId, profile]);
 
-  // A new invoice's number follows the issue date's financial year, only when that year changes and until the number is typed or saved.
+  // A new document's number follows its type and the issue date's financial year, only when either changes and until the number is typed or saved.
   const issueDate = state?.issueDate;
+  const kind = state?.kind;
   const numberEdited = state?.numberEdited;
   const dateYear = issueDate === undefined ? null : fiscalYearOf(issueDate);
+  const series = `${kind}|${dateYear}`;
   useEffect(() => {
-    if (!isNew || issueDate === undefined || numberEdited || dateYear === null || numberFyRef.current === null || dateYear === numberFyRef.current) {
+    if (!isNew || issueDate === undefined || kind === undefined || numberEdited || dateYear === null || numberSeriesRef.current === null || series === numberSeriesRef.current) {
       setNumberPending(false);
       return;
     }
     let cancelled = false;
     setNumberPending(true);
     storage.invoices
-      .nextNumber(issueDate)
+      .nextNumber(issueDate, kind)
       .then((number) => {
         if (cancelled) return;
-        numberFyRef.current = dateYear;
+        numberSeriesRef.current = series;
         setState((current) => (current && !current.numberEdited ? { ...current, number } : current));
         setNumberPending(false);
       })
@@ -146,7 +152,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
     };
     // `issueDate` only matters through its financial year.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storage, isNew, dateYear, numberEdited]);
+  }, [storage, isNew, series, numberEdited]);
 
   const change = useCallback((patch: Partial<EditorState>) => {
     setSavedMessage(false);
@@ -177,6 +183,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
 
   const taxed = taxApplies(state, profile);
   const clientErrors = errors;
+  const noun = KIND_LABEL[state.kind].toLowerCase();
 
   function focusFirstProblem() {
     requestAnimationFrame(() => {
@@ -236,7 +243,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
   return (
     <div className={styles.editor}>
       <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>{isNew ? 'New invoice' : 'Edit draft'}</h2>
+        <h2 style={{ fontSize: '1.8rem' }}>{isNew ? `New ${noun}` : 'Edit draft'}</h2>
         <Button variant="secondary" onClick={onBack}>
           Back to invoices
         </Button>
@@ -246,7 +253,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
         <div className={styles.form} ref={formRef}>
           {shownIssues.length > 0 ? (
             <div className={styles.summary} ref={summaryRef} tabIndex={-1}>
-              <Notice tone="danger" title={`Fix ${shownIssues.length} ${shownIssues.length === 1 ? 'thing' : 'things'} before you issue this invoice`}>
+              <Notice tone="danger" title={`Fix ${shownIssues.length} ${shownIssues.length === 1 ? 'thing' : 'things'} before you issue this ${noun}`}>
                 <ul>
                   {shownIssues.map((issue) => (
                     <li key={`${issue.path}-${issue.message}`}>{issue.message}</li>
@@ -296,7 +303,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
             />
           </fieldset>
 
-          <DetailsSection state={state} onChange={change} profile={profile} themes={themes} errors={errors} />
+          <DetailsSection state={state} onChange={change} profile={profile} themes={themes} errors={errors} kindLocked={state.createdAt !== ''} />
 
           <fieldset className={styles.section}>
             <legend className={styles.sectionTitle}>Items</legend>
@@ -316,7 +323,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
               Save draft
             </Button>
             <Button disabled={busy || numberPending} onClick={() => void handleSave(true)}>
-              Issue invoice
+              Issue {noun}
             </Button>
             {savedMessage ? (
               <span className={styles.status} role="status">

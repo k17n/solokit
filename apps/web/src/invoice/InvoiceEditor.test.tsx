@@ -27,6 +27,7 @@ async function setup(
     themes?: InvoiceTheme[];
     defaultThemeId?: string;
     renderPdf?: PdfRenderer;
+    initialKind?: 'invoice' | 'proforma' | 'quote';
   } = {},
 ) {
   const real: InvoiceStorage = createInvoiceStorage(createMemoryStore(), { now: NOW });
@@ -45,9 +46,9 @@ async function setup(
   const onBack = vi.fn();
   const onIssued = vi.fn();
   render(
-    <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} onBack={onBack} onIssued={onIssued} renderPdf={options.renderPdf ?? fakeRender} now={NOW} />,
+    <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} initialKind={options.initialKind} onBack={onBack} onIssued={onIssued} renderPdf={options.renderPdf ?? fakeRender} now={NOW} />,
   );
-  await screen.findByRole('heading', { name: options.invoiceId ? 'Edit draft' : 'New invoice' });
+  await screen.findByRole('heading', { name: options.invoiceId ? 'Edit draft' : options.initialKind === 'quote' ? 'New quotation' : 'New invoice' });
   return { storage, onBack, onIssued, profile };
 }
 
@@ -479,5 +480,82 @@ describe('InvoiceEditor: themes', () => {
   it('shows the default theme for a draft whose theme was deleted', async () => {
     await setup({ invoiceId: 'd', defaultThemeId: 'modern', withInvoices: [makeInvoice({ id: 'd', status: 'draft', themeId: 'gone' })] });
     expect(screen.getByLabelText('Invoice theme')).toHaveValue('modern');
+  });
+});
+
+describe('InvoiceEditor: quotations and number series', () => {
+  it('starts a quotation in its own series with a validity date', async () => {
+    await setup({ initialKind: 'quote', withInvoices: [makeInvoice({ id: 'a', number: '2026-27/0007' })] });
+    expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0001');
+    expect(screen.getByLabelText('Valid until')).toHaveValue('2026-11-13');
+    expect(screen.getByRole('button', { name: 'Issue quotation' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Due date')).not.toBeInTheDocument();
+  });
+
+  it('renumbers into the other series when the document type changes, until the number is typed', async () => {
+    await setup({
+      withInvoices: [
+        makeInvoice({ id: 'a', number: '2026-27/0007' }),
+        makeInvoice({ id: 'q', kind: 'quote', number: 'QT/2026-27/0003', validUntil: '2026-11-13' }),
+      ],
+    });
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0008');
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0004'));
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'proforma');
+    await waitFor(() => expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0001'));
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'invoice');
+    await waitFor(() => expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0008'));
+    await userEvent.clear(screen.getByLabelText('Invoice number'));
+    await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(screen.getByLabelText('Quotation number')).toHaveValue('MINE-1');
+  });
+
+  it('renumbers a quotation by financial year inside the quotation series', async () => {
+    await setup({ initialKind: 'quote' });
+    const date = screen.getByLabelText('Issue date');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2027-04-02');
+    await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2027-28/0001'));
+  });
+
+  it('does not let an old proforma that holds a tax-series number use up the next tax invoice number', async () => {
+    await setup({ withInvoices: [makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0001' })] });
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
+  });
+
+  it('issues a quotation without a due date and does not use a tax invoice number', async () => {
+    const { storage, onIssued } = await setup({ initialKind: 'quote' });
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Issue quotation' }));
+    await waitFor(() => expect(onIssued).toHaveBeenCalledOnce());
+    const [saved] = await storage.invoices.list();
+    expect(saved).toMatchObject({ kind: 'quote', status: 'issued', number: 'QT/2026-27/0001', validUntil: '2026-11-13' });
+    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0001');
+  });
+
+  it('asks for a valid-until date that is not before the issue date', async () => {
+    await setup({ initialKind: 'quote' });
+    await fillClient();
+    await fillFirstItem();
+    const until = screen.getByLabelText('Valid until');
+    await userEvent.clear(until);
+    await userEvent.type(until, '2026-10-01');
+    await userEvent.click(screen.getByRole('button', { name: 'Issue quotation' }));
+    expect((await screen.findAllByText('The "valid until" date cannot be before the issue date')).length).toBeGreaterThan(0);
+  });
+
+  it('locks the document type once the draft is saved', async () => {
+    await setup({ initialKind: 'quote' });
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText('Draft saved');
+    expect(screen.getByLabelText('Document type')).toBeDisabled();
   });
 });
