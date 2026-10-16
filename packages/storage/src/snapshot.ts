@@ -5,7 +5,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 export function emptyCollections(): Record<CollectionName, StoredRecord[]> {
-  return { profile: [], clients: [], invoices: [], themes: [], settings: [] };
+  return { profile: [], clients: [], invoices: [], themes: [], settings: [], contracts: [] };
 }
 
 /** Validates untrusted input (for example a backup file) and returns a clean Snapshot. */

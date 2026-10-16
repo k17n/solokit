@@ -1,4 +1,4 @@
-export const COLLECTIONS = ['profile', 'clients', 'invoices', 'themes', 'settings'] as const;
+export const COLLECTIONS = ['profile', 'clients', 'invoices', 'themes', 'settings', 'contracts'] as const;
 export type CollectionName = (typeof COLLECTIONS)[number];
 
 export interface StoredRecord {

@@ -2,7 +2,8 @@ import { emptyCollections, parseSnapshot } from './snapshot';
 import { COLLECTIONS, StorageError, type CollectionName, type DataStore, type Snapshot, type StoredRecord } from './types';
 
 const DEFAULT_NAME = 'solokit';
-const VERSION = 1;
+// Version 2 added the contracts collection; the upgrade creates any object store that is missing.
+const VERSION = 2;
 
 function toPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
