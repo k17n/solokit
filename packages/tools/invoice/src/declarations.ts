@@ -7,8 +7,12 @@ export interface DeclarationInput {
   exemptSupply: boolean;
   reverseCharge: boolean;
   isProforma: boolean;
+  /** A quotation carries only the estimate note, never tax-invoice statements. */
+  isQuote?: boolean;
   tdsRatePercent?: number;
 }
+
+export const ESTIMATE_NOTE = 'This is an estimate, not a tax invoice.';
 
 /** A TDS rate as printed on the invoice: at most two decimals, no trailing zeros. */
 export function formatTdsRate(ratePercent: number): string {
@@ -22,8 +26,10 @@ export function buildDeclarations({
   exemptSupply,
   reverseCharge,
   isProforma,
+  isQuote = false,
   tdsRatePercent,
 }: DeclarationInput): string[] {
+  if (isQuote) return [ESTIMATE_NOTE];
   const lines: string[] = [];
 
   if (isProforma) lines.push('This is a proforma invoice. It is not a tax invoice.');

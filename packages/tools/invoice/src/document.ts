@@ -42,6 +42,10 @@ export interface InvoiceDocument {
   number: string;
   issueDate: string;
   dueDate?: string;
+  /** Quotations only. */
+  validUntil?: string;
+  /** True for a quotation: amounts are estimates. */
+  estimate: boolean;
   currency: CurrencyCode;
   mode: SupplyMode;
   showTax: boolean;
@@ -95,6 +99,7 @@ function party(source: SellerProfile | Client): DocParty {
 }
 
 function titleFor(invoice: InvoiceRecord, documentType: string): string {
+  if (invoice.kind === 'quote') return 'Quotation';
   if (invoice.kind === 'proforma') return 'Proforma Invoice';
   if (documentType === 'tax-invoice') return 'Tax Invoice';
   if (documentType === 'bill-of-supply') return 'Bill of Supply';
@@ -102,6 +107,7 @@ function titleFor(invoice: InvoiceRecord, documentType: string): string {
 }
 
 export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
+  const estimate = invoice.kind === 'quote';
   const money = (minor: number) => formatAmount(minor, invoice.currency);
 
   const result = calculateInvoiceGst(invoice);
@@ -149,7 +155,7 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
     const rates = [...new Set(result.lines.map((line) => line.gstRate))]
       .filter((rate) => rate !== 0)
       .sort((a, b) => b - a);
-    const suffix = reverseCharge ? ' (reverse charge)' : '';
+    const suffix = reverseCharge ? ' (reverse charge)' : estimate ? ' (estimated)' : '';
     const emphasis = reverseCharge ? ({ emphasis: 'muted' } as const) : {};
     for (const rate of rates) {
       const atRate = result.lines.filter((line) => line.gstRate === rate);
@@ -164,7 +170,7 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
   }
 
   if (totals.roundOff !== 0) rows.push({ label: 'Round off', amount: money(totals.roundOff) });
-  rows.push({ label: 'Total', amount: money(totals.grandTotal), emphasis: 'total' });
+  rows.push({ label: estimate ? 'Estimated total' : 'Total', amount: money(totals.grandTotal), emphasis: 'total' });
 
   if (result.tds > 0) {
     rows.push({
@@ -178,9 +184,10 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
     rows.push({ label: 'Net payable', amount: money(result.netPayable), emphasis: 'net' });
   }
 
+  // A quotation asks for no payment, so it carries no bank details or UPI code.
   const payment: InvoiceDocument['payment'] = {};
   const { bank } = invoice.seller;
-  if (bank) {
+  if (bank && !estimate) {
     payment.bank = [
       { label: 'Account name', value: bank.accountName },
       { label: 'Account number', value: bank.accountNumber },
@@ -189,7 +196,7 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
     ];
   }
   const upiId = invoice.seller.upiId?.trim();
-  if (invoice.currency === 'INR' && upiId && result.netPayable > 0) {
+  if (!estimate && invoice.currency === 'INR' && upiId && result.netPayable > 0) {
     payment.upi = {
       id: upiId,
       payload: buildUpiPayload({
@@ -209,6 +216,7 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
     title: titleFor(invoice, result.documentType),
     status: invoice.status,
     kind: invoice.kind,
+    estimate,
     number: invoice.number,
     issueDate: formatDisplayDate(invoice.issueDate),
     currency: invoice.currency,
@@ -227,12 +235,14 @@ export function buildInvoiceDocument(invoice: InvoiceRecord): InvoiceDocument {
       exemptSupply: invoice.exemptSupply,
       reverseCharge,
       isProforma: invoice.kind === 'proforma',
+      isQuote: estimate,
       ...(invoice.tds && result.tds > 0 ? { tdsRatePercent: invoice.tds.ratePercent } : {}),
     }),
     payment,
     signatory: { forName: invoice.seller.name, label: 'Authorised signatory' },
   };
-  if (invoice.dueDate) document.dueDate = formatDisplayDate(invoice.dueDate);
+  if (invoice.dueDate && !estimate) document.dueDate = formatDisplayDate(invoice.dueDate);
+  if (invoice.validUntil && estimate) document.validUntil = formatDisplayDate(invoice.validUntil);
   if (placeOfSupply) document.placeOfSupply = placeOfSupply;
   if (invoice.notes) document.notes = invoice.notes;
   if (invoice.terms) document.terms = invoice.terms;

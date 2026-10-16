@@ -64,6 +64,14 @@ describe('buildDeclarations', () => {
       'TDS at 2.5% is expected to be deducted by the client. Net payable is shown after this deduction.',
     ]);
   });
+  it('gives a quotation only the estimate note, whatever else is set', () => {
+    for (const gstStatus of ['regular', 'composition', 'unregistered'] as const) {
+      expect(
+        buildDeclarations({ ...base, seller: makeSeller({ gstStatus }), isQuote: true, reverseCharge: true, tdsRatePercent: 10, mode: 'export-lut' }),
+      ).toEqual(['This is an estimate, not a tax invoice.']);
+    }
+  });
+
   it('ignores reverse charge when the supply is not taxed', () => {
     expect(buildDeclarations({ ...base, mode: 'no-tax', reverseCharge: true })).toEqual([]);
     expect(buildDeclarations({ ...base, mode: 'export-lut', reverseCharge: true })).toEqual([
