@@ -10,5 +10,7 @@ describe('privacy page', () => {
     expect(screen.getByRole('heading', { name: 'What we do not collect' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Back up your data' })).toBeInTheDocument();
     expect(screen.getByText(/clearing your browser data/i)).toBeInTheDocument();
+    expect(screen.getByText(/separate database in your browser/i)).toBeInTheDocument();
+    expect(screen.getByText(/erases its data from this device only/i)).toBeInTheDocument();
   });
 });

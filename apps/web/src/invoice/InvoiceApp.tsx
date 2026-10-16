@@ -233,6 +233,9 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
         ) : null}
         {view.name === 'profile' ? (
           <div style={{ display: 'grid', gap: '1rem' }}>
+            <p>
+              This is your business profile. The contract tool uses it too, and the <a href="/business/">Your business</a> page has the same details with backups and your other businesses.
+            </p>
             {savedNotice ? <Notice tone="info">Saved</Notice> : null}
             <ProfileForm
               key={saveCount}
