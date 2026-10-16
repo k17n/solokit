@@ -211,6 +211,9 @@ describe('stricter restore validation', () => {
     ['invoice lines that are not a list', (b) => (b.collections.invoices[0].lines = {})],
     ['invoice seller without an address', (b) => delete b.collections.invoices[0].seller.address],
     ['invoice client without an address', (b) => delete b.collections.invoices[0].client.address],
+    ['invoice of an unknown kind', (b) => (b.collections.invoices[0].kind = 'receipt')],
+    ['invoice with a non-text valid-until date', (b) => (b.collections.invoices[0].validUntil = 20261113)],
+    ['invoice with a non-text conversion link', (b) => (b.collections.invoices[0].convertedToId = 7)],
     ['invoice with a damaged theme snapshot', (b) => (b.collections.invoices[0].themeSnapshot = { name: 'x' })],
   ];
   /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -225,6 +228,24 @@ describe('stricter restore validation', () => {
     expect(() => inspectBackup(JSON.stringify(backup))).toThrow(StorageError);
     expect((await storage.invoices.list()).map((invoice) => invoice.id)).toEqual(['keep']);
     expect(await storage.profile.get()).toBeUndefined();
+  });
+
+  it('accepts quotes, proformas and conversion links, and older backups without them', async () => {
+    const backup = await sample();
+    const old = backup.collections.invoices[0];
+    delete old.kind;
+    expect(inspectBackup(JSON.stringify(backup)).invoices).toBe(1);
+
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => NOW });
+    await storage.invoices.save(makeInvoice({ id: 'q', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', convertedToId: 'i' }));
+    await storage.invoices.save(makeInvoice({ id: 'i', number: '2026-27/0001', status: 'draft', convertedFromId: 'q' }));
+    const json = (await createBackup(store, NOW)).json;
+    const target = createMemoryStore();
+    await restoreBackup(target, json);
+    const restored = createInvoiceStorage(target);
+    expect(await restored.invoices.get('q')).toMatchObject({ kind: 'quote', validUntil: '2026-11-13', convertedToId: 'i' });
+    expect(await restored.invoices.nextNumber('2026-10-20', 'quote')).toBe('QT/2026-27/0002');
   });
 
   it('accepts an undamaged backup', async () => {

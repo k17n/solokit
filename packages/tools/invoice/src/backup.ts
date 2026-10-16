@@ -65,6 +65,9 @@ function parseBackupText(text: string): unknown {
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
+/** Documents older than quotes have no `kind` at all, or only the first two. */
+const INVOICE_KINDS: readonly string[] = ['invoice', 'proforma', 'quote'];
+
 const LAYOUTS: readonly string[] = ['classic', 'modern', 'minimal', 'bold', 'consultant', 'formal'];
 
 function isUsableTheme(theme: Record<string, unknown>): boolean {
@@ -110,6 +113,13 @@ function checkRecords(snapshot: Snapshot): void {
       !isAddress(seller['address']) ||
       !Array.isArray(invoice['lines']) ||
       typeof invoice['status'] !== 'string'
+    ) {
+      throw new StorageError('The backup has an invoice that is incomplete, so it was not restored');
+    }
+    const optionalText = ['validUntil', 'convertedFromId', 'convertedToId'];
+    if (
+      (invoice['kind'] !== undefined && !INVOICE_KINDS.includes(invoice['kind'] as string)) ||
+      optionalText.some((key) => invoice[key] !== undefined && typeof invoice[key] !== 'string')
     ) {
       throw new StorageError('The backup has an invoice that is incomplete, so it was not restored');
     }
