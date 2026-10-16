@@ -8,6 +8,8 @@ export interface StoredRecord {
 export interface Snapshot {
   version: 1;
   exportedAt: string;
+  /** Which Business (workspace) the backup came from. Optional: older files do not have it. */
+  workspace?: { name: string };
   collections: Record<CollectionName, StoredRecord[]>;
 }
 

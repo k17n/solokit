@@ -68,8 +68,16 @@ export interface IndexedDbStoreOptions {
   factory?: IDBFactory;
 }
 
+export interface IndexedDbStore extends DataStore {
+  /**
+   * Closes the connection so the database can be deleted or upgraded by someone else. The store stays usable: the next
+   * request opens it again (so after the database is deleted, the next request would create an empty one).
+   */
+  close(): Promise<void>;
+}
+
 /** Browser adapter: keeps everything on the user's device. The database opens on first use. */
-export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): DataStore {
+export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): IndexedDbStore {
   const factory = options.factory ?? globalThis.indexedDB;
   if (!factory) throw new StorageError('IndexedDB is not available in this browser');
   const name = options.name ?? DEFAULT_NAME;
@@ -99,6 +107,17 @@ export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): DataS
   };
 
   return {
+    async close() {
+      const pending = opening;
+      opening = undefined;
+      if (!pending) return;
+      try {
+        (await pending).close();
+      } catch {
+        // It never opened, so there is nothing to close.
+      }
+    },
+
     async get<T extends StoredRecord>(collection: CollectionName, id: string) {
       const db = await database();
       const found = await toPromise(db.transaction(collection).objectStore(collection).get(id));
