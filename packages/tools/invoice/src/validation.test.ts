@@ -32,6 +32,12 @@ describe('validateClient', () => {
 });
 
 describe('validateInvoice', () => {
+  it('asks for the GST status to be confirmed while it is only a placeholder', () => {
+    const issues = validateInvoice(makeInvoice({ seller: makeSeller({ gstUnconfirmed: true }) }));
+    expect(issues).toEqual([{ path: 'seller.gstStatus', message: expect.stringContaining('Confirm your GST status in Your business') }]);
+    expect(validateInvoice(makeInvoice({ seller: makeSeller({ gstUnconfirmed: false }) }))).toEqual([]);
+  });
+
   it('accepts a complete invoice', () => {
     expect(validateInvoice(makeInvoice())).toEqual([]);
   });

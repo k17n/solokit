@@ -67,6 +67,10 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
   }
 
   for (const issue of validateProfile(invoice.seller)) add(`seller.${issue.path}`, issue.message);
+  // A GST status that was only a placeholder (the profile was started in the contract tool) must not end up on a tax document.
+  if (invoice.seller.gstUnconfirmed === true && !issues.some((issue) => issue.path === 'seller.gstStatus')) {
+    add('seller.gstStatus', 'Confirm your GST status in Your business before you issue this. It was not asked when your details were first saved.');
+  }
   for (const issue of validateClient(invoice.client)) add(`client.${issue.path}`, issue.message);
 
   const taxed = invoice.seller.gstStatus === 'regular' && !invoice.isExport && !invoice.exemptSupply;

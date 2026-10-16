@@ -4,6 +4,7 @@ import { convertToInvoice } from './convert';
 import { ConversionError, createInvoiceStorage } from './repositories';
 import type { InvoiceRecord } from './model';
 import { makeInvoice, makeSeller } from './testing';
+import { validateInvoice } from './validation';
 
 const now = new Date('2026-10-20T09:00:00.000Z');
 const quote = (overrides = {}) =>
@@ -86,6 +87,14 @@ describe('storage.invoices.convert', () => {
     const storage = await setup();
     await storage.profile.save(makeSeller({ name: 'New Name' }));
     expect((await storage.invoices.convert('q1', { id: 'i1', issueDate: '2026-10-20' })).seller.name).toBe('New Name');
+  });
+
+  it('carries an unconfirmed GST status from the stored profile, so the draft cannot be issued until it is confirmed', async () => {
+    const storage = await setup();
+    await storage.profile.save(makeSeller({ gstUnconfirmed: true }));
+    const draft = await storage.invoices.convert('q1', { id: 'i1', issueDate: '2026-10-20' });
+    expect(draft.seller.gstUnconfirmed).toBe(true);
+    expect(validateInvoice(draft).map((issue) => issue.path)).toContain('seller.gstStatus');
   });
 
   it('refuses a draft, a cancelled quote, an invoice, a missing id and a second conversion', async () => {
