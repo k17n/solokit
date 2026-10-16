@@ -2,8 +2,11 @@ import { parseMoney } from '@solokit/core';
 import { INDIAN_STATES } from '@solokit/tax-engines';
 import {
   KIND_LABELS,
-  buildReviewSummary,
+  PARTY_ROLES,
+  blankParty,
+  buildReviewPack,
   LIBRARY,
+  unitWord,
   clauseTitle,
   createContext,
   formatValue,
@@ -105,10 +108,11 @@ export function fieldHint(def: VariableDef, contract: Contract): string {
     parts.push(def.type === 'longtext' ? 'Leave it empty to use the template wording.' : `Leave it empty to use the template default: ${formatValue(def, fallback)}.`);
   }
   if (isNumeric(def) && (def.min !== undefined || def.max !== undefined)) {
-    const unit = def.unit && def.unit !== 'percent' ? ` ${def.unit}` : def.unit === 'percent' ? '%' : '';
-    if (def.min !== undefined && def.max !== undefined) parts.push(`Between ${def.min} and ${def.max}${unit}.`);
-    else if (def.min !== undefined) parts.push(`At least ${def.min}${unit}.`);
-    else parts.push(`At most ${def.max}${unit}.`);
+    // The unit follows the number it is read with: "At least 1 day", "Between 1 and 90 days".
+    const unitFor = (count: number) => (def.unit && def.unit !== 'percent' ? ` ${unitWord(count, def.unit)}` : def.unit === 'percent' ? '%' : '');
+    if (def.min !== undefined && def.max !== undefined) parts.push(`Between ${def.min} and ${def.max}${unitFor(def.max)}.`);
+    else if (def.min !== undefined) parts.push(`At least ${def.min}${unitFor(def.min)}.`);
+    else if (def.max !== undefined) parts.push(`At most ${def.max}${unitFor(def.max)}.`);
   }
   return parts.join(' ');
 }
@@ -171,6 +175,36 @@ export function fillParty(contract: Contract, index: number, source: PartyChoice
   return { ...contract, parties: contract.parties.map((party, at) => (at === index ? next : party)) };
 }
 
+/**
+ * Swaps who is who: the details of the first party move to the second and the other way round, and each keeps the
+ * role its place has in this kind of agreement (so the roles stay Disclosing then Receiving, Freelancer then Client).
+ */
+export function swapParties(contract: Contract): Contract {
+  const [firstRole, secondRole] = PARTY_ROLES[contract.kind];
+  const [first, second] = contract.parties;
+  if (!first || !second) return contract;
+  return { ...contract, parties: [{ ...second, role: firstRole }, { ...first, role: secondRole }] };
+}
+
+/**
+ * Puts the saved details (the business profile) on the side the person says they are, and clears the other side if it
+ * still holds those same details from an earlier choice. Signatory and company number stay with their side.
+ */
+export function chooseSide(contract: Contract, index: 0 | 1, source: PartyChoice['source']): Contract {
+  const other = contract.parties[index === 0 ? 1 : 0];
+  const filled = fillParty(contract, index, source);
+  if (!other || other.name.trim() === '' || other.name.trim() !== source.name.trim()) return filled;
+  const emptied = blankParty(other.role);
+  // Whoever signs for the business signs for it on its new side, so what was typed for them moves too.
+  const carried = (party: Party): Party => ({
+    ...party,
+    signatoryName: party.signatoryName || other.signatoryName,
+    signatoryTitle: party.signatoryTitle || other.signatoryTitle,
+    ...(!party.cin && other.cin ? { cin: other.cin } : {}),
+  });
+  return { ...filled, parties: filled.parties.map((party, at) => (at === index ? carried(party) : emptied)) };
+}
+
 /** A name for an agreement whose title was left empty: "Mutual NDA with Northwind Traders". */
 export function suggestedTitle(contract: Contract): string {
   const other = contract.parties[1]?.name.trim();
@@ -225,7 +259,8 @@ export function signatureOf(contract: Contract): string {
 export function safeSummary(contract: Contract | null): ReviewSummary | null {
   if (!contract) return null;
   try {
-    return buildReviewSummary(contract);
+    // A final agreement's summary was frozen with its wording; a draft's is built from the current template.
+    return buildReviewPack(contract).summary;
   } catch (error) {
     console.error('Could not build the review summary', error);
     return null;

@@ -9,7 +9,7 @@ const GLYPH: Record<ContractKind, string> = { 'nda-mutual': 'NDA ⇄', 'nda-one-
 /** One line on what each kind is for. */
 export const KIND_USE: Record<ContractKind, string> = {
   'nda-mutual': 'Both sides share confidential information, for example when you and a client explore a project together',
-  'nda-one-way': 'Only one side shares secrets, for example a client briefing you before you quote',
+  'nda-one-way': 'Only one side shares secrets: you either disclose (showing a client your plans) or receive (a client briefing you before you quote). You choose which side you are',
   services: 'Scope, deliverables, fees, ownership and ending the work for a freelance project',
 };
 

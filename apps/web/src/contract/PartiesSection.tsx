@@ -1,8 +1,9 @@
 'use client';
 
 import { ROLE_LABELS, STAMP_DUTY_STATES, type Contract, type Party, type PartyRole } from '@solokit/tool-contract';
-import { Notice, SelectField, TextField } from '@solokit/ui';
+import { Button, Notice, RadioCards, SelectField, TextField } from '@solokit/ui';
 import { fillParty, updateParty, type PartyChoice } from './editorModel';
+import { Disclosure } from './Disclosure';
 import styles from './sections.module.css';
 
 const ROLE_HINT: Record<PartyRole, string> = {
@@ -23,6 +24,13 @@ export interface PartiesSectionProps {
   choices: PartyChoice[];
   hasProfile: boolean;
   onChange: (next: Contract) => void;
+  /**
+   * For a one-way NDA with a business profile: which side the person is. Nothing is filled in until they say, because the
+   * wrong side would put their details on the wrong party.
+   */
+  sideChoice?: { value: 'disclosing' | 'receiving' | ''; onPick: (side: 'disclosing' | 'receiving') => void } | undefined;
+  /** Swaps the details of the two sides. */
+  onSwap?: (() => void) | undefined;
 }
 
 function PartyFields({
@@ -42,7 +50,8 @@ function PartyFields({
 }) {
   const at = (field: string) => `parties.${index}.${field}`;
   const err = (field: string) => errors[at(field)];
-  const idsOpen = Boolean(party.pan || party.gstin || party.cin || err('pan') || err('gstin') || err('cin'));
+  const hasIds = Boolean(party.pan || party.gstin || party.cin);
+  const idsError = Boolean(err('pan') || err('gstin') || err('cin'));
   const label = ROLE_LABELS[party.role];
   return (
     <fieldset className={`${styles.group} ${styles.party}`}>
@@ -109,21 +118,44 @@ function PartyFields({
           error={err('signatoryTitle')}
         />
       </div>
-      <details className={styles.disclosure} open={idsOpen || undefined}>
-        <summary>Tax and company numbers (optional)</summary>
+      <Disclosure className={styles.disclosure} defaultOpen={hasIds} openWhen={idsError} summary="Tax and company numbers (optional)">
         <div className={styles.row}>
           <TextField label="PAN" autoComplete="off" value={party.pan ?? ''} onChange={(event) => onPatch({ pan: event.target.value.toUpperCase() })} error={err('pan')} />
           <TextField label="GSTIN" autoComplete="off" value={party.gstin ?? ''} onChange={(event) => onPatch({ gstin: event.target.value.toUpperCase() })} error={err('gstin')} />
           <TextField label="CIN (companies)" autoComplete="off" value={party.cin ?? ''} onChange={(event) => onPatch({ cin: event.target.value.toUpperCase() })} error={err('cin')} />
         </div>
-      </details>
+      </Disclosure>
     </fieldset>
   );
 }
 
-export function PartiesSection({ contract, errors, choices, hasProfile, onChange }: PartiesSectionProps) {
+export function PartiesSection({ contract, errors, choices, hasProfile, onChange, sideChoice, onSwap }: PartiesSectionProps) {
+  const [first, second] = contract.parties;
   return (
     <div className={styles.group}>
+      {sideChoice ? (
+        <RadioCards
+          legend="Which side are you?"
+          hint="SoloKit fills your side in from your business profile. Until you choose, neither side is filled in."
+          name="which-side"
+          value={sideChoice.value}
+          onChange={(side) => sideChoice.onPick(side as 'disclosing' | 'receiving')}
+          options={[
+            { value: 'disclosing', label: 'Disclosing Party', description: 'You share your confidential information with the other side, for example showing a client your plans.' },
+            { value: 'receiving', label: 'Receiving Party', description: "You receive the other side's confidential information and promise to keep it secret, for example a client briefing you before you quote." },
+          ]}
+        />
+      ) : null}
+      {onSwap && first && second ? (
+        <div className={styles.swap}>
+          <Button variant="secondary" onClick={onSwap}>
+            Swap parties
+          </Button>
+          <span className={styles.muted}>
+            Moves everything typed for the {ROLE_LABELS[first.role]} to the {ROLE_LABELS[second.role]}, and the other way round.
+          </span>
+        </div>
+      ) : null}
       {!hasProfile ? (
         <Notice tone="info" title="Save your details once">
           SoloKit can fill in your own details from your business profile. Set it up in the <a href="/tools/invoice/">invoice tool</a> and it appears here, in your invoices and in every agreement. Until then, type the details below.

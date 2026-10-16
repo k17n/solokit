@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   ContractInvalidError,
   KIND_LABELS,
+  LIBRARY,
+  contractWarnings,
   createContractDraft,
   type Contract,
   type ContractKind,
@@ -15,6 +17,7 @@ import { downloadBlob } from '../invoice/downloads';
 import { todayIso } from '../invoice/editorModel';
 import { newId } from '../invoice/ids';
 import { requestPersistentStorage } from '../invoice/persist';
+import { useUnloadGuard } from '../components/useUnloadGuard';
 import styles from './ContractEditor.module.css';
 import { ClausesSection } from './ClausesSection';
 import { ExportBar } from './ExportBar';
@@ -24,7 +27,7 @@ import { PartiesSection } from './PartiesSection';
 import { PreviewBlock } from './PreviewBlock';
 import { ReviewPanel } from './ReviewPanel';
 import { TermsSection } from './TermsSection';
-import { SECTION_LABEL, byField, collectIssues, fillParty, safeSummary, sectionOf, signatureOf, suggestedTitle, type PartyChoice } from './editorModel';
+import { SECTION_LABEL, byField, chooseSide, collectIssues, fillParty, safeSummary, sectionOf, signatureOf, suggestedTitle, swapParties, type PartyChoice } from './editorModel';
 import { defaultExporter, describeExportError, type ContractExporter, type ExportKind } from './exporters';
 import { themeFor } from './themes';
 
@@ -38,6 +41,12 @@ export interface ContractEditorProps {
   onBack: () => void;
   /** Called once the agreement is final. */
   onFinalised: (id: string) => void;
+  /** Told whenever the editor has changes that are not saved, so the app around it can ask before it navigates away. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Changes each time the app wants to leave (for example a tab was clicked): the editor asks what to do with unsaved changes. */
+  leaveRequest?: number;
+  /** Called when the person decides to stay and keep editing after a leave request. */
+  onStay?: () => void;
   exporter?: ContractExporter;
   /** The current time. Tests pass a fixed one. */
   now?: () => Date;
@@ -76,7 +85,7 @@ function Section({ id, number, title, lead, children }: { id: string; number: nu
   );
 }
 
-export function ContractEditor({ storage, invoice, contractId, initialKind = 'nda-mutual', onBack, onFinalised, exporter = defaultExporter, now = realNow }: ContractEditorProps) {
+export function ContractEditor({ storage, invoice, contractId, initialKind = 'nda-mutual', onBack, onFinalised, onDirtyChange, leaveRequest = 0, onStay, exporter = defaultExporter, now = realNow }: ContractEditorProps) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [contract, setContract] = useState<Contract | null>(null);
   /** What the user typed into number fields, which can be something that is not a number yet. */
@@ -116,8 +125,9 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
       } else {
         const stamp = now();
         let draft = createContractDraft({ id: newId(), kind: initialKind, now: stamp, effectiveDate: todayIso(stamp) });
-        // The first party is usually the person using the tool, so their details start filled in.
-        if (profile) draft = fillParty(draft, 0, { name: profile.name, address: profile.address, email: profile.email, pan: profile.pan, gstin: profile.gstin });
+        // The first party is usually the person using the tool, so their details start filled in. A one-way NDA is the
+        // exception: the first party is the Disclosing Party, but the person may be the one receiving, so they are asked.
+        if (profile && initialKind !== 'nda-one-way') draft = fillParty(draft, 0, { name: profile.name, address: profile.address, email: profile.email, pan: profile.pan, gstin: profile.gstin });
         setContract(draft);
         setSavedSignature(signatureOf(draft));
       }
@@ -148,6 +158,7 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
   const printable = complete ? working : null;
   const summary = useMemo(() => safeSummary(printable), [printable]);
   const dirty = contract !== null && signatureOf(contract) !== savedSignature;
+  const warnings = useMemo(() => (working ? contractWarnings(working) : []), [working]);
   const customThemes = loaded?.kind === 'ready' ? loaded.customThemes : [];
   const theme = useMemo(() => (working && loaded?.kind === 'ready' ? themeFor(working, loaded.settings, customThemes) : null), [working, loaded, customThemes]);
   const choices = useMemo(() => (loaded?.kind === 'ready' ? choicesFrom(loaded.profile, loaded.clients) : []), [loaded]);
@@ -155,6 +166,24 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
   useEffect(() => {
     if (confirming) confirmRef.current?.focus();
   }, [confirming]);
+
+  useUnloadGuard(dirty);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // Leaving for good: nothing is left to warn about.
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  const lastLeaveRequest = useRef(leaveRequest);
+  useEffect(() => {
+    if (leaveRequest === lastLeaveRequest.current) return;
+    lastLeaveRequest.current = leaveRequest;
+    if (dirty) setConfirming('leave');
+    else onBack();
+    // Only a new request matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaveRequest]);
 
   if (loaded === null || contract === null || working === null) {
     if (loaded?.kind === 'cannot-edit' || loaded?.kind === 'failed') return renderProblem(loaded.kind, onBack);
@@ -259,6 +288,14 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
 
   const shown = attempted ? issues : [];
   const hasProfile = loaded.profile !== undefined;
+  const profileSource = choices.find((choice) => choice.id === 'profile')?.source;
+  // Which side the profile is on right now, worked out from the details so a swap or a manual edit is always reflected.
+  const profileName = loaded.profile?.name.trim();
+  const sideNow = profileName && contract.parties[0]?.name.trim() === profileName ? 'disclosing' : profileName && contract.parties[1]?.name.trim() === profileName ? 'receiving' : '';
+  const sideChoice =
+    contract.kind === 'nda-one-way' && profileSource
+      ? { value: sideNow as 'disclosing' | 'receiving' | '', onPick: (side: 'disclosing' | 'receiving') => change(chooseSide(contract, side === 'disclosing' ? 0 : 1, profileSource)) }
+      : undefined;
   const kindName = KIND_LABELS[current.kind];
 
   return (
@@ -294,6 +331,19 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
       </nav>
 
       <div className={styles.form} ref={formRef}>
+        {warnings.length > 0 ? (
+          <Notice tone="warning" title="Some characters will not print in the PDF">
+            <ul>
+              {warnings.map((warning) => (
+                <li key={`${warning.path}-${warning.message}`}>
+                  {warningLabel(warning.path)}: {warning.message}
+                </li>
+              ))}
+            </ul>
+            <p>You can still finalise and download. The PDF will leave those characters out or show gaps; the Word version keeps them.</p>
+          </Notice>
+        ) : null}
+
         {shown.length > 0 ? (
           <div className={styles.summary} ref={summaryRef} tabIndex={-1}>
             <Notice tone="danger" title={`Fix ${shown.length} ${shown.length === 1 ? 'thing' : 'things'} before you finalise or download this agreement`}>
@@ -320,7 +370,15 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
         </div>
 
         <Section id="sec-parties" number={1} title="Parties" lead="Who is signing. Use the legal names, as they should appear on the agreement.">
-          <PartiesSection contract={contract} errors={errors} choices={choices} hasProfile={hasProfile} onChange={change} />
+          <PartiesSection
+            contract={contract}
+            errors={errors}
+            choices={choices}
+            hasProfile={hasProfile}
+            onChange={change}
+            onSwap={() => change(swapParties(contract))}
+            sideChoice={sideChoice}
+          />
         </Section>
 
         <Section id="sec-terms" number={2} title="Key terms" lead="The numbers and choices that make this agreement yours. Anything you leave empty uses the template's default, and the review below lists which ones.">
@@ -396,7 +454,13 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
                 <Button variant="secondary" onClick={() => void leave(false)}>
                   Leave without saving
                 </Button>
-                <Button variant="ghost" onClick={() => setConfirming(null)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setConfirming(null);
+                    onStay?.();
+                  }}
+                >
                   Keep editing
                 </Button>
               </div>
@@ -421,6 +485,17 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
       </div>
     </div>
   );
+}
+
+/** Which field a warning is about, in words: "Party 1", the setting's label, "Milestone 2". */
+function warningLabel(path: string): string {
+  const party = /^parties\.(\d)\./.exec(path);
+  if (party) return `Party ${Number(party[1]) + 1}`;
+  const variable = /^variables\.(.+)$/.exec(path);
+  if (variable) return LIBRARY.variables.find((def) => def.id === variable[1])?.label ?? SECTION_LABEL[sectionOf(path)];
+  const milestone = /^milestones\.(\d+)\./.exec(path);
+  if (milestone) return `Milestone ${Number(milestone[1]) + 1}`;
+  return SECTION_LABEL[sectionOf(path)];
 }
 
 function renderProblem(kind: 'cannot-edit' | 'failed', onBack: () => void) {

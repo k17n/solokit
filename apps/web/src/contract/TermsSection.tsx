@@ -6,6 +6,7 @@ import { LIBRARY, fillPartyTerms, formatRupees, partyTerms, type Contract, type 
 import { Button, RadioCards, TextAreaField, TextField } from '@solokit/ui';
 import { newId } from '../invoice/ids';
 import { emptyMilestone, fieldGroups, type FieldGroup, fieldHint, fieldLabel, isNumeric, parseVariableText, setOption, setVariable, textOf } from './editorModel';
+import { Disclosure } from './Disclosure';
 import styles from './sections.module.css';
 
 export interface TermsSectionProps {
@@ -220,12 +221,15 @@ export function TermsSection({ contract, typed, errors, onChange, onTyped }: Ter
       />
       {essential.map((group) => renderGroup(group, true))}
       {optional.length > 0 ? (
-        <details className={styles.disclosure} open={optional.some(hasError) || undefined}>
-          <summary>Other settings ({optional.length} topics). They start at the template's defaults; open this to look at or change them.</summary>
+        <Disclosure
+          className={styles.disclosure}
+          openWhen={optional.some(hasError)}
+          summary={`Other settings (${optional.length} topics). They start at the template's defaults; open this to look at or change them.`}
+        >
           <div className={styles.group} style={{ marginTop: '0.5rem' }}>
             {optional.map((group) => renderGroup(group))}
           </div>
-        </details>
+        </Disclosure>
       ) : null}
     </div>
   );

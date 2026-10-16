@@ -2,6 +2,7 @@
 
 import type { ReviewSummary } from '@solokit/tool-contract';
 import { Notice } from '@solokit/ui';
+import { Disclosure } from './Disclosure';
 import styles from './ReviewPanel.module.css';
 
 const Rows = ({ rows }: { rows: { label: string; value: string; note?: string | undefined }[] }) => (
@@ -25,6 +26,17 @@ export function ReviewPanel({ summary }: { summary: ReviewSummary }) {
       <Notice tone="warning" title="Template, not legal advice">
         {summary.notice}
       </Notice>
+
+      {summary.frozenNote ? (
+        <Notice tone="info" title="Wording frozen under an earlier template">
+          {summary.frozenNote}
+        </Notice>
+      ) : null}
+      {summary.warnings.map((warning) => (
+        <Notice key={warning} tone="warning" title="Some characters will not print in the PDF">
+          {warning}
+        </Notice>
+      ))}
 
       <section className={styles.card} aria-labelledby="review-choices">
         <h4 id="review-choices">Your key choices</h4>
@@ -77,8 +89,7 @@ export function ReviewPanel({ summary }: { summary: ReviewSummary }) {
         <p>{summary.stampDuty.text}</p>
       </section>
 
-      <details className={styles.card}>
-        <summary>Clause by clause, in plain English</summary>
+      <Disclosure className={styles.card} summary="Clause by clause, in plain English">
         {summary.clauses.map((clause) => (
           <div key={clause.number} className={styles.clause}>
             <p className={styles.topic}>
@@ -95,16 +106,15 @@ export function ReviewPanel({ summary }: { summary: ReviewSummary }) {
             <p className={styles.note}>{clause.risk}</p>
           </div>
         ))}
-      </details>
+      </Disclosure>
 
-      <details className={styles.card}>
-        <summary>Assumptions this document makes</summary>
+      <Disclosure className={styles.card} summary="Assumptions this document makes">
         <ul className={styles.list}>
           {summary.assumptions.map((assumption, index) => (
             <li key={index}>{assumption}</li>
           ))}
         </ul>
-      </details>
+      </Disclosure>
     </div>
   );
 }

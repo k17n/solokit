@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ContractKind } from '@solokit/tool-contract';
 import { Notice } from '@solokit/ui';
 import { BackupScreen } from '../invoice/BackupScreen';
@@ -25,8 +25,25 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
   const [newCount, setNewCount] = useState(0);
   /** Changes after a restore, so the list reloads what is now on the device. */
   const [restoreCount, setRestoreCount] = useState(0);
+  /** Whether the open editor has changes that are not saved. */
+  const [editorDirty, setEditorDirty] = useState(false);
+  /** Where a tab click wanted to go while the editor still had unsaved changes. */
+  const [pending, setPending] = useState<View | null>(null);
+  /** Changes each time a tab is clicked in a dirty editor, which makes the editor ask what to do with its changes. */
+  const [leaveRequest, setLeaveRequest] = useState(0);
+  const onDirtyChange = useCallback((dirty: boolean) => setEditorDirty(dirty), []);
 
   if (!ready || !contracts || !invoice) return <p>Opening your agreements…</p>;
+
+  /** Go to a tab, unless the editor holds unsaved changes: then the editor asks first, as it does for its own Back button. */
+  function goTo(target: View) {
+    if (editorDirty && (view.name === 'new' || view.name === 'edit')) {
+      setPending(target);
+      setLeaveRequest((count) => count + 1);
+      return;
+    }
+    setView(target);
+  }
 
   const optional = { ...(exporter ? { exporter } : {}), ...(now ? { now } : {}) };
 
@@ -40,7 +57,7 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
       <nav aria-label="Contract tool">
         <div className={styles.tabs}>
           {TABS.map((tab) => (
-            <button key={tab.label} type="button" aria-current={tab.current.includes(view.name) ? 'page' : undefined} className={styles.tab} onClick={() => setView(tab.target)}>
+            <button key={tab.label} type="button" aria-current={tab.current.includes(view.name) ? 'page' : undefined} className={styles.tab} onClick={() => goTo(tab.target)}>
               {tab.label}
             </button>
           ))}
@@ -72,8 +89,17 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
             invoice={invoice}
             contractId={view.name === 'edit' ? view.id : undefined}
             initialKind={view.name === 'new' ? view.kind : undefined}
-            onBack={() => setView({ name: 'list' })}
-            onFinalised={(id) => setView({ name: 'view', id })}
+            onBack={() => {
+              setView(pending ?? { name: 'list' });
+              setPending(null);
+            }}
+            onFinalised={(id) => {
+              setPending(null);
+              setView({ name: 'view', id });
+            }}
+            onDirtyChange={onDirtyChange}
+            leaveRequest={leaveRequest}
+            onStay={() => setPending(null)}
             {...optional}
           />
         ) : null}
