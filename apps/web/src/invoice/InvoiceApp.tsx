@@ -228,7 +228,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
             {...(now ? { now } : {})}
           />
         ) : null}
-        {view.name === 'themes' ? <ThemesScreen storage={storage} profile={profile} {...(renderPdf ? { renderPdf } : {})} {...(now ? { now } : {})} /> : null}
+        {view.name === 'themes' ? <ThemesScreen storage={storage} profile={profile} onProfileChanged={setProfile} {...(renderPdf ? { renderPdf } : {})} {...(now ? { now } : {})} /> : null}
         {view.name === 'backup' && store ? (
           <BackupScreen store={store} onRestored={() => setLoadAttempt((attempt) => attempt + 1)} {...(now ? { now } : {})} />
         ) : null}

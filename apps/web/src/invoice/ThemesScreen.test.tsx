@@ -20,6 +20,29 @@ async function setup(renderPdf?: PdfRenderer, seed?: (storage: InvoiceStorage) =
 
 const pick = (name: string) => userEvent.click(screen.getByRole('button', { name: new RegExp(`^${name}\\b`) }));
 
+describe('ThemesScreen brand theme', () => {
+  beforeEach(() => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:theme'), revokeObjectURL: vi.fn() });
+  });
+
+  it('offers a brand theme when the business has brand colours, and lists it once made', async () => {
+    const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+    const profile = makeSeller({ name: 'Asha Rao', brand: { primary: '#7C2D12' }, brandSource: 'logo' });
+    await storage.profile.save(profile);
+    const onProfileChanged = vi.fn();
+    render(<ThemesScreen storage={storage} profile={profile} onProfileChanged={onProfileChanged} renderPdf={vi.fn(async () => pdf)} now={() => new Date(2026, 9, 16, 10, 0)} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Create a Brand theme' }));
+    expect(await screen.findByRole('button', { name: /^Asha Rao brand/ })).toBeInTheDocument();
+    expect(onProfileChanged).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^Asha Rao brand/ })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('shows no brand theme section without brand colours', async () => {
+    await setup();
+    expect(screen.queryByText('Brand theme')).not.toBeInTheDocument();
+  });
+});
+
 describe('ThemesScreen', () => {
   beforeEach(() => {
     Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:theme'), revokeObjectURL: vi.fn() });

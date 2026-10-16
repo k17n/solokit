@@ -40,3 +40,19 @@
   align-items: center;
   gap: 1rem;
 }
+
+.sub {
+  margin: 0.75rem 0 0;
+  font-family: var(--ff-display);
+  font-size: 1.05rem;
+}
+
+.usedBy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
