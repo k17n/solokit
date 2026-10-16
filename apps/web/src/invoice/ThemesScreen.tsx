@@ -52,6 +52,8 @@ function toForm(theme: InvoiceTheme, name: string): Form {
 
 export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer, now = realNow }: ThemesScreenProps) {
   const [custom, setCustom] = useState<InvoiceTheme[] | null>(null);
+  /** Issued or cancelled invoices from before invoices kept their own theme copy, by the theme they use. */
+  const [exposed, setExposed] = useState<Record<string, number>>({});
   const [defaultId, setDefaultId] = useState(DEFAULT_THEME_ID);
   const [selectedId, setSelectedId] = useState(DEFAULT_THEME_ID);
   const [form, setForm] = useState<Form>(() => toForm(PRESET_THEMES[0] as InvoiceTheme, ''));
@@ -74,9 +76,14 @@ export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer,
   useEffect(() => {
     let cancelled = false;
     setLoadFailed(false);
-    Promise.all([storage.themes.list(), storage.settings.get()]).then(
-      ([themes, settings]) => {
+    Promise.all([storage.themes.list(), storage.settings.get(), storage.invoices.list()]).then(
+      ([themes, settings, invoices]) => {
         if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const invoice of invoices) {
+          if (invoice.status !== 'draft' && !invoice.themeSnapshot) counts[invoice.themeId] = (counts[invoice.themeId] ?? 0) + 1;
+        }
+        setExposed(counts);
         const ids = new Set([...PRESET_THEMES, ...themes].map((theme) => theme.id));
         const start = ids.has(settings.defaultThemeId) ? settings.defaultThemeId : DEFAULT_THEME_ID;
         const startTheme = [...PRESET_THEMES, ...themes].find((theme) => theme.id === start) as InvoiceTheme;
@@ -129,6 +136,7 @@ export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [selected, form.name, form.fontId, parsed.accent, parsed.text, parsed.background],
   );
+  const affected = isMine ? (exposed[selected.id] ?? 0) : 0;
   const warnings = Object.keys(colourErrors).length === 0 ? validateTheme(working) : [];
 
   const sample = useMemo(() => sampleInvoice(profile, working.id, todayIso(now())), [profile, working.id, now]);
@@ -329,6 +337,12 @@ export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer,
                 </ul>
               </Notice>
             ) : null}
+            {affected > 0 ? (
+              <Notice tone="warning" title={`${affected} issued ${affected === 1 ? 'invoice uses' : 'invoices use'} this theme`}>
+                {affected === 1 ? 'It was' : 'They were'} issued before SoloKit started keeping a copy of the theme on each invoice, so saving changes will change how {affected === 1 ? 'it prints' : 'they print'}, and
+                deleting the theme will make {affected === 1 ? 'it' : 'them'} print in Classic.
+              </Notice>
+            ) : null}
             {problem ? <Notice tone="danger">{problem}</Notice> : null}
             {saved ? (
               <p role="status" className={styles.saved}>
@@ -339,7 +353,10 @@ export function ThemesScreen({ storage, profile, renderPdf = defaultPdfRenderer,
             {confirmDelete ? (
               <div className={styles.confirm}>
                 <p ref={confirmRef} tabIndex={-1}>
-                  Delete the theme "{selected.name}"? This cannot be undone. Invoices that use it will print in the Classic theme.
+                  Delete the theme "{selected.name}"? This cannot be undone.{' '}
+                  {affected > 0
+                    ? `${affected} issued ${affected === 1 ? 'invoice that uses' : 'invoices that use'} it will print in the Classic theme.`
+                    : 'Invoices already issued keep the theme they were issued with. Drafts that use it will switch to your default theme.'}
                 </p>
                 <div className={styles.actions}>
                   <Button type="button" disabled={busy} onClick={() => void remove()}>

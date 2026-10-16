@@ -3,14 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
 import { createInvoiceStorage, type InvoiceStorage } from '@solokit/tool-invoice';
-import { makeSeller } from '@solokit/tool-invoice/testing';
+import { makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { ThemesScreen } from './ThemesScreen';
 import type { PdfRenderer } from './usePdfPreview';
 
 const pdf = new Blob(['pdf'], { type: 'application/pdf' });
 
-async function setup(renderPdf?: PdfRenderer) {
+async function setup(renderPdf?: PdfRenderer, seed?: (storage: InvoiceStorage) => Promise<void>) {
   const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+  if (seed) await seed(storage);
   const renderer = renderPdf ?? vi.fn(async () => pdf);
   render(<ThemesScreen storage={storage} profile={makeSeller()} renderPdf={renderer} now={() => new Date(2026, 9, 16, 10, 0)} />);
   await screen.findByRole('list', { name: 'Themes' });
@@ -145,6 +146,47 @@ describe('ThemesScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete theme' }));
     await userEvent.click(screen.getByRole('button', { name: 'Yes, delete theme' }));
     await waitFor(async () => expect((await storage.settings.get()).defaultThemeId).toBe('classic'));
+  });
+
+  describe('invoices that use a theme', () => {
+    const mine = { id: 'mine', name: 'Mine', layout: 'modern' as const, accent: '#047857', text: '#14213D', background: '#FFFFFF', fontId: 'inter' as const };
+    const snapshot = { ...mine };
+
+    async function withInvoices() {
+      return setup(undefined, async (storage) => {
+        await storage.themes.save(mine);
+        await storage.settings.update({ defaultThemeId: 'mine' });
+        await storage.invoices.save(makeInvoice({ id: 'i1', number: '2026-27/0001', themeId: 'mine' }));
+        await storage.invoices.save(makeInvoice({ id: 'i2', number: '2026-27/0002', themeId: 'mine', status: 'cancelled' }));
+        await storage.invoices.save(makeInvoice({ id: 'i3', number: '2026-27/0003', themeId: 'mine', themeSnapshot: snapshot }));
+        await storage.invoices.save(makeInvoice({ id: 'i4', number: '2026-27/0004', themeId: 'mine', status: 'draft' }));
+        await storage.invoices.save(makeInvoice({ id: 'i5', number: '2026-27/0005', themeId: 'bold' }));
+      });
+    }
+
+    it('warns, before saving changes, how many issued invoices would change', async () => {
+      await withInvoices();
+      const warning = await screen.findByText('2 issued invoices use this theme');
+      expect(warning.closest('[role]')).toHaveTextContent(/saving changes will change how they print/);
+    });
+
+    it('repeats the count when deleting', async () => {
+      await withInvoices();
+      await userEvent.click(await screen.findByRole('button', { name: 'Delete theme' }));
+      expect(screen.getByText(/2 issued invoices that use it will print in the Classic theme/)).toBeInTheDocument();
+    });
+
+    it('does not warn when every invoice keeps its own copy of the theme', async () => {
+      await setup(undefined, async (storage) => {
+        await storage.themes.save(mine);
+        await storage.settings.update({ defaultThemeId: 'mine' });
+        await storage.invoices.save(makeInvoice({ id: 'i3', themeId: 'mine', themeSnapshot: snapshot }));
+      });
+      await screen.findByRole('button', { name: 'Delete theme' });
+      expect(screen.queryByText(/issued invoices? uses? this theme/)).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Delete theme' }));
+      expect(screen.getByText(/keep the theme they were issued with/)).toBeInTheDocument();
+    });
   });
 
   it('can set a preset as the default', async () => {
