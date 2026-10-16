@@ -657,7 +657,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(ui): add design tokens, Button, Badge and Logo
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1290,7 +1289,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(ui): add site header and signature footer
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1523,7 +1521,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(registry): add tool registry
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2056,7 +2053,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(storage): add DataStore interface with memory and IndexedDB adapters
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2346,7 +2342,6 @@ Expected: `1`.
 git add -A
 git commit -m "feat(web): scaffold Next.js static app with site chrome
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2500,7 +2495,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add store provider with in-memory fallback
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2939,7 +2933,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add live GST receipt demo
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3436,7 +3429,6 @@ Expected: "Compiled successfully"; `grep -c "Paperwork for" apps/web/out/index.h
 git add -A
 git commit -m "feat(web): build the home page
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3727,7 +3719,6 @@ Expected: one folder per tool slug (each with `index.html`) and `privacy/index.h
 git add -A
 git commit -m "feat(web): add tool pages, privacy page and 404
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -4055,7 +4046,6 @@ Expected: all present. `grep -o 'rel="manifest"[^>]*' apps/web/out/index.html` p
 git add -A
 git commit -m "feat(web): make the site installable and offline-capable
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -4121,7 +4111,6 @@ Expected: "Compiled successfully".
 git add -A
 git commit -m "docs: update README for the app shell
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 (The controller then runs the site and checks it in a real browser, including the installable/offline behaviour and the visual details, before the final review.)

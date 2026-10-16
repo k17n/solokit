@@ -336,7 +336,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(invoice-pdf): add package scaffold and bundled invoice fonts
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 (Stage with explicit paths if `.superpowers/` or other local files show up in `git status`.)
 
@@ -448,7 +447,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(invoice-pdf): register the bundled fonts and prove the rupee sign renders
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -537,7 +535,6 @@ Expected: PASS and no type errors. (If the PNG width is outside 100 to 140 px fo
 git add -A
 git commit -m "feat(invoice-pdf): add UPI QR image builder
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -705,7 +702,6 @@ Expected: PASS and no type errors. If a hand-computed `mixHex` value in the test
 git add -A
 git commit -m "feat(invoice-pdf): add colour helpers and per-layout specs
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1386,7 +1382,6 @@ Expected: no errors. (`@solokit/tool-invoice/testing` must resolve; it is export
 git add -A
 git commit -m "feat(invoice-pdf): render invoices in six theme layouts
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1600,7 +1595,6 @@ Run from the repo root: `pnpm install` (exit 0), `pnpm test` (every package pass
 git add -A
 git commit -m "feat(invoice-pdf): add the render entry point, file names and sample generator
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---

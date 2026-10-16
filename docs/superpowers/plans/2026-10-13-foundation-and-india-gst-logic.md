@@ -403,7 +403,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat: scaffold pnpm workspace and add core money module
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -600,7 +599,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(core): add amount in words with Indian and international numbering
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -787,7 +785,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(core): add financial-year invoice numbering
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1037,7 +1034,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(tax-engines): add package, country list and Indian GST state codes
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1188,7 +1184,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(tax-engines): add GSTIN validation with checksum
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1321,7 +1316,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(tax-engines): add India GST rules data with as-of date
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1757,7 +1751,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(tax-engines): add India GST calculation engine
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1949,7 +1942,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(tax-engines): add reverse charge, TDS and advances to GST engine
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2003,7 +1995,6 @@ Expected: no errors in either package.
 git add -A
 git commit -m "docs: add README
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---

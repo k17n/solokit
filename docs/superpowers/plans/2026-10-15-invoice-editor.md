@@ -28,7 +28,6 @@
 - Accessibility: same rules as Plan 3C-1 (labels, `role="alert"` errors, focus on first invalid field on a failed issue, `noValidate`). Item groups are `fieldset`s with a legend ("Item 1"). Destructive actions use two-step inline confirmation (no `window.confirm`).
 - Navigation of the tool uses plain buttons with `aria-current="page"` inside `<nav aria-label="Invoice tool">` (not ARIA tabs).
 - Never name two files in `apps/web/src/invoice/` that differ only by case (Windows file system).
-- Commits use the trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 
 ## File Structure
 
@@ -229,7 +228,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add input parsing helpers for amounts, quantities and percentages
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -461,7 +459,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add client form state, mapping and validation
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1220,7 +1217,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add the editor model: form state, invoice building, validation and duplication
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1627,7 +1623,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add the line items editor with SAC suggestions and GST rate choices
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1872,7 +1867,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add the client section with saved-client picker
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2285,7 +2279,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add the details section and the totals panel
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2675,7 +2668,6 @@ Expected: no errors. (If the lint comment about hook dependencies is flagged by 
 git add -A
 git commit -m "feat(web): add the PDF preview hook, preview component and download helper
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -3387,7 +3379,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add the invoice editor screen
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -4100,7 +4091,6 @@ Notes: the list buttons use `aria-label` with the invoice number so each is uniq
 git add -A
 git commit -m "feat(web): add the invoice list and viewer with download, duplicate, cancel and delete
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -4241,7 +4231,6 @@ Expected: all PASS / OK. The service worker precache stamp must still succeed.
 git add -A
 git commit -m "feat(web): wire the editor, list and viewer into the invoice tool and make it available
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -4275,7 +4264,6 @@ Expected: all specs PASS in real Chrome. Fix real defects in the app, not the te
 git add -A
 git commit -m "test(web): add end-to-end checks of creating, issuing and downloading invoices
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---

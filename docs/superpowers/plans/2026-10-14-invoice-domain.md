@@ -452,7 +452,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(invoice): scaffold package with currencies, billing units and data model
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -786,7 +785,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(invoice): add seller, client and invoice validation
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -894,7 +892,6 @@ Expected: PASS and no type errors.
 git add -A
 git commit -m "feat(invoice): add UPI payment link builder
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1054,7 +1051,6 @@ Expected: PASS and no type errors.
 git add -A
 git commit -m "feat(invoice): add legal declarations for each kind of supply
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1605,7 +1601,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(invoice): build the invoice document view-model
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1723,7 +1718,6 @@ Expected: PASS and no type errors. (The "IT CONSULTING" test matches because eve
 git add -A
 git commit -m "feat(invoice): add common SAC code search
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1978,7 +1972,6 @@ Expected: PASS and no type errors.
 git add -A
 git commit -m "feat(invoice): add theme model, presets and contrast validation
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2238,7 +2231,6 @@ Expected: PASS and no type errors.
 git add -A
 git commit -m "feat(invoice): add repositories for profile, clients, invoices, themes and settings
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2403,7 +2395,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(invoice): add backup and restore
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2441,7 +2432,6 @@ Expected: "Compiled successfully" (the web app does not import the invoice packa
 git add -A
 git commit -m "docs: mention the invoice domain package
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---

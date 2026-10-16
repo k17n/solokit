@@ -26,7 +26,6 @@
 - Copy: plain, sentence case, active voice, no jargon; errors say what to do.
 - Quality floor: responsive to 360 px, light and dark themes via the design tokens, reduced motion respected.
 - Registry status for the invoice tool stays `coming-soon` until Plan 3C-2.
-- Commits use the trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 
 ## File Structure
 
@@ -698,7 +697,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(ui): add form components (fields, radio cards, notices)
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 (Stage explicit paths if `.superpowers/` or other local files appear in `git status`.)
 
@@ -1196,7 +1194,6 @@ Expected: "Compiled successfully"; `/tools/invoice` is still pre-rendered; `ls a
 git add -A
 git commit -m "feat(web): load the invoice tool shell on its tool page
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1596,7 +1593,6 @@ Expected: no errors. If `normaliseSeller` keeps an empty `address.line2` or drop
 git add -A
 git commit -m "feat(web): add profile form state, mapping and validation
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -1941,7 +1937,6 @@ Expected: no errors.
 git add -A
 git commit -m "feat(web): add logo processing and upload control
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2737,7 +2732,6 @@ Common issues to check before reporting a failure: `Button` must forward `type="
 git add -A
 git commit -m "feat(web): add the profile form and first-run onboarding
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---
@@ -2925,7 +2919,6 @@ Run from the repo root: `pnpm install` (exit 0), `pnpm test` (every package pass
 git add -A
 git commit -m "test(web): add browser tests for onboarding, profile, offline and mobile
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
 ---

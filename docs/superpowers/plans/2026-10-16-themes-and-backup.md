@@ -13,4 +13,3 @@
 7. e2e: theme create/use then issued PDF check; backup then restore into a fresh context. Offline create/download is already covered in `invoice.spec.ts`.
 8. README status and privacy copy updated so claims are true.
 
-Constraints as in earlier plans: plain nav buttons with `aria-current`, two-step inline confirms, no `window.confirm`, honest copy, commit trailer `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
