@@ -2,6 +2,7 @@ import { formatInvoiceNumber, indianFiscalYear, nextSequence } from '@solokit/co
 import type { DataStore } from '@solokit/storage';
 import { SELLER_ID, SETTINGS_ID, type Client, type InvoiceKind, type InvoiceRecord, type InvoiceSettings, type SellerProfile } from './model';
 import { seriesOf, seriesPrefix } from './series';
+import { convertToInvoice } from './convert';
 import { DEFAULT_THEME_ID, type InvoiceTheme } from './themes';
 
 export class InvoiceNumberTakenError extends Error {
@@ -22,6 +23,13 @@ export class IssuedInvoiceError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'IssuedInvoiceError';
+  }
+}
+
+export class ConversionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConversionError';
   }
 }
 
@@ -46,6 +54,11 @@ export interface InvoiceStorage {
     save(invoice: InvoiceRecord): Promise<InvoiceRecord>;
     remove(id: string): Promise<void>;
     cancel(id: string): Promise<InvoiceRecord>;
+    /**
+     * Turns an issued quote or proforma into a new draft tax invoice (next number in the tax series, current
+     * profile) and links the two. The source stays issued and read-only. Throws {@link ConversionError}.
+     */
+    convert(id: string, input: { id: string; issueDate: string }): Promise<InvoiceRecord>;
     /** The next free number in the series of this kind (default: tax invoices). */
     nextNumber(issueDate: string, kind?: InvoiceKind): Promise<string>;
   };
@@ -120,12 +133,34 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
           );
         }
         await store.remove('invoices', id);
+        // Deleting the draft made from a quote frees the quote to be converted again.
+        const sourceId = existing?.convertedFromId;
+        const source = sourceId ? await store.get<InvoiceRecord>('invoices', sourceId) : undefined;
+        if (source && source.convertedToId === id) {
+          const { convertedToId: _linked, ...rest } = source;
+          await saveInvoice(rest);
+        }
       },
       async cancel(id) {
         const existing = await store.get<InvoiceRecord>('invoices', id);
         if (!existing) throw new Error('Invoice not found');
         if (existing.status === 'draft') throw new Error('Only issued invoices can be cancelled; delete a draft instead');
         return saveInvoice({ ...existing, status: 'cancelled' });
+      },
+      async convert(id, input) {
+        const source = await store.get<InvoiceRecord>('invoices', id);
+        if (!source) throw new ConversionError('Document not found');
+        if (source.kind === 'invoice') throw new ConversionError('Only a quotation or proforma invoice can be converted');
+        if (source.status !== 'issued') throw new ConversionError('Only an issued quotation or proforma invoice can be converted');
+        if (source.convertedToId) throw new ConversionError('This document has already been converted to an invoice');
+        const [number, profile] = await Promise.all([
+          this.nextNumber(input.issueDate, 'invoice'),
+          store.get<SellerProfile>('profile', SELLER_ID),
+        ]);
+        const draft = convertToInvoice(source, { id: input.id, number, issueDate: input.issueDate, now: now(), ...(profile ? { seller: profile } : {}) });
+        const saved = await saveInvoice(draft);
+        await saveInvoice({ ...source, convertedToId: saved.id });
+        return saved;
       },
       async nextNumber(issueDate, kind = 'invoice') {
         const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
