@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import type { ContractKind } from '@solokit/tool-contract';
 import { Notice } from '@solokit/ui';
-import { BackupScreen } from '../invoice/BackupScreen';
+import { BackupScreen } from '../business/BackupScreen';
 import { ContractEditor } from './ContractEditor';
 import { ContractList } from './ContractList';
 import { ContractViewer } from './ContractViewer';

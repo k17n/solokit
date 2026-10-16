@@ -16,7 +16,7 @@ import {
 } from '@solokit/tool-invoice';
 import { Button, Notice } from '@solokit/ui';
 import { useStorage } from '../workspace/WorkspaceProvider';
-import { downloadBlob } from './downloads';
+import { downloadBlob } from '../invoice/downloads';
 import styles from './BackupScreen.module.css';
 
 export interface BackupScreenProps {

@@ -7,7 +7,7 @@ import { makeContract } from '@solokit/tool-contract/testing';
 import { createBackup, createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { BackupScreen } from './BackupScreen';
-import * as downloads from './downloads';
+import * as downloads from '../invoice/downloads';
 
 afterEach(() => vi.restoreAllMocks());
 

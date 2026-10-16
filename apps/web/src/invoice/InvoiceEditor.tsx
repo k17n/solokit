@@ -13,7 +13,7 @@ import { KIND_USE, KindBadge, KindCards, documentName, kindClasses } from './kin
 import { newId } from './ids';
 import { LineItemsEditor } from './LineItemsEditor';
 import { PdfPreview } from './PdfPreview';
-import { issuesByField } from './profileFormState';
+import { issuesByField } from '../business/profileFormState';
 import { TotalsPanel } from './TotalsPanel';
 import { defaultPdfRenderer, usePdfPreview, type PdfRenderer } from './usePdfPreview';
 import styles from './InvoiceEditor.module.css';
