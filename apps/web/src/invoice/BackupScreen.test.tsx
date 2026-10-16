@@ -231,6 +231,47 @@ describe('BackupScreen: restoring an older backup', () => {
     expect(JSON.parse((await createBackup(store, NOW)).json).collections.contracts).toHaveLength(1);
   });
 
+  it('warns, naming final agreements and drafts, when the device has agreements the file lacks', async () => {
+    const device = createMemoryStore();
+    const contracts = createContractStorage(device, { now: () => NOW });
+    await contracts.save(makeContract('services', { id: 'sv', title: 'Website for Acme' }));
+    await contracts.save(makeContract('nda-mutual', { id: 'nd', title: 'NDA with Zed' }));
+    await contracts.finalise('nd');
+    await setup(device);
+    // The file has no agreements and is newer than every change on the device, so only the missing agreements are at stake.
+    const snapshot = JSON.parse(await olderFile());
+    snapshot.exportedAt = '2026-10-20T00:00:00.000Z';
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    const warning = within(summary).getByRole('alert');
+    expect(warning).toHaveTextContent('1 final agreement on this device would be lost');
+    expect(warning.querySelector('strong')).toHaveTextContent('"NDA with Zed"');
+    expect(warning).toHaveTextContent(/may already be signed/);
+    expect(warning).toHaveTextContent('1 draft agreement that is not in the backup would also be deleted: "Website for Acme"');
+    expect(warning).not.toHaveTextContent(/before the latest changes/);
+  });
+
+  it('warns about a draft agreement alone, and about a file made before the latest change to an agreement', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => new Date('2026-10-15T00:00:00.000Z') }).save(makeContract('services', { id: 'sv', title: 'Website for Acme' }));
+    await setup(device);
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
+    const warning = within(await screen.findByRole('region', { name: 'Restore this backup?' })).getByRole('alert');
+    expect(warning).toHaveTextContent(/Website for Acme/);
+    expect(warning).toHaveTextContent(/before the latest changes/);
+  });
+
+  it('does not warn about agreements that the file also holds', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => EARLIER }).save(makeContract('services', { id: 'sv', title: 'Website for Acme' }));
+    await setup(device);
+    const snapshot = JSON.parse((await createBackup(device, NOW)).json);
+    snapshot.exportedAt = '2026-10-20T00:00:00.000Z';
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    expect(within(summary).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('can download a backup of the current data from the confirm step', async () => {
     const download = vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {});
     const { storage } = await deviceWithMore();

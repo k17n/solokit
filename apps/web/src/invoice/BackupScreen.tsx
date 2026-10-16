@@ -64,6 +64,11 @@ interface Pending {
   comparison: DeviceComparison;
 }
 
+function listTitles(titles: string[]): string {
+  const shown = titles.slice(0, 10).map((title) => `"${title || 'Untitled'}"`).join(', ');
+  return titles.length > 10 ? `${shown} and ${titles.length - 10} more` : shown;
+}
+
 function listNumbers(numbers: string[]): string {
   const shown = numbers.slice(0, 10).join(', ');
   return numbers.length > 10 ? `${shown} and ${numbers.length - 10} more` : shown;
@@ -313,17 +318,26 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
 }
 
 function LossWarning({ comparison }: { comparison: DeviceComparison }) {
-  const { missing, missingIssued, reusableNumbers, fileIsOlder } = comparison;
+  const { missing, missingIssued, reusableNumbers, fileIsOlder, missingContracts, missingFinalContracts } = comparison;
   const drafts = missing.length - missingIssued;
-  if (missing.length === 0 && !fileIsOlder) return null;
+  const draftAgreements = missingContracts.length - missingFinalContracts;
+  if (missing.length === 0 && missingContracts.length === 0 && !fileIsOlder) return null;
   const owning = missing.filter((invoice) => invoice.status !== 'draft').map((invoice) => invoice.number);
+  const finalAgreements = missingContracts.filter((contract) => contract.status === 'final').map((contract) => contract.title);
+  const lostThings = [missingIssued > 0 ? plural(missingIssued, 'issued invoice') : '', missingFinalContracts > 0 ? plural(missingFinalContracts, 'final agreement') : ''].filter(Boolean);
   return (
-    <Notice tone="danger" title={missingIssued > 0 ? `${plural(missingIssued, 'issued invoice')} on this device would be lost` : 'This backup is older than the data on this device'}>
+    <Notice tone="danger" title={lostThings.length > 0 ? `${lostThings.join(' and ')} on this device would be lost` : 'This backup is older than the data on this device'}>
       {missingIssued > 0 ? <p>These invoices are on this device but not in the backup file, and restoring will delete them: {listNumbers(owning)}.</p> : null}
       {reusableNumbers.length > 0 ? (
         <p>Their numbers ({listNumbers(reusableNumbers)}) would be free again, so new invoices could reuse them. Reusing an invoice number you already gave to a client can cause trouble with GST records.</p>
       ) : null}
       {drafts > 0 ? <p>{plural(drafts, 'draft')} that is not in the backup would also be deleted.</p> : null}
+      {missingFinalContracts > 0 ? (
+        <p>
+          These final agreements are on this device but not in the backup file, and restoring will delete them: <strong>{listTitles(finalAgreements)}</strong>. They may already be signed.
+        </p>
+      ) : null}
+      {draftAgreements > 0 ? <p>{plural(draftAgreements, 'draft agreement')} that is not in the backup would also be deleted: {listTitles(missingContracts.filter((contract) => contract.status !== 'final').map((contract) => contract.title))}.</p> : null}
       {fileIsOlder ? <p>The file was made before the latest changes on this device, so anything changed since then would be lost.</p> : null}
       <p>If you are not sure, download a backup of the current data first.</p>
     </Notice>
