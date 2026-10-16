@@ -57,3 +57,8 @@ Status legend: 🟢 planned next · ⚪ backlog
 
 ## Architecture principle
 Build a shared layer early: business/client profile saved in localStorage plus a common PDF export, so every tool prefills from it. The cross-tool convenience is what makes a suite better than standalone sites.
+
+## More ideas (2026-10-16)
+- ⚪ Payment tracker with overdue reminders (WhatsApp/email text)
+- ⚪ TDS and advance-tax tracker (Form 26AS check, due dates)
+- ⚪ Agentic layer over the tools: see `future-development.md`
