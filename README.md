@@ -8,8 +8,8 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - Done: invoice editor with live PDF preview, issuing, PDF download, and the invoice list (kind badge and filter, duplicate, cancel).
 - Done: invoice themes (six presets, your own colours and font, default and per-invoice choice) and the backup and restore screens (unencrypted JSON file, reminder after 30 days, restore on a fresh device).
 - Done: quotations and proforma invoices inside the invoice tool, each with its own number series (tax invoices keep theirs), a validity date on quotations, and Convert to invoice. A quotation is an estimate, not a tax invoice, and carries no tax-invoice wording.
-- Done (domain and exports only, no screens yet): contract and NDA generator. Mutual and one-way NDAs and a freelance services agreement from a clause library, validation, a Review pack for a lawyer (PDF), editable Word export, saved with backups. Stage B builds the screens; the registry entry stays coming-soon until then.
-- Next: contract screens, more tools and countries.
+- Done: contract and NDA generator at /tools/contract/. Mutual and one-way NDAs and a freelance services agreement, a numbered editor (parties, key terms, optional clauses, jurisdiction and stamp duty note, review), PDF, editable Word and a Review pack for a lawyer, final/reopen, backups that carry agreements. Your details come from the invoice tool's business profile and saved clients; with none saved, the editor links to the invoice tool and you type them. A template, not legal advice.
+- Next: more tools and countries.
 
 ## Layout
 

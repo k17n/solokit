@@ -59,7 +59,7 @@ function VariableField({
 }) {
   const label = fieldLabel(def);
   const hint = fieldHint(def, contract);
-  const required = def.required !== false;
+  const required = def.required !== false && variableDefault(def, contract) === undefined;
   if (def.type === 'longtext') {
     return (
       <TextAreaField
@@ -176,12 +176,16 @@ function MilestonesEditor({ milestones, errors, onChange }: { milestones: Milest
 export function TermsSection({ contract, typed, errors, onChange, onTyped }: TermsSectionProps) {
   const groups = fieldGroups(contract);
   const feeModel = contract.options['feeModel'] ?? LIBRARY.options.find((def) => def.id === 'feeModel')?.default;
-  // A group needs attention when something in it has no template default to fall back on; the rest are tucked away.
-  const needsInput = (group: FieldGroup) => group.clauseId === 'fees' || group.variables.some((def) => def.required !== false && variableDefault(def, contract) === undefined) || group.options.some((def) => def.default === undefined);
-  const hasError = (group: FieldGroup) => group.options.some((def) => errors[`options.${def.id}`]) || group.variables.some((def) => errors[`variables.${def.id}`]) || (group.clauseId === 'fees' && Object.keys(errors).some((key) => key.startsWith('milestones')));
-  const essential = groups.filter(needsInput);
-  const optional = groups.filter((group) => !essential.includes(group));
-  const renderGroup = (group: FieldGroup) => (
+  // Fields with no template default must be filled in, so they come first. Everything that starts at a default is tucked away.
+  const hasDefault = (def: VariableDef | OptionDef) => ('type' in def ? variableDefault(def, contract) !== undefined || def.required === false : def.default !== undefined);
+  const split = (keep: (def: VariableDef | OptionDef) => boolean) =>
+    groups
+      .map((group) => ({ ...group, options: group.options.filter(keep), variables: group.variables.filter(keep) }))
+      .filter((group) => group.options.length + group.variables.length > 0);
+  const essential = split((def) => !hasDefault(def));
+  const optional = split(hasDefault);
+  const hasError = (group: FieldGroup) => group.options.some((def) => errors[`options.${def.id}`]) || group.variables.some((def) => errors[`variables.${def.id}`]);
+  const renderGroup = (group: FieldGroup, core = false) => (
     <fieldset key={group.clauseId} className={styles.group}>
       <legend className={styles.legend}>{group.title}</legend>
       {group.options.map((def) => (
@@ -198,7 +202,7 @@ export function TermsSection({ contract, typed, errors, onChange, onTyped }: Ter
           onTyped={(text) => onTyped(def.id, text)}
         />
       ))}
-      {group.clauseId === 'fees' && contract.kind === 'services' && feeModel === 'milestones' ? (
+      {core && group.clauseId === 'fees' && contract.kind === 'services' && feeModel === 'milestones' ? (
         <MilestonesEditor milestones={contract.milestones} errors={errors} onChange={(milestones) => onChange({ ...contract, milestones })} />
       ) : null}
     </fieldset>
@@ -214,12 +218,12 @@ export function TermsSection({ contract, typed, errors, onChange, onTyped }: Ter
         onChange={(event) => onChange({ ...contract, effectiveDate: event.target.value })}
         error={errors['effectiveDate']}
       />
-      {essential.map(renderGroup)}
+      {essential.map((group) => renderGroup(group, true))}
       {optional.length > 0 ? (
         <details className={styles.disclosure} open={optional.some(hasError) || undefined}>
           <summary>Other settings ({optional.length} topics). They start at the template's defaults; open this to look at or change them.</summary>
           <div className={styles.group} style={{ marginTop: '0.5rem' }}>
-            {optional.map(renderGroup)}
+            {optional.map((group) => renderGroup(group))}
           </div>
         </details>
       ) : null}
