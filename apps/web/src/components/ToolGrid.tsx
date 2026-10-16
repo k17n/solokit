@@ -9,23 +9,19 @@ function CardBody({ tool }: { tool: ToolDefinition }) {
         <span className={styles.category}>{TOOL_CATEGORY_LABELS[tool.category]}</span>
         {tool.status === 'available' ? <Badge tone="success">Ready</Badge> : <Badge tone="soon">Coming soon</Badge>}
       </div>
-      <h3 className={styles.name}>{tool.name}</h3>
+      <h4 className={styles.name}>{tool.name}</h4>
       <p className={styles.tagline}>{tool.tagline}</p>
     </>
   );
 }
 
-export function ToolGrid() {
+function ToolGroup({ label, tools }: { label: string; tools: ToolDefinition[] }) {
+  if (tools.length === 0) return null;
   return (
-    <section id="tools" aria-labelledby="tools-heading" className={`container ${styles.section}`}>
-      <div className={styles.head}>
-        <h2 id="tools-heading" className={styles.heading}>
-          Tools
-        </h2>
-        <p className={styles.intro}>Pick a tool. New ones land here as they are built.</p>
-      </div>
+    <div className={styles.group}>
+      <h3 className={styles.groupLabel}>{label}</h3>
       <ul role="list" className={styles.grid}>
-        {getTools().map((tool) => (
+        {tools.map((tool) => (
           <li key={tool.slug}>
             {tool.status === 'available' ? (
               <a className={`${styles.card} ${styles.live}`} href={toolHref(tool.slug)}>
@@ -39,6 +35,24 @@ export function ToolGrid() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+export function ToolGrid() {
+  const tools = getTools();
+  const ready = tools.filter((tool) => tool.status === 'available');
+  const soon = tools.filter((tool) => tool.status !== 'available');
+  return (
+    <section id="tools" aria-labelledby="tools-heading" className={`container ${styles.section}`}>
+      <div className={styles.head}>
+        <h2 id="tools-heading" className={styles.heading}>
+          Tools
+        </h2>
+        <p className={styles.intro}>Pick a tool. New ones land here as they are built.</p>
+      </div>
+      <ToolGroup label="Ready to use" tools={ready} />
+      <ToolGroup label="On the way" tools={soon} />
     </section>
   );
 }

@@ -20,6 +20,18 @@
   color: var(--text-muted);
 }
 
+.group + .group {
+  margin-top: 2.5rem;
+}
+
+.groupLabel {
+  margin: 0 0 1rem;
+  font: 600 0.8rem/1 var(--ff-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));

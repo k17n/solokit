@@ -20,6 +20,14 @@ describe('tool registry', () => {
     expect(first?.featured).toBe(true);
   });
 
+  it('lists every available tool before any coming-soon tool', () => {
+    const statuses = getTools().map((tool) => tool.status);
+    const firstSoon = statuses.indexOf('coming-soon');
+    expect(firstSoon).toBeGreaterThan(0);
+    expect(statuses.slice(0, firstSoon).every((status) => status === 'available')).toBe(true);
+    expect(statuses.slice(firstSoon).every((status) => status === 'coming-soon')).toBe(true);
+  });
+
   it('gives every tool copy and a known category', () => {
     for (const tool of getTools()) {
       expect(tool.name).not.toBe('');

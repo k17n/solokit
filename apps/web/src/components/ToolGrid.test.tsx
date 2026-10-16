@@ -19,6 +19,15 @@ describe('ToolGrid', () => {
     expect(within(link).getByText('Ready')).toBeInTheDocument();
   });
 
+  it('shows ready tools in their own group before the coming-soon group', () => {
+    render(<ToolGrid />);
+    const ready = screen.getByRole('heading', { level: 3, name: 'Ready to use' });
+    const soon = screen.getByRole('heading', { level: 3, name: 'On the way' });
+    expect(ready.compareDocumentPosition(soon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Alpha tool/ }).compareDocumentPosition(soon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('Beta tool').compareDocumentPosition(soon) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
   it('does not link coming-soon tools and labels them', () => {
     render(<ToolGrid />);
     const section = screen.getByRole('region', { name: 'Tools' });

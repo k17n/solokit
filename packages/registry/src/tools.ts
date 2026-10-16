@@ -73,8 +73,13 @@ const TOOLS: readonly ToolDefinition[] = [
   },
 ];
 
+/** Every tool, with the ones that are ready first and the coming-soon ones after, each group in listed order. */
 export function getTools(): ToolDefinition[] {
-  return TOOLS.map((tool) => ({ ...tool }));
+  const copies = TOOLS.map((tool) => ({ ...tool }));
+  return [
+    ...copies.filter((tool) => tool.status === 'available'),
+    ...copies.filter((tool) => tool.status !== 'available'),
+  ];
 }
 
 export function getAvailableTools(): ToolDefinition[] {
