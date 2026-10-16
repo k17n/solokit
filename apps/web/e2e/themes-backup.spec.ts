@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
 import { expect, test, type Download, type Page } from '@playwright/test';
+import { startDocument } from './helpers';
 
 const shots = 'e2e-screenshots';
 const squash = (text: string) => text.replace(/\s+/g, '');
@@ -47,7 +48,7 @@ async function onboard(page: Page) {
   await page.getByLabel('Address line 1').fill('4 Park Street');
   await page.getByLabel('City').fill('Kolkata');
   await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
 }
 
 async function fillInvoice(page: Page) {
@@ -90,7 +91,8 @@ test.describe('themes', () => {
     await page.getByRole('button', { name: 'Themes' }).click();
     await expect(page.getByRole('list', { name: 'Themes' }).getByRole('button', { name: /^Rust/ })).toContainText('Default');
 
-    await page.getByRole('button', { name: 'New invoice' }).click();
+    await page.getByRole('button', { name: 'Documents' }).click();
+    await startDocument(page, 'Invoice');
     expect(await page.getByLabel('Invoice theme').evaluate((select: HTMLSelectElement) => select.selectedOptions[0]?.textContent)).toBe('Rust');
     await fillInvoice(page);
     await issue(page);
@@ -106,7 +108,7 @@ test.describe('themes', () => {
 test.describe('backup and restore', () => {
   test('a backup downloaded on one device restores the invoice on a fresh one', async ({ page, browser }) => {
     await onboard(page);
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
+    await startDocument(page, 'Invoice');
     await fillInvoice(page);
     const number = await issue(page);
 
@@ -120,7 +122,7 @@ test.describe('backup and restore', () => {
     const backup = JSON.parse(await readFile(backupPath, 'utf8')) as { collections: { invoices: { number: string }[] } };
     expect(backup.collections.invoices.map((invoice) => invoice.number)).toEqual([number]);
     await expect(page.getByText(/Last backup:/)).toBeVisible();
-    await page.getByRole('button', { name: 'Invoices' }).click();
+    await page.getByRole('button', { name: 'Documents' }).click();
     await expect(page.getByText('Back up your invoices')).toHaveCount(0);
 
     const fresh = await browser.newContext();
@@ -166,7 +168,7 @@ test.describe('light, dark and phone screenshots', () => {
         await page.emulateMedia({ colorScheme: scheme });
         await page.setViewportSize(size);
         await onboard(page);
-        await page.getByRole('button', { name: 'New invoice' }).click();
+        await startDocument(page, 'Invoice');
         await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible();
         await page.screenshot({ path: `${shots}/shot-editor-${scheme}-${label}.png`, fullPage: true });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

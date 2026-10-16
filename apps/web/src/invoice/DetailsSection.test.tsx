@@ -35,12 +35,12 @@ function Harness({
 const current = () => JSON.parse(screen.getByLabelText('state').textContent ?? '{}') as Record<string, unknown>;
 
 describe('DetailsSection: invoice details', () => {
-  it('shows the number, dates and document type', () => {
+  it('shows the number and dates', () => {
     render(<Harness />);
     expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
     expect(screen.getByLabelText('Issue date')).toHaveValue('2026-10-14');
     expect(screen.getByLabelText('Due date')).toHaveValue('');
-    expect(screen.getByLabelText('Document type')).toHaveValue('invoice');
+    expect(screen.queryByLabelText('Document type')).not.toBeInTheDocument();
   });
 
   it('marks the number as typed by hand once it is edited', async () => {
@@ -48,12 +48,6 @@ describe('DetailsSection: invoice details', () => {
     await userEvent.clear(screen.getByLabelText('Invoice number'));
     await userEvent.type(screen.getByLabelText('Invoice number'), 'A-1');
     expect(current()).toMatchObject({ n: 'A-1', ne: true });
-  });
-
-  it('switches to a proforma invoice', async () => {
-    render(<Harness />);
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'proforma');
-    expect(current().k).toBe('proforma');
   });
 
   it('shows errors on the number and the dates', () => {
@@ -145,24 +139,11 @@ describe('DetailsSection: payment, notes and style', () => {
 });
 
 describe('DetailsSection: document types', () => {
-  const options = () => within(screen.getByLabelText('Document type')).getAllByRole('option').map((option) => option.textContent);
-
-  it('offers the ordinary document by seller status, a proforma and a quotation', () => {
+  it('shows Valid until and hides due date, TDS, advance and reverse charge for a quotation', () => {
     const { unmount } = render(<Harness />);
-    expect(options()).toEqual(['Tax invoice', 'Proforma invoice', 'Quotation']);
-    unmount();
-    const second = render(<Harness profile={composition} />);
-    expect(options()).toEqual(['Bill of supply', 'Proforma invoice', 'Quotation']);
-    second.unmount();
-    render(<Harness profile={unregistered} />);
-    expect(options()).toEqual(['Invoice', 'Proforma invoice', 'Quotation']);
-  });
-
-  it('switching to a quotation shows Valid until (30 days on) and hides due date, TDS, advance and reverse charge', async () => {
-    render(<Harness />);
     expect(screen.getByLabelText('Reverse charge applies')).toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
-    expect(current().k).toBe('quote');
+    unmount();
+    render(<Harness patch={{ kind: 'quote', validUntil: '2026-11-13' }} />);
     expect(screen.getByLabelText('Valid until')).toHaveValue('2026-11-13');
     expect(screen.getByLabelText('Quotation number')).toBeInTheDocument();
     expect(screen.queryByLabelText('Due date')).not.toBeInTheDocument();
@@ -172,15 +153,14 @@ describe('DetailsSection: document types', () => {
     expect(screen.getByLabelText('Place of supply')).toBeInTheDocument();
   });
 
+  it('labels the number for a proforma', () => {
+    render(<Harness patch={{ kind: 'proforma' }} />);
+    expect(screen.getByLabelText('Proforma number')).toBeInTheDocument();
+  });
+
   it('keeps a valid-until date already chosen and shows its error', async () => {
     render(<Harness patch={{ kind: 'quote', validUntil: '2026-10-01' }} errors={{ validUntil: 'The "valid until" date cannot be before the issue date' }} />);
     expect(screen.getByLabelText('Valid until')).toHaveValue('2026-10-01');
     expect(screen.getByLabelText('Valid until')).toHaveAttribute('aria-invalid', 'true');
-  });
-
-  it('locks the type once the draft is saved', () => {
-    const state = newEditorState({ invoiceId: 'i', clientId: 'c', lineId: 'l', number: '2026-27/0001', today: '2026-10-14', profile: regular, defaultThemeId: 'classic' });
-    render(<DetailsSection state={state} onChange={() => undefined} profile={regular} themes={[...PRESET_THEMES]} errors={{}} kindLocked />);
-    expect(screen.getByLabelText('Document type')).toBeDisabled();
   });
 });

@@ -6,7 +6,8 @@ import { Button, Notice, formatIsoDate } from '@solokit/ui';
 import { duplicateInvoice, todayIso } from './editorModel';
 import { invoiceFileName } from './fileName';
 import { newId } from './ids';
-import { ConvertedBadge, KindBadge, StatusBadge, kindNoun, totalOf } from './InvoiceList';
+import { ConvertedBadge, StatusBadge, kindNoun, totalOf } from './InvoiceList';
+import { KindBadge, convertLabel, kindClasses } from './kinds';
 import { PdfPreview } from './PdfPreview';
 import { defaultPdfRenderer, usePdfPreview, type PdfRenderer } from './usePdfPreview';
 
@@ -78,7 +79,7 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
           It may have been deleted. Go back to your invoices.
         </Notice>
         <div>
-          <Button onClick={onBack}>Back to invoices</Button>
+          <Button onClick={onBack}>Back to documents</Button>
         </div>
       </div>
     );
@@ -90,7 +91,7 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Button onClick={() => onEdit(invoice.id)}>Edit draft</Button>
           <Button variant="secondary" onClick={onBack}>
-            Back to invoices
+            Back to documents
           </Button>
         </div>
       </div>
@@ -99,6 +100,7 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
 
   const current = invoice;
   const noun = kindNoun(current.kind);
+  const kind = seriesOf(current);
   const canConvert = current.kind !== undefined && current.kind !== 'invoice' && current.status === 'issued' && !current.convertedToId;
 
   async function duplicate() {
@@ -152,25 +154,47 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
           <h2 style={{ fontSize: '1.8rem', fontFamily: 'var(--ff-mono)' }}>{current.number}</h2>
-          <KindBadge kind={current.kind} />
+          <KindBadge kind={current.kind} large />
           <StatusBadge status={current.status} />
           <ConvertedBadge invoice={current} />
         </div>
         <Button variant="secondary" onClick={onBack}>
-          Back to invoices
+          Back to documents
         </Button>
       </div>
       <p style={{ color: 'var(--text-muted)' }}>
         {current.client.name} · {formatIsoDate(current.issueDate)} · {totalOf(current)}
-        {current.kind === 'quote' && current.validUntil ? ` · Valid until ${formatIsoDate(current.validUntil)}` : ''}
       </p>
-      {related ? (
-        <p style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-          {current.convertedToId ? `Converted to ${related.status === 'draft' ? 'draft ' : ''}invoice ${related.number}.` : `Made from ${kindNoun(related.kind)} ${related.number}.`}
-          <Button variant="ghost" aria-label={`Open ${related.number}`} onClick={() => (related.status === 'draft' ? onEdit(related.id) : onView?.(related.id))}>
-            Open
-          </Button>
-        </p>
+      {kind !== 'invoice' || related ? (
+        <section className={`${kindClasses.scope} ${kindClasses.banner}`} data-kind={kind} aria-label={`About this ${noun}`}>
+          {kind === 'quote' ? (
+            <p className={kindClasses.bannerText}>
+              <strong>{current.validUntil ? `Valid until ${formatIsoDate(current.validUntil)}` : 'A price offer'}</strong>
+              <span>A price offer, not a tax document.</span>
+            </p>
+          ) : null}
+          {kind === 'proforma' ? (
+            <p className={kindClasses.bannerText}>
+              <strong>Not a tax invoice</strong>
+              <span>A request to pay before you start or ship. Convert it to an invoice when the work is billed.</span>
+            </p>
+          ) : null}
+          {related ? (
+            <p className={kindClasses.bannerText}>
+              {current.convertedToId ? `Converted to ${related.status === 'draft' ? 'draft ' : ''}invoice ${related.number}.` : `Made from ${kindNoun(related.kind)} ${related.number}.`}
+              <Button variant="ghost" aria-label={`Open ${related.number}`} onClick={() => (related.status === 'draft' ? onEdit(related.id) : onView?.(related.id))}>
+                Open
+              </Button>
+            </p>
+          ) : null}
+          {canConvert && !confirming ? (
+            <div className={kindClasses.bannerActions}>
+              <Button disabled={busy} onClick={() => void convert()}>
+                {convertLabel(current)}
+              </Button>
+            </div>
+          ) : null}
+        </section>
       ) : null}
       {related && current.convertedToId && current.kind === 'proforma' && related.advanceReceived ? (
         <Notice tone="info">The advance received on this proforma was carried over to invoice {related.number}.</Notice>
@@ -202,11 +226,6 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
         </div>
       ) : (
         <div ref={actionsRef} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {canConvert ? (
-            <Button disabled={busy} onClick={() => void convert()}>
-              Convert to invoice
-            </Button>
-          ) : null}
           <Button variant="secondary" disabled={busy} onClick={() => void duplicate()}>
             Duplicate as new draft
           </Button>

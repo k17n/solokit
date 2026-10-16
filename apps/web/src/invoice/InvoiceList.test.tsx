@@ -25,16 +25,35 @@ const draft = makeInvoice({ id: 'd1', number: '2026-27/0002', status: 'draft', i
 const cancelled = makeInvoice({ id: 'x1', number: '2026-27/0003', status: 'cancelled', issueDate: '2026-10-16' });
 
 describe('InvoiceList: showing invoices', () => {
-  it('invites the user to create the first invoice when there are none', async () => {
+  it('shows the three kinds as cards, with the usual order, when there are no documents', async () => {
     const { onNew } = await setup();
-    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Create your first invoice' }));
-    expect(onNew).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('heading', { name: 'Start your first document' })).toBeInTheDocument();
+    const cards = within(screen.getByRole('group', { name: 'Choose a document type to start with' }));
+    expect(cards.getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'INVTax invoiceBill a client for work done',
+      'QTQuotationSend a price offer before the work. Not a tax document',
+      'PFProforma invoiceAsk for payment before you start or ship',
+    ]);
+    expect(screen.getByText(/Quotation → Invoice/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'New' })).not.toBeInTheDocument();
+    await userEvent.click(cards.getByRole('button', { name: 'Quotation' }));
+    expect(onNew).toHaveBeenLastCalledWith('quote');
+    await userEvent.click(cards.getByRole('button', { name: 'Proforma invoice' }));
+    expect(onNew).toHaveBeenLastCalledWith('proforma');
+    await userEvent.click(cards.getByRole('button', { name: 'Tax invoice' }));
+    expect(onNew).toHaveBeenLastCalledWith('invoice');
+  });
+
+  it('names the ordinary document after the seller', async () => {
+    const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+    await storage.profile.save(makeSeller({ gstStatus: 'composition' }));
+    render(<InvoiceList storage={storage} onNew={vi.fn()} onEdit={vi.fn()} onView={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: 'Bill of supply' })).toBeInTheDocument();
   });
 
   it('lists invoices newest first with number, client, date, status and total', async () => {
     await setup([issued, draft, cancelled]);
-    const list = await screen.findByRole('list', { name: 'Invoices' });
+    const list = await screen.findByRole('list', { name: 'Documents' });
     const items = within(list).getAllByRole('listitem');
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent('2026-27/0003');
@@ -55,10 +74,65 @@ describe('InvoiceList: showing invoices', () => {
     expect(item).toHaveTextContent('–');
   });
 
-  it('has a New invoice button', async () => {
+  it('has one + New control that opens a chooser, and picking a kind starts it', async () => {
     const { onNew } = await setup([issued]);
-    await userEvent.click(await screen.findByRole('button', { name: 'New invoice' }));
-    expect(onNew).toHaveBeenCalledOnce();
+    const trigger = await screen.findByRole('button', { name: 'New' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'New quotation' })).not.toBeInTheDocument();
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(within(screen.getByRole('group', { name: 'Choose a document type' })).getByRole('button', { name: 'Quotation' }));
+    expect(onNew).toHaveBeenCalledWith('quote');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('group', { name: 'Choose a document type' })).not.toBeInTheDocument();
+  });
+});
+
+describe('InvoiceList: the New chooser', () => {
+  it('moves focus into the cards, walks them with the arrow keys and picks with Enter', async () => {
+    const { onNew } = await setup([issued]);
+    await userEvent.click(await screen.findByRole('button', { name: 'New' }));
+    expect(screen.getByRole('button', { name: 'Tax invoice' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'Quotation' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('button', { name: 'Proforma invoice' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: 'Tax invoice' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('button', { name: 'Proforma invoice' })).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    expect(screen.getByRole('button', { name: 'Tax invoice' })).toHaveFocus();
+    await userEvent.keyboard('{End}{Enter}');
+    expect(onNew).toHaveBeenCalledWith('proforma');
+  });
+
+  it('describes each card with its use-case line', async () => {
+    await setup([issued]);
+    await userEvent.click(await screen.findByRole('button', { name: 'New' }));
+    expect(screen.getByRole('button', { name: 'Quotation' })).toHaveAccessibleDescription('Send a price offer before the work. Not a tax document');
+  });
+
+  it('closes with Escape and gives focus back to the New button', async () => {
+    const { onNew } = await setup([issued]);
+    const trigger = await screen.findByRole('button', { name: 'New' });
+    await userEvent.click(trigger);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: 'Choose a document type' })).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+    expect(onNew).not.toHaveBeenCalled();
+  });
+
+  it('closes when the New button is pressed again or the user clicks elsewhere', async () => {
+    await setup([issued]);
+    const trigger = await screen.findByRole('button', { name: 'New' });
+    await userEvent.click(trigger);
+    await userEvent.click(trigger);
+    expect(screen.queryByRole('group', { name: 'Choose a document type' })).not.toBeInTheDocument();
+    await userEvent.click(trigger);
+    await userEvent.click(screen.getByRole('list', { name: 'Documents' }));
+    expect(screen.queryByRole('group', { name: 'Choose a document type' })).not.toBeInTheDocument();
   });
 });
 
@@ -159,7 +233,7 @@ describe('InvoiceList: cancelling and deleting', () => {
 
   it('offers cancel only for issued invoices and delete only for drafts', async () => {
     await setup([issued, draft, cancelled]);
-    await screen.findByRole('list', { name: 'Invoices' });
+    await screen.findByRole('list', { name: 'Documents' });
     expect(screen.getByRole('button', { name: 'Cancel invoice 2026-27/0001' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel invoice 2026-27/0002' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel invoice 2026-27/0003' })).not.toBeInTheDocument();
@@ -173,7 +247,7 @@ describe('InvoiceList: cancelling and deleting', () => {
     expect(screen.getByText('Delete draft 2026-27/0002? This cannot be undone.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Yes, delete draft' }));
     await waitFor(async () => expect(await storage.invoices.get('d1')).toBeUndefined());
-    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Start your first document' })).toBeInTheDocument();
   });
 });
 
@@ -193,7 +267,7 @@ describe('InvoiceList: backup reminder', () => {
     document.body.innerHTML = '';
     const handlers = { onNew: vi.fn(), onEdit: vi.fn(), onView: vi.fn() };
     render(<InvoiceList storage={storage} {...handlers} renderPdf={async () => pdf} now={() => new Date(2026, 9, 14, 10, 0)} />);
-    await screen.findByRole('list', { name: 'Invoices' });
+    await screen.findByRole('list', { name: 'Documents' });
     expect(screen.queryByText('Back up your invoices')).not.toBeInTheDocument();
   });
 
@@ -208,7 +282,7 @@ describe('InvoiceList: backup reminder', () => {
 
   it('does not nag when there are no invoices', async () => {
     await setup();
-    await screen.findByText('No invoices yet.');
+    await screen.findByRole('heading', { name: 'Start your first document' });
     expect(screen.queryByText('Back up your invoices')).not.toBeInTheDocument();
   });
 });
@@ -217,11 +291,11 @@ describe('InvoiceList: quotations and proformas', () => {
   const quote = makeInvoice({ id: 'q1', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', issueDate: '2026-10-14' });
   const proforma = makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001', issueDate: '2026-10-13' });
   const converted = makeInvoice({ id: 'q2', kind: 'quote', number: 'QT/2026-27/0002', validUntil: '2026-11-13', issueDate: '2026-10-12', convertedToId: 'x' });
-  const row = (number: string) => screen.getAllByRole('listitem').find((item) => item.textContent?.startsWith(number))!;
+  const row = (number: string) => screen.getAllByRole('listitem').find((item) => within(item).queryByText(number, { exact: true }))!;
 
   it('shows a badge for each kind, and Converted on a converted quotation', async () => {
     await setup([issued, quote, proforma, converted]);
-    await screen.findByRole('list', { name: 'Invoices' });
+    await screen.findByRole('list', { name: 'Documents' });
     expect(row('2026-27/0001')).toHaveTextContent('Invoice');
     expect(row('QT/2026-27/0001')).toHaveTextContent('Quotation');
     expect(row('QT/2026-27/0001')).not.toHaveTextContent('Converted');
@@ -229,37 +303,88 @@ describe('InvoiceList: quotations and proformas', () => {
     expect(row('QT/2026-27/0002')).toHaveTextContent('Converted');
   });
 
-  it('filters by kind', async () => {
-    await setup([issued, quote, proforma]);
-    await screen.findByRole('list', { name: 'Invoices' });
-    const visible = () => screen.getAllByRole('listitem').map((item) => item.textContent ?? '');
-    expect(visible()).toHaveLength(3);
-    await userEvent.click(screen.getByRole('button', { name: 'Quotes' }));
-    expect(screen.getByRole('button', { name: 'Quotes' })).toHaveAttribute('aria-pressed', 'true');
+  it('filters by kind with a segmented control that shows how many of each there are', async () => {
+    await setup([issued, quote, proforma, converted]);
+    await screen.findByRole('list', { name: 'Documents' });
+    const filters = within(screen.getByRole('group', { name: 'Filter by type' }));
+    expect(filters.getAllByRole('button').map((button) => button.textContent)).toEqual(['All4', 'Invoices1', 'Quotations2', 'Proformas1']);
+    const visible = () => within(screen.getByRole('list', { name: 'Documents' })).getAllByRole('listitem').map((item) => item.textContent ?? '');
+    expect(visible()).toHaveLength(4);
+    expect(filters.getByRole('button', { name: /^All/ })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(filters.getByRole('button', { name: /^Quotations/ }));
+    expect(filters.getByRole('button', { name: /^Quotations/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(filters.getByRole('button', { name: /^All/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(visible()).toHaveLength(2);
+    await userEvent.click(filters.getByRole('button', { name: /^Proformas/ }));
     expect(visible()).toHaveLength(1);
-    expect(visible()[0]).toContain('QT/2026-27/0001');
-    await userEvent.click(screen.getByRole('button', { name: 'Proformas' }));
     expect(visible()[0]).toContain('PF/2026-27/0001');
-    await userEvent.click(screen.getByRole('button', { name: 'Invoices' }));
+    await userEvent.click(filters.getByRole('button', { name: /^Invoices/ }));
     expect(visible()).toHaveLength(1);
     expect(visible()[0]).toContain('2026-27/0001');
-    await userEvent.click(screen.getByRole('button', { name: 'All' }));
-    expect(visible()).toHaveLength(3);
+    await userEvent.click(filters.getByRole('button', { name: /^All/ }));
+    expect(visible()).toHaveLength(4);
+  });
+
+  it('counts a legacy record without a kind as an invoice', async () => {
+    const legacy = makeInvoice({ id: 'l1', number: '2026-27/0008', status: 'issued' });
+    delete (legacy as { kind?: string }).kind;
+    await setup([legacy, quote]);
+    await screen.findByRole('list', { name: 'Documents' });
+    const filters = within(screen.getByRole('group', { name: 'Filter by type' }));
+    expect(filters.getByRole('button', { name: /^Invoices/ })).toHaveTextContent('1');
+    expect(filters.getByRole('button', { name: /^Quotations/ })).toHaveTextContent('1');
   });
 
   it('says so when a filter matches nothing', async () => {
     await setup([issued]);
-    await screen.findByRole('list', { name: 'Invoices' });
-    await userEvent.click(screen.getByRole('button', { name: 'Quotes' }));
+    await screen.findByRole('list', { name: 'Documents' });
+    const filters = within(screen.getByRole('group', { name: 'Filter by type' }));
+    expect(filters.getByRole('button', { name: /^Quotations/ })).toHaveTextContent('0');
+    await userEvent.click(filters.getByRole('button', { name: /^Quotations/ }));
     expect(screen.getByText('No quotations yet.')).toBeInTheDocument();
   });
 
-  it('starts a new quotation from the list', async () => {
-    const { onNew } = await setup([issued]);
-    await userEvent.click(await screen.findByRole('button', { name: 'New quotation' }));
-    expect(onNew).toHaveBeenCalledWith('quote');
-    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
-    expect(onNew).toHaveBeenLastCalledWith();
+  it('puts the main action by kind first: Download PDF for an issued invoice, Convert for an issued quotation, Open for a draft', async () => {
+    await setup([issued, quote, draft]);
+    await screen.findByRole('list', { name: 'Documents' });
+    const firstAction = (number: string) => within(row(number)).getAllByRole('button')[0]!;
+    expect(firstAction('2026-27/0001')).toHaveAccessibleName('Download PDF 2026-27/0001');
+    expect(firstAction('QT/2026-27/0001')).toHaveAccessibleName('Convert to invoice QT/2026-27/0001');
+    expect(firstAction('2026-27/0002')).toHaveAccessibleName('Open 2026-27/0002');
+    expect(within(row('2026-27/0001')).getAllByRole('button', { name: /Download PDF/ })).toHaveLength(1);
+  });
+
+  it('says "Convert to tax invoice" on an issued proforma from a regular seller', async () => {
+    await setup([proforma]);
+    expect(await screen.findByRole('button', { name: 'Convert to tax invoice PF/2026-27/0001' })).toBeInTheDocument();
+  });
+
+  it('converts an issued quotation into a draft invoice and opens it', async () => {
+    const { storage, onEdit } = await setup([quote]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice QT/2026-27/0001' }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
+    const draftInvoice = await storage.invoices.get(onEdit.mock.calls[0]![0]);
+    expect(draftInvoice).toMatchObject({ kind: 'invoice', status: 'draft', convertedFromId: 'q1', number: '2026-27/0001' });
+    expect((await storage.invoices.get('q1'))?.convertedToId).toBe(draftInvoice?.id);
+  });
+
+  it('shows a converted quotation as Invoiced with a link to its invoice instead of Convert', async () => {
+    const target = makeInvoice({ id: 'inv9', number: '2026-27/0009', status: 'issued', convertedFromId: 'q2' });
+    const { onView } = await setup([target, { ...converted, convertedToId: 'inv9' }]);
+    await screen.findByRole('list', { name: 'Documents' });
+    expect(within(row('QT/2026-27/0002')).queryByRole('button', { name: /^Convert/ })).not.toBeInTheDocument();
+    const link = within(row('QT/2026-27/0002')).getByRole('button', { name: 'Open invoice 2026-27/0009' });
+    expect(link).toHaveTextContent('Invoiced → 2026-27/0009');
+    await userEvent.click(link);
+    expect(onView).toHaveBeenCalledWith('inv9');
+  });
+
+  it('marks every row with its kind', async () => {
+    await setup([issued, quote, proforma]);
+    await screen.findByRole('list', { name: 'Documents' });
+    expect(row('2026-27/0001')).toHaveAttribute('data-kind', 'invoice');
+    expect(row('QT/2026-27/0001')).toHaveAttribute('data-kind', 'quote');
+    expect(row('PF/2026-27/0001')).toHaveAttribute('data-kind', 'proforma');
   });
 
   it('cancels a quotation under its own name, keeping its number', async () => {

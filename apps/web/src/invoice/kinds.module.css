@@ -1,0 +1,168 @@
+/* One colour per document kind, used for the badge, the list stripe, the chooser cards and the editor/viewer banners.
+   Invoice = emerald (money due), quotation = amber (an offer), proforma = blue (a request to pay first). */
+.scope {
+  --k-line: var(--accent);
+  --k-ink: var(--accent-text);
+  --k-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.scope[data-kind='quote'] {
+  --k-line: #f5b54a;
+  --k-ink: #85540a;
+  --k-soft: color-mix(in srgb, #f5b54a 24%, transparent);
+}
+
+.scope[data-kind='proforma'] {
+  --k-line: #5b6fd6;
+  --k-ink: #34439b;
+  --k-soft: color-mix(in srgb, #5b6fd6 13%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .scope[data-kind='quote'] {
+    --k-ink: #f5b54a;
+    --k-soft: color-mix(in srgb, #f5b54a 18%, transparent);
+  }
+
+  .scope[data-kind='proforma'] {
+    --k-line: #8a9bf0;
+    --k-ink: #b9c4ff;
+    --k-soft: color-mix(in srgb, #8a9bf0 18%, transparent);
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  font: 600 0.75rem/1.2 var(--ff-sans);
+  white-space: nowrap;
+  color: var(--k-ink);
+  background: var(--k-soft);
+  border: 1px solid var(--k-line);
+  border-radius: var(--radius-s);
+}
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.4rem;
+  font: 700 0.7rem/1.2 var(--ff-mono);
+  letter-spacing: 0.06em;
+  color: #0b1b3a;
+  background: var(--k-line);
+}
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+}
+
+.large {
+  font-size: 0.95rem;
+}
+
+.large .glyph {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.large .name {
+  padding: 0.3rem 0.7rem;
+}
+
+.cards {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+  align-content: start;
+  padding: 1rem 1.1rem 1.1rem;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-top: 5px solid var(--k-line);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.card:hover,
+.card[aria-current='true'] {
+  border-color: var(--k-line);
+  box-shadow: 0 3px 0 var(--k-line);
+  transform: translateY(-1px);
+}
+
+.card[aria-current='true'] {
+  background: var(--k-soft);
+}
+
+.tile {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  font: 700 0.8rem/1.2 var(--ff-mono);
+  letter-spacing: 0.06em;
+  color: #0b1b3a;
+  background: var(--k-line);
+  border-radius: var(--radius-s);
+}
+
+.cardTitle {
+  font: 700 1.2rem/1.2 var(--ff-display);
+}
+
+.cardUse {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.banner {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--k-soft);
+  border: 1.5px solid var(--k-line);
+  border-left-width: 6px;
+  border-radius: var(--radius-m);
+}
+
+.bannerText {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+}
+
+.bannerActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.textButton {
+  padding: 0.3rem 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-text);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

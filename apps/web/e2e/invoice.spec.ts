@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Download, type Page } from '@playwright/test';
+import { startDocument } from './helpers';
 
 const shots = 'test-results';
 
@@ -39,7 +40,7 @@ async function onboard(page: Page, kind: 'regular' | 'unregistered') {
     await page.getByLabel('City').fill('Kolkata');
   }
   await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
 }
 
 async function fillClient(page: Page, client: { name: string; line1: string; city: string; state?: string; country?: string }) {
@@ -72,7 +73,7 @@ test.describe('invoices in a real browser', () => {
     const problems: string[] = [];
     page.on('pageerror', (error) => problems.push(error.message));
     await onboard(page, 'regular');
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
+    await startDocument(page, 'Tax invoice');
     await fillClient(page, { name: 'Northwind Traders', line1: '4 MG Road', city: 'Pune', state: 'Maharashtra' });
     await fillItem(page, { description: 'Consulting', quantity: '24', rate: '3000' });
     await expect(page.getByText('₹84,960.00').first()).toBeVisible();
@@ -91,7 +92,7 @@ test.describe('invoices in a real browser', () => {
     const text = squash(await pdfText(download));
     for (const expected of ['Northwind Traders', 'Consulting', '84,960.00', 'GSTIN', number]) expect(text).toContain(squash(expected));
 
-    await page.getByRole('button', { name: 'Back to invoices' }).click();
+    await page.getByRole('button', { name: 'Back to documents' }).click();
     await expect(page.getByRole('listitem').filter({ hasText: number })).toContainText('₹84,960.00');
     await page.reload();
     await expect(page.getByRole('listitem').filter({ hasText: number })).toContainText('₹84,960.00');
@@ -100,7 +101,7 @@ test.describe('invoices in a real browser', () => {
 
   test('an unregistered seller sees no GST fields and the PDF carries no GSTIN', async ({ page }) => {
     await onboard(page, 'unregistered');
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
+    await startDocument(page, 'Invoice');
     await expect(page.getByLabel('Place of supply')).toHaveCount(0);
     await fillClient(page, { name: 'Local Client', line1: '9 Lake Road', city: 'Kolkata' });
     await fillItem(page, { description: 'Design work', quantity: '1', rate: '5000' });
@@ -111,7 +112,7 @@ test.describe('invoices in a real browser', () => {
 
   test('an export invoice is issued in a foreign currency', async ({ page }) => {
     await onboard(page, 'regular');
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
+    await startDocument(page, 'Tax invoice');
     await page.getByLabel('Client is outside India (export)').check();
     await page.getByLabel('Currency').selectOption('USD');
     await fillClient(page, { name: 'Acme Inc', line1: '1 Market Street', city: 'San Francisco', country: 'United States' });
@@ -123,19 +124,19 @@ test.describe('invoices in a real browser', () => {
 
   test('an invoice can be duplicated and the original cancelled', async ({ page }) => {
     await onboard(page, 'unregistered');
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
+    await startDocument(page, 'Invoice');
     await fillClient(page, { name: 'Local Client', line1: '9 Lake Road', city: 'Kolkata' });
     await fillItem(page, { description: 'Design work', quantity: '1', rate: '5000' });
     const first = await page.getByLabel('Invoice number').inputValue();
     await page.getByRole('button', { name: 'Issue invoice' }).click();
     await expect(page.getByRole('heading', { name: first })).toBeVisible();
-    await page.getByRole('button', { name: 'Back to invoices' }).click();
+    await page.getByRole('button', { name: 'Back to documents' }).click();
 
     await page.getByRole('button', { name: `Duplicate ${first}` }).click();
     await expect(page.getByRole('heading', { name: 'Edit draft' })).toBeVisible();
     const second = await page.getByLabel('Invoice number').inputValue();
     expect(second).not.toBe(first);
-    await page.getByRole('button', { name: 'Back to invoices' }).click();
+    await page.getByRole('button', { name: 'Back to documents' }).click();
 
     await page.getByRole('button', { name: `Cancel invoice ${first}` }).click();
     await page.getByRole('button', { name: 'Yes, cancel invoice' }).click();
@@ -145,8 +146,8 @@ test.describe('invoices in a real browser', () => {
   test('the editor fits a phone screen', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await onboard(page, 'regular');
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
-    await expect(page.getByRole('heading', { name: 'New invoice' })).toBeVisible();
+    await startDocument(page, 'Tax invoice');
+    await expect(page.getByRole('heading', { name: 'New tax invoice' })).toBeVisible();
     const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
     await page.screenshot({ path: `${shots}/invoice-editor-mobile.png`, fullPage: true });
     expect(fits).toBe(true);
@@ -164,7 +165,7 @@ test.describe('invoices in a real browser', () => {
     await onboard(page, 'unregistered');
     await context.setOffline(true);
     await page.goto('/tools/invoice/');
-    await page.getByRole('button', { name: 'Create your first invoice' }).click();
+    await startDocument(page, 'Invoice');
     await fillClient(page, { name: 'Local Client', line1: '9 Lake Road', city: 'Kolkata' });
     await fillItem(page, { description: 'Design work', quantity: '2', rate: '2500' });
     const { text } = await issueAndDownload(page);

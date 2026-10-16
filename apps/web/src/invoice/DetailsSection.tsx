@@ -2,7 +2,7 @@
 
 import { SUPPORTED_CURRENCIES, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
 import { CheckboxField, Notice, SelectField, TextAreaField, TextField } from '@solokit/ui';
-import { DEFAULT_VALIDITY_DAYS, addDaysIso, taxApplies, type EditorState } from './editorModel';
+import { taxApplies, type EditorState } from './editorModel';
 import { selectableStates } from './profileFormState';
 
 export interface DetailsSectionProps {
@@ -12,8 +12,6 @@ export interface DetailsSectionProps {
   themes: InvoiceTheme[];
   /** Messages keyed like `issueDate`. */
   errors: Record<string, string>;
-  /** The document type cannot change once a draft has been saved, because its number belongs to that type's series. */
-  kindLocked?: boolean;
   /** Said under the number, for example when it was replaced after the type changed. */
   numberHint?: string | undefined;
 }
@@ -22,17 +20,10 @@ const groupStyle = { display: 'grid', gap: '1rem', minWidth: 0, margin: 0, paddi
 const legendStyle = { padding: 0, marginBottom: '0.25rem', fontFamily: 'var(--ff-display)', fontSize: '1.25rem', fontWeight: 700 } as const;
 const rowStyle = { display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', alignItems: 'start' } as const;
 
-/** What an ordinary invoice is called for this seller and supply. */
-function invoiceLabel(state: EditorState, profile: SellerProfile): string {
-  if (profile.gstStatus === 'unregistered') return 'Invoice';
-  if (profile.gstStatus === 'composition' || state.exemptSupply) return 'Bill of supply';
-  return 'Tax invoice';
-}
-
 const NUMBER_LABEL: Record<EditorState['kind'], string> = { invoice: 'Invoice number', proforma: 'Proforma number', quote: 'Quotation number' };
 const DETAILS_LEGEND: Record<EditorState['kind'], string> = { invoice: 'Invoice details', proforma: 'Proforma invoice details', quote: 'Quotation details' };
 
-export function DetailsSection({ state, onChange, profile, themes, errors, kindLocked = false, numberHint }: DetailsSectionProps) {
+export function DetailsSection({ state, onChange, profile, themes, errors, numberHint }: DetailsSectionProps) {
   const taxed = taxApplies(state, profile);
   const regular = profile.gstStatus === 'regular';
   const quote = state.kind === 'quote';
@@ -49,22 +40,6 @@ export function DetailsSection({ state, onChange, profile, themes, errors, kindL
             onChange={(event) => onChange({ number: event.target.value, numberEdited: true })}
             error={errors['number']}
             hint={numberHint}
-          />
-          <SelectField
-            label="Document type"
-            options={[
-              { value: 'invoice', label: invoiceLabel(state, profile) },
-              { value: 'proforma', label: 'Proforma invoice' },
-              { value: 'quote', label: 'Quotation' },
-            ]}
-            value={state.kind}
-            disabled={kindLocked}
-            hint={kindLocked ? 'Fixed once the draft is saved, because each type has its own numbers.' : undefined}
-            onChange={(event) => {
-              const kind = event.target.value as EditorState['kind'];
-              const validUntil = kind === 'quote' && state.validUntil === '' ? addDaysIso(state.issueDate, DEFAULT_VALIDITY_DAYS) : null;
-              onChange({ kind, ...(validUntil ? { validUntil } : {}) });
-            }}
           />
           <TextField label="Issue date" type="date" value={state.issueDate} onChange={(event) => onChange({ issueDate: event.target.value })} error={errors['issueDate']} />
           {quote ? (

@@ -50,7 +50,7 @@ describe('InvoiceApp first run', () => {
     renderApp();
     expect(screen.getByText('Opening your invoices…')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Invoices' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Documents' })).not.toBeInTheDocument();
   });
 
   it('saves the profile and opens the tool when onboarding is finished', async () => {
@@ -62,7 +62,7 @@ describe('InvoiceApp first run', () => {
     await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
     await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
     await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
     const storage = createInvoiceStorage(store);
     expect((await storage.profile.get())?.name).toBe('Ravi Kumar');
     expect((await storage.settings.get()).onboarded).toBe(true);
@@ -70,12 +70,12 @@ describe('InvoiceApp first run', () => {
 });
 
 describe('InvoiceApp with a saved profile', () => {
-  it('goes straight to the tool, with the Invoices tab selected', async () => {
+  it('goes straight to the tool, with the Documents tab selected', async () => {
     const store = createMemoryStore();
     await seedProfile(store);
     renderApp(store);
     expect(await screen.findByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByRole('heading', { name: 'Set up your business' })).not.toBeInTheDocument();
   });
 
@@ -189,7 +189,7 @@ describe('InvoiceApp when storage misbehaves', () => {
     await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
     await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
     await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
     expect(error).toHaveBeenCalled();
     expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Ravi Kumar');
   });
@@ -216,31 +216,41 @@ describe('InvoiceApp: invoices', () => {
     return { store, storage };
   }
 
-  it('shows the invoice list first, with the navigation buttons', async () => {
+  /** Opens the "+ New" chooser on the list and picks a kind by its card name. */
+  async function startNew(name: string) {
+    await userEvent.click(screen.getByRole('button', { name: 'New' }));
+    await userEvent.click(within(screen.getByRole('group', { name: 'Choose a document type' })).getByRole('button', { name }));
+  }
+
+  it('shows the documents list first, with four tabs and no tab for creating', async () => {
     await openApp();
-    expect(screen.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('button', { name: 'New invoice' })).not.toHaveAttribute('aria-current');
-    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+    const nav = within(screen.getByRole('navigation', { name: 'Invoice tool' }));
+    expect(nav.getAllByRole('button').map((button) => button.textContent)).toEqual(['Documents', 'Themes', 'Backup & restore', 'Profile']);
+    expect(nav.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('heading', { name: 'Start your first document' })).toBeInTheDocument();
   });
 
-  it('opens the editor from the list and from the navigation, and goes back', async () => {
+  it('opens the editor from the empty state, keeps the Documents tab current and goes back', async () => {
     await openApp();
-    await userEvent.click(await screen.findByRole('button', { name: 'Create your first invoice' }));
-    expect(await screen.findByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New invoice', current: 'page' })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
-    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
-    expect(await screen.findByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
+    const cards = within(await screen.findByRole('group', { name: 'Choose a document type to start with' }));
+    await userEvent.click(cards.getByRole('button', { name: 'Tax invoice' }));
+    expect(await screen.findByRole('heading', { name: 'New tax invoice' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Documents', current: 'page' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back to documents' }));
+    expect(await screen.findByRole('heading', { name: 'Start your first document' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Tax invoice' }));
+    expect(await screen.findByRole('heading', { name: 'New tax invoice' })).toBeInTheDocument();
   });
 
-  it('starts a fresh invoice when "New invoice" is chosen while already on it', async () => {
-    await openApp();
-    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
+  it('leaves a half-typed document for the list with the Documents tab, and starts the next one fresh', async () => {
+    await openApp([makeInvoice({ id: 'i1', status: 'issued' })]);
+    await startNew('Tax invoice');
     await userEvent.type(await screen.findByLabelText('Client name'), 'Half typed');
     expect(screen.getByLabelText('Client name')).toHaveValue('Half typed');
-    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
-    await waitFor(() => expect(screen.getByLabelText('Client name')).toHaveValue(''));
+    await userEvent.click(screen.getByRole('button', { name: 'Documents' }));
+    expect(await screen.findByRole('list', { name: 'Documents' })).toBeInTheDocument();
+    await startNew('Tax invoice');
+    expect(await screen.findByLabelText('Client name')).toHaveValue('');
   });
 
   it('opens a draft from the list in the editor', async () => {
@@ -254,31 +264,32 @@ describe('InvoiceApp: invoices', () => {
     await openApp([makeInvoice({ id: 'i1', status: 'issued' })]);
     await userEvent.click(await screen.findByRole('button', { name: 'Open 2026-27/0001' }));
     expect(await screen.findByRole('heading', { name: '2026-27/0001' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('issues a quotation, converts it to a draft invoice, and keeps the quotation in the list', async () => {
     const { storage } = await openApp([makeInvoice({ id: 'q1', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13' })]);
-    await userEvent.click(await screen.findByRole('button', { name: 'New quotation' }));
+    await screen.findByRole('list', { name: 'Documents' });
+    await startNew('Quotation');
     expect(await screen.findByRole('heading', { name: 'New quotation' })).toBeInTheDocument();
     expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0002');
-    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to documents' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Open QT/2026-27/0001' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
     expect(await screen.findByRole('heading', { name: 'Edit draft' })).toBeInTheDocument();
     expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
-    expect(screen.getByLabelText('Document type')).toBeDisabled();
+    expect(screen.getByRole('region', { name: 'Document kind' })).toHaveTextContent('Tax invoice');
     await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
     await screen.findByText('Draft saved');
     expect((await storage.invoices.list()).find((invoice) => invoice.kind === 'invoice')?.convertedFromId).toBe('q1');
-    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to documents' }));
     expect(await screen.findByText('QT/2026-27/0001')).toBeInTheDocument();
     expect(screen.getByText('Converted')).toBeInTheDocument();
   });
 
   it('shows the viewer after an invoice is issued', async () => {
     await openApp();
-    await userEvent.click(await screen.findByRole('button', { name: 'Create your first invoice' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Tax invoice' }));
     await userEvent.type(await screen.findByLabelText('Client name'), 'Northwind Traders');
     await userEvent.type(screen.getByLabelText('Address line 1'), '4 MG Road');
     await userEvent.type(screen.getByLabelText('City'), 'Pune');
