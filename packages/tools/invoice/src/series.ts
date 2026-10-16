@@ -35,3 +35,10 @@ export const KIND_LABEL: Record<InvoiceKind, string> = {
   proforma: 'Proforma invoice',
   quote: 'Quotation',
 };
+
+/** Whether a typed number looks like it belongs to this kind's series: "QT/" for quotations, "PF/" for proformas, anything else for tax invoices. */
+export function numberFitsKind(number: string, kind: InvoiceKind): boolean {
+  const text = number.trim().toUpperCase();
+  const other = (Object.keys(SERIES_PREFIX) as (keyof typeof SERIES_PREFIX)[]).some((key) => text.startsWith(SERIES_PREFIX[key]));
+  return kind === 'invoice' ? !other : text.startsWith(SERIES_PREFIX[kind]);
+}

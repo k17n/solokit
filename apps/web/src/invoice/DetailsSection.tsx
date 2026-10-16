@@ -14,6 +14,8 @@ export interface DetailsSectionProps {
   errors: Record<string, string>;
   /** The document type cannot change once a draft has been saved, because its number belongs to that type's series. */
   kindLocked?: boolean;
+  /** Said under the number, for example when it was replaced after the type changed. */
+  numberHint?: string | undefined;
 }
 
 const groupStyle = { display: 'grid', gap: '1rem', minWidth: 0, margin: 0, padding: 0, border: 0 } as const;
@@ -30,7 +32,7 @@ function invoiceLabel(state: EditorState, profile: SellerProfile): string {
 const NUMBER_LABEL: Record<EditorState['kind'], string> = { invoice: 'Invoice number', proforma: 'Proforma number', quote: 'Quotation number' };
 const DETAILS_LEGEND: Record<EditorState['kind'], string> = { invoice: 'Invoice details', proforma: 'Proforma invoice details', quote: 'Quotation details' };
 
-export function DetailsSection({ state, onChange, profile, themes, errors, kindLocked = false }: DetailsSectionProps) {
+export function DetailsSection({ state, onChange, profile, themes, errors, kindLocked = false, numberHint }: DetailsSectionProps) {
   const taxed = taxApplies(state, profile);
   const regular = profile.gstStatus === 'regular';
   const quote = state.kind === 'quote';
@@ -46,6 +48,7 @@ export function DetailsSection({ state, onChange, profile, themes, errors, kindL
             value={state.number}
             onChange={(event) => onChange({ number: event.target.value, numberEdited: true })}
             error={errors['number']}
+            hint={numberHint}
           />
           <SelectField
             label="Document type"

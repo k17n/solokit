@@ -122,6 +122,9 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
     setError(null);
     try {
       const draft = await storage.invoices.convert(current.id, { id: newId(), issueDate: todayIso(now()) });
+      setInvoice({ ...current, convertedToId: draft.id });
+      setRelated(draft);
+      setBusy(false);
       onEdit(draft.id);
     } catch (failure) {
       console.error('Could not convert the document', failure);
@@ -168,6 +171,14 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
             Open
           </Button>
         </p>
+      ) : null}
+      {related && current.convertedToId && current.kind === 'proforma' && related.advanceReceived ? (
+        <Notice tone="info">The advance received on this proforma was carried over to invoice {related.number}.</Notice>
+      ) : null}
+      {related && current.convertedToId && related.status === 'cancelled' ? (
+        <Notice tone="info">
+          Invoice {related.number} was cancelled. This {noun} stays marked as converted and its number stays used. To invoice the work again, duplicate this {noun} as a new draft.
+        </Notice>
       ) : null}
       {confirming ? (
         <div style={{ display: 'grid', gap: '0.6rem' }}>

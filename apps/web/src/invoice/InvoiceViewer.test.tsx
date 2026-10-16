@@ -169,6 +169,30 @@ describe('InvoiceViewer: quotations and conversion', () => {
     expect(onView).toHaveBeenCalledWith('q1');
   });
 
+  it('tells the user a proforma advance was carried over to the draft', async () => {
+    const { storage, onEdit } = await setup(makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001', advanceReceived: 50000 }), 'p1');
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
+    expect((await storage.invoices.get(onEdit.mock.calls[0]![0]))?.advanceReceived).toBe(50000);
+    expect(await screen.findByText(/advance received on this proforma was carried over/)).toBeInTheDocument();
+  });
+
+  it('does not mention an advance for a quotation', async () => {
+    const { onEdit } = await setup(quote(), 'q1');
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
+    expect(screen.queryByText(/carried over/)).not.toBeInTheDocument();
+  });
+
+  it('explains that a converted quotation keeps its number when the invoice was cancelled', async () => {
+    const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+    await storage.invoices.save(quote({ convertedToId: 'i1' }));
+    await storage.invoices.save(makeInvoice({ id: 'i1', number: '2026-27/0001', status: 'cancelled', convertedFromId: 'q1' }));
+    render(<InvoiceViewer storage={storage} invoiceId="q1" onBack={vi.fn()} onEdit={vi.fn()} renderPdf={fakeRender} />);
+    expect(await screen.findByText(/Invoice 2026-27\/0001 was cancelled.*stays used.*duplicate this quotation/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Convert to invoice' })).not.toBeInTheDocument();
+  });
+
   it('shows a plain message when conversion fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { storage } = await setup(quote(), 'q1');

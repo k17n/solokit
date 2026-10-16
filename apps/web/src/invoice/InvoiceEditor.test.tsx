@@ -509,10 +509,38 @@ describe('InvoiceEditor: quotations and number series', () => {
     await userEvent.clear(screen.getByLabelText('Invoice number'));
     await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
     await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0004'));
+  });
+
+  it('renumbers a hand-typed number that does not fit the new type, and says so', async () => {
+    await setup();
+    await userEvent.clear(screen.getByLabelText('Invoice number'));
+    await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0001'));
+    expect(screen.getByText(/number MINE-1 was replaced/i)).toBeInTheDocument();
+    // The new number is generated, so it follows the date again.
+    const date = screen.getByLabelText('Issue date');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2027-04-02');
+    await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2027-28/0001'));
+  });
+
+  it('keeps a hand-typed number that already fits the new type', async () => {
+    await setup();
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0001'));
+    await userEvent.clear(screen.getByLabelText('Quotation number'));
+    await userEvent.type(screen.getByLabelText('Quotation number'), 'QT/2026-27/0099');
+    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'proforma');
+    await waitFor(() => expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0001'));
+    await userEvent.clear(screen.getByLabelText('Proforma number'));
+    await userEvent.type(screen.getByLabelText('Proforma number'), 'PF/2026-27/0050');
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 30));
     });
-    expect(screen.getByLabelText('Quotation number')).toHaveValue('MINE-1');
+    expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0050');
+    expect(screen.queryByText(/was replaced/i)).not.toBeInTheDocument();
   });
 
   it('renumbers a quotation by financial year inside the quotation series', async () => {
@@ -523,9 +551,9 @@ describe('InvoiceEditor: quotations and number series', () => {
     await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2027-28/0001'));
   });
 
-  it('does not let an old proforma that holds a tax-series number use up the next tax invoice number', async () => {
+  it('does not hand out the number printed on an old proforma that holds a tax-series number', async () => {
     await setup({ withInvoices: [makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0001' })] });
-    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0002');
   });
 
   it('issues a quotation without a due date and does not use a tax invoice number', async () => {

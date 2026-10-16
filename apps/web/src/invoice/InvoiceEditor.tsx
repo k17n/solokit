@@ -10,6 +10,7 @@ import {
   buildInvoiceDocument,
   issueInvoice,
   resolveTheme,
+  numberFitsKind,
   type Client,
   type InvoiceDocument,
   type InvoiceKind,
@@ -83,6 +84,8 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   const summaryRef = useRef<HTMLDivElement>(null);
   /** The series (document type and financial year) the current number was worked out for. */
   const numberSeriesRef = useRef<string | null>(null);
+  /** Set when a hand-typed number was replaced because it did not fit the type chosen afterwards. */
+  const [numberNotice, setNumberNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,8 +131,13 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   const numberEdited = state?.numberEdited;
   const dateYear = issueDate === undefined ? null : fiscalYearOf(issueDate);
   const series = `${kind}|${dateYear}`;
+  const typedNumber = state?.number;
   useEffect(() => {
-    if (!isNew || issueDate === undefined || kind === undefined || numberEdited || dateYear === null || numberSeriesRef.current === null || series === numberSeriesRef.current) {
+    const kindChanged = numberSeriesRef.current !== null && kind !== undefined && numberSeriesRef.current.split('|')[0] !== kind;
+    // A hand-typed number stays unless the type changed to one whose series it does not fit.
+    const replaceTyped = Boolean(numberEdited) && kindChanged && kind !== undefined && !numberFitsKind(typedNumber ?? '', kind);
+    if (numberEdited && kindChanged && !replaceTyped) numberSeriesRef.current = series;
+    if (!isNew || issueDate === undefined || kind === undefined || (numberEdited && !replaceTyped) || dateYear === null || numberSeriesRef.current === null || series === numberSeriesRef.current) {
       setNumberPending(false);
       return;
     }
@@ -140,7 +148,12 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
       .then((number) => {
         if (cancelled) return;
         numberSeriesRef.current = series;
-        setState((current) => (current && !current.numberEdited ? { ...current, number } : current));
+        setState((current) => {
+          if (!current) return current;
+          if (current.numberEdited && !replaceTyped) return current;
+          return { ...current, number, numberEdited: false };
+        });
+        setNumberNotice(replaceTyped ? `Your number ${typedNumber ?? ''} was replaced because it does not fit this document type. Type another if you prefer.` : null);
         setNumberPending(false);
       })
       .catch(() => {
@@ -157,6 +170,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   const change = useCallback((patch: Partial<EditorState>) => {
     setSavedMessage(false);
     setServerIssues([]);
+    if (patch.number !== undefined) setNumberNotice(null);
     setState((current) => (current ? { ...current, ...patch } : current));
   }, []);
 
@@ -303,7 +317,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
             />
           </fieldset>
 
-          <DetailsSection state={state} onChange={change} profile={profile} themes={themes} errors={errors} kindLocked={state.createdAt !== ''} />
+          <DetailsSection state={state} onChange={change} profile={profile} themes={themes} errors={errors} numberHint={numberNotice ?? undefined} kindLocked={state.createdAt !== ''} />
 
           <fieldset className={styles.section}>
             <legend className={styles.sectionTitle}>Items</legend>
