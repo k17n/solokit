@@ -7,7 +7,7 @@ const MARGIN = 54;
 const BODY = 10;
 const SMALL = 8.5;
 // Not set on the page itself: a page-level line height makes react-pdf drop the fixed footer.
-const LINE_HEIGHT = 1.45;
+const LINE_HEIGHT = 1;
 const NUMBER_WIDTH = 34;
 const ITEM_INDENT = 26;
 
@@ -40,7 +40,7 @@ function pageStyle(theme: InvoiceTheme, palette: Palette) {
 
 function ClauseHeading({ number, title, palette }: { number: string; title: string; palette: Palette }) {
   return (
-    <View minPresenceAhead={64} style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
+    <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
       <Text style={{ width: NUMBER_WIDTH, fontWeight: 700, color: palette.accentSmall }}>{number}.</Text>
       <Text style={{ flex: 1, fontWeight: 700, color: palette.accentSmall }}>{title}</Text>
     </View>
@@ -61,25 +61,38 @@ function AgreementBody({ doc, palette }: { doc: ContractDocument; palette: Palet
       ))}
       <Text style={{ marginTop: 4 }}>{doc.closing}</Text>
 
-      {doc.clauses.map((clause) => (
-        <View key={clause.id}>
-          <ClauseHeading number={clause.number} title={clause.title} palette={palette} />
-          {clause.paragraphs.map((paragraph) => (
-            <View key={paragraph.number} style={{ marginBottom: 3 }}>
-              <View wrap={false} style={{ flexDirection: 'row' }}>
-                <Text style={{ width: NUMBER_WIDTH, color: palette.muted }}>{paragraph.number}</Text>
-                <Text style={{ flex: 1 }}>{paragraph.text}</Text>
-              </View>
-              {paragraph.items.map((item) => (
-                <View key={item.label} wrap={false} style={{ flexDirection: 'row', marginLeft: NUMBER_WIDTH }}>
-                  <Text style={{ width: ITEM_INDENT, color: palette.muted }}>{item.label}</Text>
-                  <Text style={{ flex: 1 }}>{item.text}</Text>
-                </View>
-              ))}
+      {doc.clauses.map((clause) => {
+        const [first, ...rest] = clause.paragraphs;
+        const paragraphRow = (paragraph: (typeof clause.paragraphs)[number]) => (
+          <View wrap={false} style={{ flexDirection: 'row' }}>
+            <Text style={{ width: NUMBER_WIDTH, color: palette.muted }}>{paragraph.number}</Text>
+            <Text style={{ flex: 1 }}>{paragraph.text}</Text>
+          </View>
+        );
+        const items = (paragraph: (typeof clause.paragraphs)[number]) =>
+          paragraph.items.map((item) => (
+            <View key={item.label} wrap={false} style={{ flexDirection: 'row', marginLeft: NUMBER_WIDTH }}>
+              <Text style={{ width: ITEM_INDENT, color: palette.muted }}>{item.label}</Text>
+              <Text style={{ flex: 1 }}>{item.text}</Text>
             </View>
-          ))}
-        </View>
-      ))}
+          ));
+        return (
+          <View key={clause.id}>
+            {/* The heading stays on the page with the first paragraph that follows it. */}
+            <View wrap={false}>
+              <ClauseHeading number={clause.number} title={clause.title} palette={palette} />
+              {first ? <View style={{ marginBottom: first.items.length > 0 ? 0 : 3 }}>{paragraphRow(first)}</View> : null}
+            </View>
+            {first ? <View style={{ marginBottom: 3 }}>{items(first)}</View> : null}
+            {rest.map((paragraph) => (
+              <View key={paragraph.number} style={{ marginBottom: 3 }}>
+                {paragraphRow(paragraph)}
+                {items(paragraph)}
+              </View>
+            ))}
+          </View>
+        );
+      })}
 
       {doc.schedules.map((schedule) => (
         <View key={schedule.title} break>
