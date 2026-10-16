@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
@@ -14,16 +14,33 @@ beforeEach(() => {
 
 const fakeRender: PdfRenderer = async () => new Blob(['pdf'], { type: 'application/pdf' });
 
-async function setup(options: { profile?: SellerProfile; invoiceId?: string; clients?: boolean; withInvoices?: ReturnType<typeof makeInvoice>[] } = {}) {
-  const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore(), { now: () => new Date(2026, 9, 14, 10, 0) });
+const NOW = () => new Date(2026, 9, 14, 10, 0);
+
+async function setup(
+  options: {
+    profile?: SellerProfile;
+    invoiceId?: string;
+    clients?: boolean;
+    abroadClient?: boolean;
+    withInvoices?: ReturnType<typeof makeInvoice>[];
+    wrap?: (storage: InvoiceStorage) => InvoiceStorage;
+  } = {},
+) {
+  const real: InvoiceStorage = createInvoiceStorage(createMemoryStore(), { now: NOW });
+  const storage = options.wrap ? options.wrap(real) : real;
   const profile = options.profile ?? makeSeller();
   await storage.profile.save(profile);
   if (options.clients) await storage.clients.save(makeClient({ id: 'c1', name: 'Northwind Traders' }));
+  if (options.abroadClient) {
+    await storage.clients.save(
+      makeClient({ id: 'c2', name: 'Acme Inc', gstin: undefined, address: { line1: '1 Main St', city: 'Austin', stateCode: '27', country: 'United States' } }),
+    );
+  }
   for (const invoice of options.withInvoices ?? []) await storage.invoices.save(invoice);
   const onBack = vi.fn();
   const onIssued = vi.fn();
   render(
-    <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} onBack={onBack} onIssued={onIssued} renderPdf={fakeRender} />,
+    <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} onBack={onBack} onIssued={onIssued} renderPdf={fakeRender} now={NOW} />,
   );
   await screen.findByRole('heading', { name: options.invoiceId ? 'Edit draft' : 'New invoice' });
   return { storage, onBack, onIssued, profile };
@@ -85,7 +102,170 @@ describe('InvoiceEditor: opening', () => {
     await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
     await userEvent.clear(date);
     await userEvent.type(date, '2026-05-01');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
     expect(screen.getByLabelText('Invoice number')).toHaveValue('MINE-1');
+  });
+
+  it('does not renumber when the date moves within the same financial year', async () => {
+    const { storage } = await setup();
+    await storage.invoices.save(makeInvoice({ id: 'late', number: '2026-27/0002' }));
+    const date = screen.getByLabelText('Issue date');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2026-11-20');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
+  });
+
+  it('keeps the number of a saved new draft when its date moves into another financial year', async () => {
+    await setup();
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText('Draft saved');
+    const date = screen.getByLabelText('Issue date');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2027-04-02');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
+  });
+
+  it('cannot be saved or issued while the new number is still being looked up', async () => {
+    let release: (() => void) | undefined;
+    let calls = 0;
+    const { storage } = await setup({
+      wrap: (real) => ({
+        ...real,
+        invoices: {
+          ...real.invoices,
+          nextNumber: async (date: string) => {
+            calls += 1;
+            if (calls === 1) return real.invoices.nextNumber(date);
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+            return real.invoices.nextNumber(date);
+          },
+        },
+      }),
+    });
+    const date = screen.getByLabelText('Issue date');
+    await userEvent.clear(date);
+    await userEvent.type(date, '2027-04-02');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Issue invoice' })).toBeDisabled());
+    expect(screen.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+    await act(async () => {
+      release?.();
+    });
+    await waitFor(() => expect(screen.getByLabelText('Invoice number')).toHaveValue('2027-28/0001'));
+    expect(screen.getByRole('button', { name: 'Issue invoice' })).toBeEnabled();
+    expect(await storage.invoices.list()).toEqual([]);
+  });
+
+  it('uses the injected clock, not the real date', async () => {
+    await setup();
+    expect(screen.getByLabelText('Issue date')).toHaveValue('2026-10-14');
+  });
+});
+
+describe('InvoiceEditor: clients and exports', () => {
+  it('ticks the export box when a client outside India is chosen, and fills the country', async () => {
+    await setup({ abroadClient: true });
+    await userEvent.selectOptions(screen.getByLabelText('Client'), 'c2');
+    expect(screen.getByRole('checkbox', { name: 'Client is outside India (export)' })).toBeChecked();
+    expect(screen.getByLabelText('Country')).toHaveValue('United States');
+    expect(screen.queryByLabelText('Place of supply')).not.toBeInTheDocument();
+  });
+
+  it('unticks the export box when a domestic client is chosen', async () => {
+    await setup({ clients: true, abroadClient: true });
+    await userEvent.selectOptions(screen.getByLabelText('Client'), 'c2');
+    await userEvent.selectOptions(screen.getByLabelText('Client'), 'c1');
+    expect(screen.getByRole('checkbox', { name: 'Client is outside India (export)' })).not.toBeChecked();
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('27');
+  });
+
+  it('saves a chosen client as it was typed, not as the export switch shapes it', async () => {
+    const { storage } = await setup({ abroadClient: true });
+    await userEvent.selectOptions(screen.getByLabelText('Client'), 'c2');
+    await fillFirstItem('100', '1', 'Rate ($)');
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText('Draft saved');
+    const saved = (await storage.clients.list()).find((client) => client.id === 'c2');
+    expect(saved?.address).toMatchObject({ country: 'United States', stateCode: '27' });
+  });
+
+  it('clears the country when export is ticked while it still says India', async () => {
+    await setup();
+    expect(screen.getByRole('checkbox', { name: 'Client is outside India (export)' })).not.toBeChecked();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Client is outside India (export)' }));
+    expect(screen.getByLabelText('Country')).toHaveValue('');
+  });
+
+  it('refuses to issue an export to a client in India', async () => {
+    const { onIssued } = await setup();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Client is outside India (export)' }));
+    await userEvent.type(screen.getByLabelText('Client name'), 'Acme Inc');
+    await userEvent.type(screen.getByLabelText('Address line 1'), '1 Main St');
+    await userEvent.type(screen.getByLabelText('City'), 'Austin');
+    await userEvent.type(screen.getByLabelText('Country'), 'India');
+    await fillFirstItem('100', '1', 'Rate ($)');
+    await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
+    expect((await screen.findAllByText("Enter the client's country outside India")).length).toBeGreaterThan(0);
+    expect(onIssued).not.toHaveBeenCalled();
+  });
+
+  it('describes the LUT honestly and warns when the profile has no LUT number', async () => {
+    await setup();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Client is outside India (export)' }));
+    expect(screen.getByText(/If you have a Letter of Undertaking \(LUT\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Your profile has no LUT number/)).toBeInTheDocument();
+  });
+
+  it('does not warn about the LUT when the profile has one', async () => {
+    await setup({ profile: makeSeller({ lutNumber: 'AD270326000001A' }) });
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Client is outside India (export)' }));
+    expect(screen.queryByText(/Your profile has no LUT number/)).not.toBeInTheDocument();
+  });
+
+  it('empties an auto-filled place of supply when "New client" is chosen again', async () => {
+    await setup({ clients: true });
+    await userEvent.selectOptions(screen.getByLabelText('Client'), 'c1');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('27');
+    await userEvent.selectOptions(screen.getByLabelText('Client'), '');
+    expect(screen.getByLabelText('Place of supply')).toHaveValue('');
+  });
+});
+
+describe('InvoiceEditor: problems the form cannot show', () => {
+  it('flags a number from another financial year', async () => {
+    await setup();
+    await userEvent.clear(screen.getByLabelText('Invoice number'));
+    await userEvent.type(screen.getByLabelText('Invoice number'), '2025-26/0007');
+    await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
+    expect((await screen.findAllByText('This number belongs to financial year 2025-26 but the date is in 2026-27')).length).toBeGreaterThan(0);
+  });
+
+  it('lists profile problems as such and moves focus to the summary', async () => {
+    await setup({ profile: makeSeller({ udyam: 'bogus' }) });
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
+    expect(await screen.findByText(/^Profile: UDYAM number looks like/)).toBeInTheDocument();
+    expect(screen.getByText(/in the Profile tab/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Fix 1 thing before you issue/).closest('[tabindex="-1"]')).toHaveFocus());
+  });
+
+  it('offers a visible empty choice for the GST rate', async () => {
+    await setup();
+    const rate = within(screen.getByRole('group', { name: 'Item 1' })).getByLabelText('GST rate');
+    await userEvent.selectOptions(rate, 'Choose a rate');
+    expect(rate).toHaveValue('');
   });
 });
 
@@ -246,7 +426,7 @@ describe('InvoiceEditor: editing a draft', () => {
     const storage = createInvoiceStorage(createMemoryStore());
     await storage.profile.save(makeSeller());
     await storage.invoices.save(issued);
-    render(<InvoiceEditor storage={storage} profile={makeSeller()} invoiceId="i1" onBack={() => {}} onIssued={() => {}} renderPdf={fakeRender} />);
+    render(<InvoiceEditor storage={storage} profile={makeSeller()} invoiceId="i1" onBack={() => {}} onIssued={() => {}} renderPdf={fakeRender} now={NOW} />);
     expect(await screen.findByText('This invoice cannot be edited')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back to invoices' })).toBeInTheDocument();
   });

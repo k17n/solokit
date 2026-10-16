@@ -130,6 +130,7 @@ export function LineItemsEditor({ lines, onChange, taxApplies, currency, issueDa
               {taxApplies ? (
                 <SelectField
                   label="GST rate"
+                  placeholder="Choose a rate"
                   options={gstRateOptions(line, issueDate)}
                   value={line.gstRate}
                   onChange={(event) => update(index, { gstRate: event.target.value })}

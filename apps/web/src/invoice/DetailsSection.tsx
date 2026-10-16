@@ -1,7 +1,7 @@
 'use client';
 
 import { SUPPORTED_CURRENCIES, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
-import { CheckboxField, SelectField, TextAreaField, TextField } from '@solokit/ui';
+import { CheckboxField, Notice, SelectField, TextAreaField, TextField } from '@solokit/ui';
 import { taxApplies, type EditorState } from './editorModel';
 import { selectableStates } from './profileFormState';
 
@@ -52,10 +52,29 @@ export function DetailsSection({ state, onChange, profile, themes, errors }: Det
         <legend style={legendStyle}>Supply</legend>
         <CheckboxField
           label="Client is outside India (export)"
-          hint={regular ? 'Exports of services are zero-rated under a Letter of Undertaking, so no GST is charged.' : 'Bill your client in their own currency.'}
+          hint={
+            regular
+              ? 'If you have a Letter of Undertaking (LUT), exports of services are zero-rated; otherwise IGST applies - check with your CA.'
+              : 'Bill your client in their own currency.'
+          }
           checked={state.isExport}
-          onChange={(event) => onChange({ isExport: event.target.checked, ...(event.target.checked ? { reverseCharge: false } : {}) })}
+          onChange={(event) =>
+            onChange({
+              isExport: event.target.checked,
+              ...(event.target.checked
+                ? {
+                    reverseCharge: false,
+                    ...(state.client.country.trim().toLowerCase() === 'india' ? { client: { ...state.client, country: '' } } : {}),
+                  }
+                : { client: { ...state.client, country: 'India' } }),
+            })
+          }
         />
+        {state.isExport && regular && !profile.lutNumber?.trim() ? (
+          <Notice tone="warning">
+            Your profile has no LUT number. The invoice will say it is supplied under a Letter of Undertaking without naming one. Add the number in the Profile tab, or check with your CA whether IGST applies.
+          </Notice>
+        ) : null}
         {state.isExport ? (
           <SelectField
             label="Currency"

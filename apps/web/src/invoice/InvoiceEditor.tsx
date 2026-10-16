@@ -18,9 +18,9 @@ import {
 } from '@solokit/tool-invoice';
 import { Button, Notice } from '@solokit/ui';
 import { ClientSection } from './ClientSection';
-import { clientToForm, emptyClientForm, isBlankClient } from './clientFormState';
+import { clientToForm, emptyClientForm, formToClient, isBlankClient } from './clientFormState';
 import { DetailsSection } from './DetailsSection';
-import { editorToInvoice, invoiceToEditor, newEditorState, taxApplies, todayIso, validateEditor, type EditorState } from './editorModel';
+import { editorToInvoice, fiscalYearOf, invoiceToEditor, newEditorState, taxApplies, todayIso, validateEditor, type EditorState } from './editorModel';
 import { invoiceFileName } from './fileName';
 import { newId } from './ids';
 import { LineItemsEditor } from './LineItemsEditor';
@@ -38,7 +38,11 @@ export interface InvoiceEditorProps {
   onBack: () => void;
   onIssued: (id: string) => void;
   renderPdf?: PdfRenderer;
+  /** The current time. Tests pass a fixed one. */
+  now?: () => Date;
 }
+
+const realNow = () => new Date();
 
 type Loaded = { kind: 'ready'; clients: Client[]; customThemes: InvoiceTheme[] } | { kind: 'cannot-edit' } | { kind: 'failed' };
 
@@ -54,7 +58,7 @@ function safeDocument(invoice: InvoiceRecord | null): InvoiceDocument | null {
   }
 }
 
-export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, renderPdf = defaultPdfRenderer }: InvoiceEditorProps) {
+export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceEditorProps) {
   const isNew = invoiceId === undefined;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [state, setState] = useState<EditorState | null>(null);
@@ -63,7 +67,11 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
   const [savedMessage, setSavedMessage] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [numberPending, setNumberPending] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  /** The financial year the current number was worked out for. */
+  const numberFyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,9 +90,10 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
         }
         setState(invoiceToEditor(existing));
       } else {
-        const today = todayIso(new Date());
+        const today = todayIso(now());
         const number = await storage.invoices.nextNumber(today);
         if (cancelled) return;
+        numberFyRef.current = fiscalYearOf(today);
         setState(
           newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: settings.defaultThemeId }),
         );
@@ -97,26 +106,39 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
     return () => {
       cancelled = true;
     };
+    // `now` is only read once, when a new invoice is started.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storage, invoiceId, profile]);
 
-  // A new invoice's number follows the issue date's financial year until it is typed by hand.
+  // A new invoice's number follows the issue date's financial year, only when that year changes and until the number is typed or saved.
   const issueDate = state?.issueDate;
   const numberEdited = state?.numberEdited;
+  const dateYear = issueDate === undefined ? null : fiscalYearOf(issueDate);
   useEffect(() => {
-    if (!isNew || issueDate === undefined || numberEdited) return;
+    if (!isNew || issueDate === undefined || numberEdited || dateYear === null || numberFyRef.current === null || dateYear === numberFyRef.current) {
+      setNumberPending(false);
+      return;
+    }
     let cancelled = false;
+    setNumberPending(true);
     storage.invoices
       .nextNumber(issueDate)
       .then((number) => {
-        if (!cancelled) setState((current) => (current && !current.numberEdited && current.issueDate === issueDate ? { ...current, number } : current));
+        if (cancelled) return;
+        numberFyRef.current = dateYear;
+        setState((current) => (current && !current.numberEdited ? { ...current, number } : current));
+        setNumberPending(false);
       })
       .catch(() => {
-        // An invalid or half-typed date: keep the current number.
+        // Keep the current number; the user can type one.
+        if (!cancelled) setNumberPending(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [storage, isNew, issueDate, numberEdited]);
+    // `issueDate` only matters through its financial year.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storage, isNew, dateYear, numberEdited]);
 
   const change = useCallback((patch: Partial<EditorState>) => {
     setSavedMessage(false);
@@ -127,8 +149,8 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
   const customThemes = loaded?.kind === 'ready' ? loaded.customThemes : [];
   const themes = useMemo(() => [...PRESET_THEMES, ...customThemes], [customThemes]);
 
-  const built = useMemo(() => (state ? editorToInvoice(state, profile, new Date()) : null), [state, profile]);
-  const issues = useMemo(() => (state ? validateEditor(state, profile, new Date()) : []), [state, profile]);
+  const built = useMemo(() => (state ? editorToInvoice(state, profile, now()) : null), [state, profile, now]);
+  const issues = useMemo(() => (state ? validateEditor(state, profile, now()) : []), [state, profile, now]);
   // Saving a draft only complains about numbers that cannot be read; an Issue attempt shows every problem. Both then follow the form live.
   const errors = useMemo(() => {
     const shown = attempt === 'issue' ? issues : attempt === 'save' ? (built?.parseIssues ?? []) : [];
@@ -149,15 +171,19 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
   const clientErrors = errors;
 
   function focusFirstProblem() {
-    requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+    requestAnimationFrame(() => {
+      const field = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      (field ?? summaryRef.current)?.focus();
+    });
   }
 
   async function persistClient(invoice: InvoiceRecord) {
-    if (state && state.saveClient && !isBlankClient(state.client)) await storage.clients.save(invoice.client);
+    // The client is kept as typed, not as the export switch shaped it for this invoice.
+    if (state && state.saveClient && !isBlankClient(state.client)) await storage.clients.save(formToClient(state.client, invoice.client.id));
   }
 
   async function handleSave(issue: boolean) {
-    if (!state || !built || busy) return;
+    if (!state || !built || busy || numberPending) return;
     setAttempt((previous) => (issue || previous === 'issue' ? 'issue' : 'save'));
     setSavedMessage(false);
     setServerIssues([]);
@@ -176,7 +202,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
       }
       const saved = await storage.invoices.save(built.invoice);
       await persistClient(saved);
-      setState((current) => (current ? { ...current, createdAt: saved.createdAt } : current));
+      setState((current) => (current ? { ...current, createdAt: saved.createdAt, numberEdited: true } : current));
       setSavedMessage(true);
     } catch (error) {
       if (error instanceof InvoiceNumberTakenError) {
@@ -194,7 +220,10 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
   }
 
   // The summary belongs to a failed Issue attempt; a draft save shows its problems on the fields only.
-  const shownIssues = attempt === 'issue' ? [...issues, ...serverIssues].filter((issue) => issue.path !== 'save') : [];
+  const shownIssues = (attempt === 'issue' ? [...issues, ...serverIssues].filter((issue) => issue.path !== 'save') : []).map((issue) =>
+    issue.path.startsWith('seller') ? { ...issue, message: `Profile: ${issue.message}` } : issue,
+  );
+  const profileIssues = shownIssues.some((issue) => issue.path.startsWith('seller'));
 
   return (
     <div className={styles.editor}>
@@ -208,13 +237,14 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
       <div className={styles.layout}>
         <div className={styles.form} ref={formRef}>
           {shownIssues.length > 0 ? (
-            <div className={styles.summary}>
+            <div className={styles.summary} ref={summaryRef} tabIndex={-1}>
               <Notice tone="danger" title={`Fix ${shownIssues.length} ${shownIssues.length === 1 ? 'thing' : 'things'} before you issue this invoice`}>
                 <ul>
                   {shownIssues.map((issue) => (
                     <li key={`${issue.path}-${issue.message}`}>{issue.message}</li>
                   ))}
                 </ul>
+                {profileIssues ? <p>Fix the items marked Profile in the Profile tab, then come back to this invoice.</p> : null}
               </Notice>
             </div>
           ) : null}
@@ -234,18 +264,26 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
                   ...(!state.placeEdited && !state.isExport ? { placeOfSupplyStateCode: client.stateCode } : {}),
                 })
               }
-              onSelectClient={(client) =>
-                change(
-                  client
-                    ? {
-                        clientId: client.id,
-                        client: clientToForm(client),
-                        saveClient: true,
-                        ...(!state.placeEdited && !state.isExport ? { placeOfSupplyStateCode: client.address.stateCode ?? '' } : {}),
-                      }
-                    : { clientId: newId(), client: emptyClientForm(), saveClient: true },
-                )
-              }
+              onSelectClient={(client) => {
+                if (!client) {
+                  change({
+                    clientId: newId(),
+                    client: emptyClientForm(),
+                    saveClient: true,
+                    ...(!state.placeEdited && !state.isExport ? { placeOfSupplyStateCode: '' } : {}),
+                  });
+                  return;
+                }
+                const abroad = client.address.country.trim().toLowerCase() !== 'india';
+                change({
+                  clientId: client.id,
+                  client: clientToForm(client),
+                  saveClient: true,
+                  isExport: abroad,
+                  ...(abroad ? { reverseCharge: false } : {}),
+                  ...(!state.placeEdited && !abroad ? { placeOfSupplyStateCode: client.address.stateCode ?? '' } : {}),
+                });
+              }}
               onSaveClientChange={(saveClient) => change({ saveClient })}
             />
           </fieldset>
@@ -266,10 +304,10 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
           </fieldset>
 
           <div className={styles.actions}>
-            <Button variant="secondary" disabled={busy} onClick={() => void handleSave(false)}>
+            <Button variant="secondary" disabled={busy || numberPending} onClick={() => void handleSave(false)}>
               Save draft
             </Button>
-            <Button disabled={busy} onClick={() => void handleSave(true)}>
+            <Button disabled={busy || numberPending} onClick={() => void handleSave(true)}>
               Issue invoice
             </Button>
             {savedMessage ? (
