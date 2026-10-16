@@ -34,6 +34,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   const [saveCount, setSaveCount] = useState(0);
   /** Changes every time "New invoice" is chosen, so the editor starts fresh even when it is already open. */
   const [newCount, setNewCount] = useState(0);
+  const [restoring, setRestoring] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const asked = useRef(false);
@@ -112,7 +113,33 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     return (
       <div className={styles.app}>
         {storageWarning}
-        <Onboarding onDone={saveProfile} />
+        {restoring && store ? (
+          <>
+            <div>
+              <Button variant="ghost" onClick={() => setRestoring(false)}>
+                Back to setup
+              </Button>
+            </div>
+            <BackupScreen
+              store={store}
+              restoreOnly
+              onRestored={() => {
+                setRestoring(false);
+                setLoadAttempt((attempt) => attempt + 1);
+              }}
+              {...(now ? { now } : {})}
+            />
+          </>
+        ) : (
+          <>
+            <Onboarding onDone={saveProfile} />
+            <div>
+              <Button variant="ghost" onClick={() => setRestoring(true)}>
+                Already use SoloKit? Restore a backup
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     );
   }

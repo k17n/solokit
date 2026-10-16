@@ -322,3 +322,30 @@ describe('InvoiceApp: themes and backup tabs', () => {
     expect(screen.getByLabelText('Business or personal name')).toHaveValue('Restored Co');
   });
 });
+
+describe('InvoiceApp: restoring on a new device', () => {
+  it('offers to restore a backup instead of setting up, and opens the tool with the restored data', async () => {
+    const other = createMemoryStore();
+    const source = createInvoiceStorage(other);
+    await source.profile.save(makeSeller({ name: 'Moved Co' }));
+    await source.invoices.save(makeInvoice({ id: 'moved', number: '2026-27/0042' }));
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(other);
+
+    renderApp();
+    await screen.findByRole('heading', { name: 'Set up your business' });
+    await userEvent.click(screen.getByRole('button', { name: /restore a backup/i }));
+    expect(screen.queryByRole('button', { name: 'Download backup' })).not.toBeInTheDocument();
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    expect(await screen.findByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
+    expect(await screen.findByText('2026-27/0042')).toBeInTheDocument();
+  });
+
+  it('goes back to setup', async () => {
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to setup' }));
+    expect(screen.getByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
+  });
+});

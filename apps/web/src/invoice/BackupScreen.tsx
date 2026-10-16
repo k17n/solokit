@@ -11,6 +11,8 @@ export interface BackupScreenProps {
   store: DataStore;
   /** Called after a restore has replaced the data, so the app can reload what it shows. */
   onRestored: () => void;
+  /** Leaves out the download section, for a device that has nothing to back up yet. */
+  restoreOnly?: boolean;
   now?: () => Date;
 }
 
@@ -49,7 +51,7 @@ interface Pending {
   summary: BackupSummary;
 }
 
-export function BackupScreen({ store, onRestored, now = realNow }: BackupScreenProps) {
+export function BackupScreen({ store, onRestored, restoreOnly = false, now = realNow }: BackupScreenProps) {
   const storage = useMemo(() => createInvoiceStorage(store), [store]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
   const [current, setCurrent] = useState<Counts | null>(null);
@@ -154,6 +156,7 @@ export function BackupScreen({ store, onRestored, now = realNow }: BackupScreenP
         </Notice>
       ) : null}
 
+      {restoreOnly ? null : (
       <section className={styles.card} aria-labelledby={`${summaryId}-download`}>
         <h3 id={`${summaryId}-download`} style={{ fontSize: '1.25rem' }}>
           Download a backup
@@ -175,6 +178,7 @@ export function BackupScreen({ store, onRestored, now = realNow }: BackupScreenP
         </div>
         {downloadError ? <Notice tone="danger">The backup could not be created. Try again.</Notice> : null}
       </section>
+      )}
 
       <section className={styles.card} aria-labelledby={`${summaryId}-restore`}>
         <h3 id={`${summaryId}-restore`} style={{ fontSize: '1.25rem' }}>
