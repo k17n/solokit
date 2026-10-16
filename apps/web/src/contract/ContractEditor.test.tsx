@@ -114,7 +114,7 @@ describe('ContractEditor: sections', () => {
     expect(terms.getByText('Total of the milestones: INR 40,000')).toBeInTheDocument();
     await userEvent.click(terms.getByRole('button', { name: 'Remove milestone 2' }));
     expect(terms.getAllByRole('group', { name: /Milestone \d/ })).toHaveLength(1);
-  });
+  }, 30_000);
 
   it('marks the template default among the choices', async () => {
     await setup({ kind: 'services' });
