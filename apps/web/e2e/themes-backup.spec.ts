@@ -137,7 +137,7 @@ test.describe('backup and restore', () => {
       await expect(summary).toContainText('Asha Rao Consulting');
       await expect(summary).toContainText('1 invoice');
       await other.screenshot({ path: `${shots}/restore-confirm.png`, fullPage: true });
-      await other.getByRole('button', { name: 'Yes, replace my data' }).click();
+      await other.getByRole('button', { name: /^Yes, replace/ }).click();
 
       await expect(other.getByRole('listitem').filter({ hasText: number })).toBeVisible();
       await other.reload();
@@ -154,7 +154,7 @@ test.describe('backup and restore', () => {
     await page.getByRole('button', { name: 'Backup & restore' }).click();
     await page.getByLabel('Backup file').setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":"world"}') });
     await expect(page.getByText(/not a SoloKit backup/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Yes, replace my data' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Yes, replace/ })).toHaveCount(0);
     await page.getByRole('button', { name: 'Profile' }).click();
     await expect(page.getByLabel('Business or personal name')).toHaveValue('Asha Rao Consulting');
     expect(testInfo.errors).toEqual([]);
