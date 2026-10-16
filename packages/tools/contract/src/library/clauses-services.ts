@@ -47,6 +47,11 @@ export const SERVICES_CLAUSES: readonly Clause[] = [
       },
       {
         text: 'The fees include up to {{revisionRounds}} of revisions to each Deliverable based on the Client\'s feedback and within the scope of Schedule 1. Further revisions are changes under clause {{ref:changes}}.',
+        when: { variable: 'revisionRounds', gt: 0 },
+      },
+      {
+        text: 'The fees include no rounds of revisions. Any revision to a Deliverable based on the Client\'s feedback, other than correcting a failure to meet Schedule 1, is a change under clause {{ref:changes}}.',
+        when: { not: { variable: 'revisionRounds', gt: 0 } },
       },
       {
         id: 'accepted',
@@ -207,7 +212,7 @@ export const SERVICES_CLAUSES: readonly Clause[] = [
       },
       {
         id: 'duration',
-        text: 'The rights described in clause {{ref:ip.grant}} last for the full period for which those rights exist (in perpetuity).',
+        text: 'The rights described in clause {{ref:ip.grant}} last for the full period for which those rights exist under applicable law.',
         when: { option: 'ipDuration', is: 'perpetual' },
       },
       {

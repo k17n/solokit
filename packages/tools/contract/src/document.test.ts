@@ -158,13 +158,14 @@ describe('services agreement content', () => {
     const defaults = buildContractDocument(makeContract('services'));
     const ip = textOf(defaults, 'ip');
     expect(ip).toContain('assigns to the Client all copyright and other intellectual property rights');
-    expect(ip).toContain('(in perpetuity)');
+    expect(ip).toContain('for the full period for which those rights exist under applicable law.');
+    expect(ip).not.toMatch(/perpetu/i);
     expect(ip).toContain('every country in the world');
     expect(ip).toContain('has paid for a Deliverable in full');
     const changed = textOf(buildContractDocument(makeContract('services', { options: { feeModel: 'fixed', ipDuration: 'fixed-years', ipTerritory: 'india' }, variables: { ...makeContract('services').variables, ipYears: 5 } })), 'ip');
     expect(changed).toContain('last for 5 years from the date the Client pays');
     expect(changed).toContain('apply in India only');
-    expect(changed).not.toContain('(in perpetuity)');
+    expect(changed).not.toContain('full period for which those rights exist');
   });
 
   it('offers a licence instead of an assignment, exclusive or not', () => {

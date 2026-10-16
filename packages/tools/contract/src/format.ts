@@ -23,12 +23,18 @@ export function formatRupeesWithWords(rupees: number): string {
   return `${formatRupees(rupees)} (${amountInWords(Math.round(rupees * 100))})`;
 }
 
+/** The unit word that goes with a number: "day" for 1, "days" otherwise. Percent has no word of its own. */
+export function unitWord(value: number, unit: UnitName): string {
+  if (unit === 'percent') return 'percent';
+  const [one, many] = UNIT_WORDS[unit];
+  return value === 1 ? one : many;
+}
+
 /** Plain count with its unit: "1 day", "15 days", "30%". */
 export function formatCount(value: number, unit: UnitName | undefined): string {
   if (unit === 'percent') return `${value}%`;
   if (!unit) return String(value);
-  const [one, many] = UNIT_WORDS[unit];
-  return `${value} ${value === 1 ? one : many}`;
+  return `${value} ${unitWord(value, unit)}`;
 }
 
 /** Strips spaces and trailing full stops, semicolons, colons and commas from text that goes in the middle of a sentence. */

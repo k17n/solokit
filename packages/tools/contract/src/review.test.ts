@@ -88,7 +88,7 @@ describe('buildReviewSummary', () => {
 
     const defaults = text(makeContract('services'));
     expect(defaults).toContain('Intellectual property assignment');
-    expect(defaults).toContain('Perpetual (for as long as the rights exist)');
+    expect(defaults).toContain('For the full period the rights exist under applicable law');
     expect(defaults).toContain('Worldwide');
     expect(defaults).toContain('Limit of liability');
     expect(defaults).toContain('capped at the total fees');

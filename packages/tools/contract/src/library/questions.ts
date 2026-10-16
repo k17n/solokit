@@ -17,7 +17,7 @@ export const QUESTIONS: readonly LawyerQuestion[] = [
   {
     id: 'courts',
     topic: 'Courts',
-    text: 'Disputes that talks do not settle go to the courts at {{city}}, {{state}}. Are those courts suitable for the likely size and kind of dispute?',
+    text: 'Disputes that talks do not settle go to the courts at {{city}}, {{state}}. Are those courts suitable for the likely size and kind of dispute? Does {{city}} have a real connection to the parties or the work (for example where one of them is based, where the work is done or where the agreement is signed), and is the choice likely to hold up if it has none?',
     kinds: CONTRACT_KINDS,
     clauseId: 'disputes',
     when: { option: 'disputeMethod', is: 'courts' },
@@ -183,9 +183,16 @@ export const QUESTIONS: readonly LawyerQuestion[] = [
     clauseId: 'fees',
   },
   {
+    id: 'msme-payment',
+    topic: 'Micro and small enterprise payment rules',
+    text: 'If the freelancer or the client is registered as a micro or small enterprise (Udyam), statutory rules on payment time and interest on late payment may apply whatever this agreement says. Invoices here are due within {{paymentDays}}. Do those rules apply to this engagement, and does the payment period or the interest choice need to change?',
+    kinds: SERVICES,
+    clauseId: 'fees',
+  },
+  {
     id: 'late-interest',
     topic: 'Late payment interest',
-    text: 'Interest on late payment is {{lateInterestPercent}} per month. Is this rate reasonable and enforceable, and is "per month, counted by the day" the clearest way to express it?',
+    text: 'Simple interest at the rate you chose, {{lateInterestPercent}} per month, is charged on late payment. Is this rate reasonable and enforceable, is "per month, counted by the day" the clearest way to express it, and does it sit properly alongside any statutory interest that applies to you?',
     kinds: SERVICES,
     clauseId: 'fees',
     when: { option: 'latePayment', is: 'interest' },
@@ -200,7 +207,15 @@ export const QUESTIONS: readonly LawyerQuestion[] = [
   {
     id: 'ip-assign',
     topic: 'Intellectual property assignment',
-    text: 'Ownership is assigned to the client on full payment, with rights lasting: {{ipDuration}}; and applying: {{ipTerritory}}. Do these match what the client is paying for? Is anything in the work (such as code libraries or templates) something the freelancer should keep outright?',
+    text: 'Ownership is assigned to the client on full payment, with rights lasting: {{ipDuration}}; and applying: {{ipTerritory}}. The duration wording is "for the full period for which the rights exist under applicable law" unless you chose a fixed number of years. Do these match what the client is paying for? Is anything in the work (such as code libraries or templates) something the freelancer should keep outright?',
+    kinds: SERVICES,
+    clauseId: 'ip',
+    when: { option: 'ip', is: 'assign' },
+  },
+  {
+    id: 'ip-moral-rights',
+    topic: 'Moral rights and a further assignment document',
+    text: 'The wording says the freelancer assigns the rights once the client has paid in full. It does not deal with moral rights (such as the right to be named as the author) or with any right that cannot be given away by contract. Is that acceptable? Should the assignment take effect by itself on payment, or should the freelancer also be required to sign a separate assignment document once the client has paid?',
     kinds: SERVICES,
     clauseId: 'ip',
     when: { option: 'ip', is: 'assign' },
@@ -326,7 +341,7 @@ export const NOTES: readonly LibraryNote[] = [
   {
     id: 'ip-duration-territory',
     title: 'Why the IP clause states duration and territory',
-    body: 'Indian copyright law generally expects an assignment of rights to say how long it lasts and where it applies. If it does not, default rules may apply, which can be shorter or narrower than the parties expect. This template therefore always states both, using "perpetual" and "worldwide" as defaults you can change. Ask a lawyer to confirm the position for your case.',
+    body: 'Indian copyright law generally expects an assignment of rights to say how long it lasts and where it applies. If it does not, default rules may apply, which can be shorter or narrower than the parties expect. This template therefore always states both, using "the full period the rights exist under applicable law" and "worldwide" as defaults you can change. Ask a lawyer to confirm the position for your case.',
     kinds: SERVICES_KINDS,
   },
   {

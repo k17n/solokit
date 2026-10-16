@@ -84,13 +84,13 @@ export const OPTIONS: readonly OptionDef[] = [
   {
     id: 'latePayment',
     label: 'Interest on late payment',
-    help: 'Interest can encourage on-time payment. It is optional.',
+    help: 'Interest can encourage on-time payment. It is optional. If you are registered as a micro or small enterprise (Udyam), statutory payment-time and interest rules may apply regardless of what you write here; ask your lawyer.',
     kinds: SERVICES,
     clauseId: 'fees',
     default: 'none',
     choices: [
       { id: 'none', label: 'No interest', summary: 'No interest is charged on late payments.' },
-      { id: 'interest', label: 'Charge interest on overdue amounts', summary: 'Simple interest is charged on overdue undisputed amounts.' },
+      { id: 'interest', label: 'Charge simple interest on overdue amounts, at a rate you choose', summary: 'Simple interest at the rate you choose is charged on overdue undisputed amounts.' },
     ],
   },
   {
@@ -133,12 +133,12 @@ export const OPTIONS: readonly OptionDef[] = [
   {
     id: 'ipDuration',
     label: 'How long the client\'s rights last',
-    help: 'Indian copyright law generally expects an assignment to state how long it lasts. Perpetual is the usual choice.',
+    help: 'Indian copyright law generally expects an assignment to state how long it lasts. The full legal period is the usual choice.',
     kinds: SERVICES,
     clauseId: 'ip',
     default: 'perpetual',
     choices: [
-      { id: 'perpetual', label: 'Perpetual (for as long as the rights exist)', summary: 'The rights last for the full period for which they exist.' },
+      { id: 'perpetual', label: 'For the full period the rights exist under applicable law', summary: 'The rights last for the full period for which they exist under applicable law.' },
       { id: 'fixed-years', label: 'A fixed number of years', summary: 'The rights last for a fixed number of years and then return to the Freelancer.' },
     ],
   },
@@ -194,7 +194,7 @@ export const OPTIONS: readonly OptionDef[] = [
   {
     id: 'disputeMethod',
     label: 'If talks fail',
-    help: 'Courts of the city you chose, or private arbitration under the Arbitration and Conciliation Act 1996.',
+    help: 'Courts of the city you chose, or private arbitration under the Arbitration and Conciliation Act 1996. Choose a city that has a connection to the parties or the work.',
     kinds: CONTRACT_KINDS,
     clauseId: 'disputes',
     default: 'courts',

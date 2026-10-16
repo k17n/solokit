@@ -7,7 +7,7 @@ import { ASSUMPTIONS, NOTES, QUESTIONS } from './questions';
 import { VARIABLES } from './variables';
 
 /** Changes whenever any wording, default or question changes, so a review can say which wording a document used. */
-export const LIBRARY_VERSION = '2026-10-16.1';
+export const LIBRARY_VERSION = '2026-10-16.2';
 
 /** Clause order within each kind is the order of this list: NDA clauses, services clauses, then the clauses every kind shares. */
 export const LIBRARY: ContractLibraryShape = {
