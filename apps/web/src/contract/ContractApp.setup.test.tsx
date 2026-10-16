@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createContractStorage } from '@solokit/tool-contract';
+import { makeContract } from '@solokit/tool-contract/testing';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
 import { createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeSeller } from '@solokit/tool-invoice/testing';
@@ -18,6 +20,16 @@ function renderContract(store: DataStore) {
 }
 
 describe('first use of the contract tool', () => {
+  beforeEach(() => {
+    // A fresh, working localStorage for each test (the one Node provides may be missing its methods).
+    const items = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (name: string) => items.get(name) ?? null,
+      setItem: (name: string, value: string) => void items.set(name, value),
+      removeItem: (name: string) => void items.delete(name),
+    });
+  });
+
   it('asks a Business with no details for name, address and email, saves them to the shared profile, and opens the tool', async () => {
     const store = createMemoryStore();
     renderContract(store);
@@ -59,6 +71,28 @@ describe('first use of the contract tool', () => {
     expect(await createInvoiceStorage(store).profile.get()).toBeUndefined();
     await userEvent.click(await screen.findByRole('button', { name: /Mutual NDA/ }));
     expect(await screen.findByRole('link', { name: 'Your business' })).toHaveAttribute('href', '/business/');
+  });
+
+  it('remembers a skip, so the step does not come back on the next visit', async () => {
+    const store = createMemoryStore();
+    const first = render(
+      <StoreProvider factory={() => store}>
+        <ContractApp now={() => NOW} />
+      </StoreProvider>,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Skip for now' }));
+    await screen.findByRole('navigation', { name: 'Contract tool' });
+    first.unmount();
+    renderContract(store);
+    expect(await screen.findByRole('navigation', { name: 'Contract tool' })).toBeInTheDocument();
+  });
+
+  it('does not stop someone who already has agreements', async () => {
+    const store = createMemoryStore();
+    await createContractStorage(store, { now: () => NOW }).save(makeContract('nda-mutual', { id: 'old', title: 'Old NDA' }));
+    renderContract(store);
+    expect(await screen.findByRole('navigation', { name: 'Contract tool' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Set up your business' })).not.toBeInTheDocument();
   });
 
   it('then lets the invoice tool ask only for the GST status', async () => {

@@ -6,7 +6,9 @@ import type { ContractKind } from '@solokit/tool-contract';
 import { Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
 import { Onboarding } from '../business/Onboarding';
+import { rememberSetupSkipped, wasSetupSkipped } from '../business/setupSkip';
 import { useProfileSaver } from '../business/useProfileSaver';
+import { useStorage } from '../workspace/WorkspaceProvider';
 import { ContractEditor } from './ContractEditor';
 import { ContractList } from './ContractList';
 import { ContractViewer } from './ContractViewer';
@@ -40,13 +42,17 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
   /** The person chose to go on without filling in their details (or they could not be read). */
   const [skipped, setSkipped] = useState(false);
   const saveBusiness = useProfileSaver(invoice);
+  const businessId = useStorage().workspace?.id ?? 'local';
 
   useEffect(() => {
     if (!invoice) return;
     let cancelled = false;
-    invoice.profile.get().then(
-      (found) => {
-        if (!cancelled) setProfile(found ?? null);
+    Promise.all([invoice.profile.get(), contracts?.list() ?? Promise.resolve([])]).then(
+      ([found, agreements]) => {
+        if (cancelled) return;
+        setProfile(found ?? null);
+        // Someone who already has agreements, or who skipped before, is not stopped at the door.
+        if (agreements.length > 0 || wasSetupSkipped('contract', businessId)) setSkipped(true);
       },
       (error: unknown) => {
         // Asking for details again could overwrite ones that merely failed to load, so go on without asking.
@@ -60,7 +66,7 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
     return () => {
       cancelled = true;
     };
-  }, [invoice, restoreCount]);
+  }, [invoice, contracts, businessId, restoreCount]);
 
   if (!ready || !contracts || !invoice || profile === undefined) return <p>Opening your agreements…</p>;
 
@@ -76,7 +82,10 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
         <Onboarding
           tool="contract"
           profile={profile ?? undefined}
-          onSkip={() => setSkipped(true)}
+          onSkip={() => {
+            rememberSetupSkipped('contract', businessId);
+            setSkipped(true);
+          }}
           onDone={async (next) => {
             setProfile(await saveBusiness(next, profile));
           }}

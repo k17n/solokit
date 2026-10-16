@@ -158,7 +158,7 @@ test.describe('contracts in a real browser', () => {
     await page.getByLabel('Backup file').setInputFiles(path);
     const summary = page.getByRole('region', { name: 'Restore this backup?' });
     await expect(summary).toContainText('1 agreement');
-    await summary.getByRole('button', { name: 'Yes, replace my data' }).click();
+    await summary.getByRole('button', { name: /^Yes, replace/ }).click();
     await page.getByRole('button', { name: 'Agreements' }).click();
     await expect(page.getByRole('listitem').filter({ hasText: 'Mutual NDA with Northwind' })).toBeVisible();
   });
