@@ -182,21 +182,28 @@ describe('number series per document kind', () => {
     expect(await storage.invoices.nextNumber('2026-10-14', 'quote')).toHaveLength(15);
   });
 
-  it('counts a stored proforma that holds a tax-series number towards proformas only, and does not rewrite it', async () => {
+  it('counts an old proforma that holds a tax-series number towards the tax series, and does not rewrite it', async () => {
     const storage = setup();
     await storage.invoices.save(makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0002' }));
     await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
-    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0002');
+    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0003');
     expect((await storage.invoices.get('old'))?.number).toBe('2026-27/0002');
-    expect(await storage.invoices.nextNumber('2026-10-14', 'proforma')).toBe('PF/2026-27/0003');
+    expect(await storage.invoices.nextNumber('2026-10-14', 'proforma')).toBe('PF/2026-27/0001');
   });
 
-  it('checks for a duplicate number inside the series only', async () => {
+  it('never lets a tax invoice reuse the number printed on an old proforma', async () => {
     const storage = setup();
     await storage.invoices.save(makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0001' }));
+    await expect(storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+    await expect(storage.invoices.save(makeInvoice({ id: 'b', kind: 'proforma', number: '2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+  });
+
+  it('keeps new PF/ and QT/ numbers in their own series', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'p', kind: 'proforma', number: 'PF/2026-27/0001' }));
     await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
-    await expect(storage.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
-    await expect(storage.invoices.save(makeInvoice({ id: 'c', kind: 'proforma', number: '2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+    await expect(storage.invoices.save(makeInvoice({ id: 'b', kind: 'proforma', number: 'PF/2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0002');
   });
 });
 

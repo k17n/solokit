@@ -54,6 +54,11 @@ describe('convertToInvoice', () => {
     expect(result.seller.name).toBe('Renamed');
     expect(result.reverseCharge).toBe(true);
     expect(result.tds).toEqual({ ratePercent: 10 });
+    expect(result.advanceReceived).toBe(5);
+  });
+
+  it('drops the advance of a quotation, which never had one', () => {
+    const result = convertToInvoice(quote({ advanceReceived: 5 }), { id: 'i1', number: '2026-27/0001', issueDate: '2026-10-20', now });
     expect(result.advanceReceived).toBeUndefined();
   });
 });
@@ -108,6 +113,77 @@ describe('storage.invoices.convert', () => {
     await storage.invoices.remove('i1');
     expect((await storage.invoices.get('q1'))?.convertedToId).toBeUndefined();
     await expect(storage.invoices.convert('q1', { id: 'i2', issueDate: '2026-10-20' })).resolves.toMatchObject({ id: 'i2' });
+  });
+
+  it('refuses a record without a kind, which is a tax invoice', async () => {
+    const storage = createInvoiceStorage(createMemoryStore(), { now: () => now });
+    const { kind: _kind, ...legacy } = makeInvoice({ id: 'legacy', number: '2026-27/0001' });
+    await storage.invoices.save(legacy);
+    await expect(storage.invoices.convert('legacy', { id: 'x', issueDate: '2026-10-20' })).rejects.toBeInstanceOf(ConversionError);
+  });
+
+  it('carries the advance of a proforma onto the draft', async () => {
+    const storage = createInvoiceStorage(createMemoryStore(), { now: () => now });
+    await storage.invoices.save(makeInvoice({ id: 'p', kind: 'proforma', number: 'PF/2026-27/0001', advanceReceived: 500 }));
+    expect((await storage.invoices.convert('p', { id: 'i1', issueDate: '2026-10-20' })).advanceReceived).toBe(500);
+  });
+
+  it('works when called without its storage object as this', async () => {
+    const storage = await setup();
+    const { convert } = storage.invoices;
+    await expect(convert('q1', { id: 'i1', issueDate: '2026-10-20' })).resolves.toMatchObject({ id: 'i1' });
+  });
+
+  it('reuses a draft already made from the document instead of creating another', async () => {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => now });
+    await storage.invoices.save(quote());
+    // An earlier attempt saved the draft but never linked the quotation.
+    const first = await storage.invoices.convert('q1', { id: 'i1', issueDate: '2026-10-20' });
+    const { convertedToId: _linked, ...unlinked } = (await storage.invoices.get('q1'))!;
+    await store.put('invoices', unlinked);
+    const again = await storage.invoices.convert('q1', { id: 'i2', issueDate: '2026-10-20' });
+    expect(again.id).toBe(first.id);
+    expect(await storage.invoices.get('i2')).toBeUndefined();
+    expect((await storage.invoices.get('q1'))?.convertedToId).toBe('i1');
+  });
+
+  it('refuses when the document was converted by someone else while this conversion was working', async () => {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => now });
+    await storage.invoices.save(quote());
+    // The profile is read during conversion; link the quotation at that moment.
+    const realGet = store.get.bind(store);
+    let linked = false;
+    const racing = {
+      ...store,
+      get: async (collection: string, id: string) => {
+        const result = await realGet(collection, id);
+        if (collection === 'profile' && !linked) {
+          linked = true;
+          await store.put('invoices', { ...(await realGet('invoices', 'q1')), convertedToId: 'other' } as never);
+        }
+        return result;
+      },
+    } as typeof store;
+    await expect(createInvoiceStorage(racing, { now: () => now }).invoices.convert('q1', { id: 'i1', issueDate: '2026-10-20' })).rejects.toBeInstanceOf(ConversionError);
+    expect(await storage.invoices.get('i1')).toBeUndefined();
+  });
+
+  it('removes the draft and rethrows when the document cannot be linked', async () => {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => now });
+    await storage.invoices.save(quote());
+    const failing = {
+      ...store,
+      put: async (collection: string, record: { id: string }) => {
+        if (collection === 'invoices' && record.id === 'q1') throw new Error('disk full');
+        return store.put(collection, record as never);
+      },
+    } as typeof store;
+    await expect(createInvoiceStorage(failing, { now: () => now }).invoices.convert('q1', { id: 'i1', issueDate: '2026-10-20' })).rejects.toThrow('disk full');
+    expect(await storage.invoices.get('i1')).toBeUndefined();
+    expect((await storage.invoices.get('q1'))?.convertedToId).toBeUndefined();
   });
 
   it('keeps the quote read-only after conversion', async () => {

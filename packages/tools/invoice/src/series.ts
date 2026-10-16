@@ -18,6 +18,17 @@ export function seriesPrefix(kind: InvoiceKind, sellerPrefix = ''): string {
 /** Documents of different kinds are numbered separately, so the series is the kind. Old records without a kind are invoices. */
 export const seriesOf = (record: { kind?: InvoiceKind | undefined }): InvoiceKind => record.kind ?? 'invoice';
 
+/**
+ * The series a record's number belongs to. A proforma saved before proformas had their own "PF/" numbers holds an
+ * ordinary tax-series number, so it keeps counting towards the tax invoices: a new tax invoice must never reuse a
+ * number that is already printed on it.
+ */
+export function numberSeriesOf(record: { kind?: InvoiceKind | undefined; number: string }): InvoiceKind {
+  const kind = seriesOf(record);
+  if (kind === 'proforma' && !record.number.trim().toUpperCase().startsWith(SERIES_PREFIX.proforma)) return 'invoice';
+  return kind;
+}
+
 /** Names for each kind, used in headings, buttons and file names. */
 export const KIND_LABEL: Record<InvoiceKind, string> = {
   invoice: 'Invoice',

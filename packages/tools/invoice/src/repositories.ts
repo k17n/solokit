@@ -1,7 +1,7 @@
 import { formatInvoiceNumber, indianFiscalYear, nextSequence } from '@solokit/core';
 import type { DataStore } from '@solokit/storage';
 import { SELLER_ID, SETTINGS_ID, type Client, type InvoiceKind, type InvoiceRecord, type InvoiceSettings, type SellerProfile } from './model';
-import { seriesOf, seriesPrefix } from './series';
+import { numberSeriesOf, seriesOf, seriesPrefix } from './series';
 import { convertToInvoice } from './convert';
 import { DEFAULT_THEME_ID, type InvoiceTheme } from './themes';
 
@@ -96,13 +96,23 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
       }
     }
     const key = (number: string) => number.trim().toUpperCase();
-    if (all.some((other) => other.id !== invoice.id && seriesOf(other) === seriesOf(invoice) && key(other.number) === key(invoice.number))) {
+    if (all.some((other) => other.id !== invoice.id && numberSeriesOf(other) === numberSeriesOf(invoice) && key(other.number) === key(invoice.number))) {
       throw new InvoiceNumberTakenError(`Invoice number ${invoice.number} is already used by another invoice`);
     }
     const stamp = now().toISOString();
     const saved: InvoiceRecord = { ...invoice, createdAt: invoice.createdAt || stamp, updatedAt: stamp };
     await store.put('invoices', saved);
     return saved;
+  }
+
+  async function nextNumber(issueDate: string, kind: InvoiceKind = 'invoice'): Promise<string> {
+    const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
+    const fiscalYear = indianFiscalYear(issueDate);
+    const sequence = nextSequence(
+      existing.filter((invoice) => numberSeriesOf(invoice) === kind).map((invoice) => invoice.number),
+      fiscalYear,
+    );
+    return formatInvoiceNumber({ prefix: seriesPrefix(kind, profile?.invoicePrefix ?? ''), fiscalYear, sequence });
   }
 
   return {
@@ -150,27 +160,31 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
       async convert(id, input) {
         const source = await store.get<InvoiceRecord>('invoices', id);
         if (!source) throw new ConversionError('Document not found');
-        if (source.kind === 'invoice') throw new ConversionError('Only a quotation or proforma invoice can be converted');
+        if (seriesOf(source) === 'invoice') throw new ConversionError('Only a quotation or proforma invoice can be converted');
         if (source.status !== 'issued') throw new ConversionError('Only an issued quotation or proforma invoice can be converted');
         if (source.convertedToId) throw new ConversionError('This document has already been converted to an invoice');
-        const [number, profile] = await Promise.all([
-          this.nextNumber(input.issueDate, 'invoice'),
-          store.get<SellerProfile>('profile', SELLER_ID),
-        ]);
+        // An earlier attempt may have saved the draft and been cut off before linking; use that draft.
+        const earlier = (await store.list<InvoiceRecord>('invoices')).find((other) => other.convertedFromId === source.id && other.status === 'draft');
+        if (earlier) {
+          await saveInvoice({ ...source, convertedToId: earlier.id });
+          return earlier;
+        }
+        const [number, profile] = await Promise.all([nextNumber(input.issueDate, 'invoice'), store.get<SellerProfile>('profile', SELLER_ID)]);
         const draft = convertToInvoice(source, { id: input.id, number, issueDate: input.issueDate, now: now(), ...(profile ? { seller: profile } : {}) });
+        // Check again just before writing: the document may have been converted while the number was worked out.
+        const latest = await store.get<InvoiceRecord>('invoices', id);
+        if (!latest || latest.convertedToId) throw new ConversionError('This document has already been converted to an invoice');
         const saved = await saveInvoice(draft);
-        await saveInvoice({ ...source, convertedToId: saved.id });
+        try {
+          await saveInvoice({ ...latest, convertedToId: saved.id });
+        } catch (error) {
+          // Without the link the document could be converted twice, so do not leave the draft behind.
+          await store.remove('invoices', saved.id).catch(() => undefined);
+          throw error;
+        }
         return saved;
       },
-      async nextNumber(issueDate, kind = 'invoice') {
-        const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
-        const fiscalYear = indianFiscalYear(issueDate);
-        const sequence = nextSequence(
-          existing.filter((invoice) => seriesOf(invoice) === kind).map((invoice) => invoice.number),
-          fiscalYear,
-        );
-        return formatInvoiceNumber({ prefix: seriesPrefix(kind, profile?.invoicePrefix ?? ''), fiscalYear, sequence });
-      },
+      nextNumber,
     },
 
     themes: {

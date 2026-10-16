@@ -284,6 +284,29 @@ describe('compareWithDevice', () => {
     expect(result.fileIsOlder).toBe(true);
   });
 
+  it('compares numbers per series, so a PF/QT document cannot hide a missing tax invoice', async () => {
+    const earlier = new Date('2026-10-01T00:00:00.000Z');
+    const source = createMemoryStore();
+    const sourceStorage = createInvoiceStorage(source, { now: () => earlier });
+    await sourceStorage.invoices.save(makeInvoice({ id: 'q', kind: 'quote', number: '2026-27/0002', validUntil: '2026-11-13' }));
+    const file = (await createBackup(source, earlier)).json;
+
+    const device = createMemoryStore();
+    await createInvoiceStorage(device, { now: () => NOW }).invoices.save(makeInvoice({ id: 'b', number: '2026-27/0002' }));
+    expect((await compareWithDevice(device, file)).reusableNumbers).toEqual(['2026-27/0002']);
+  });
+
+  it('treats an old proforma with a tax-series number as holding that tax number', async () => {
+    const earlier = new Date('2026-10-01T00:00:00.000Z');
+    const source = createMemoryStore();
+    await createInvoiceStorage(source, { now: () => earlier }).invoices.save(makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0002' }));
+    const file = (await createBackup(source, earlier)).json;
+
+    const device = createMemoryStore();
+    await createInvoiceStorage(device, { now: () => NOW }).invoices.save(makeInvoice({ id: 'b', number: '2026-27/0002' }));
+    expect((await compareWithDevice(device, file)).reusableNumbers).toEqual([]);
+  });
+
   it('reports nothing for a file that already holds everything and is newer', async () => {
     const device = createMemoryStore();
     await createInvoiceStorage(device, { now: () => new Date('2026-10-01T00:00:00.000Z') }).invoices.save(makeInvoice({ id: 'a' }));
