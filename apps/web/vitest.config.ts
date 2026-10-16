@@ -9,7 +9,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     // The editor tests render large forms. On a busy machine (other packages' tests run alongside) a test needs far more
     // than vitest's 5 seconds, and a slow test is not a broken one.
-    testTimeout: 30_000,
+    testTimeout: 15_000,
     hookTimeout: 30_000,
     // Leave room for the other packages' test runs instead of taking every core.
     pool: 'forks',

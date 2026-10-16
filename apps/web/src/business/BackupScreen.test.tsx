@@ -51,7 +51,7 @@ describe('BackupScreen: download', () => {
 
   it('shows that nothing has been backed up yet', async () => {
     await setup();
-    expect(screen.getByText(/never backed up/i)).toBeInTheDocument();
+    expect(await screen.findByText(/never backed up/i)).toBeInTheDocument();
   });
 
   it('creates the backup only when the download starts, then records and shows the time', async () => {

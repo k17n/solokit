@@ -33,7 +33,9 @@ describe('first use of the contract tool', () => {
   it('asks a Business with no details for name, address and email, saves them to the shared profile, and opens the tool', async () => {
     const store = createMemoryStore();
     renderContract(store);
-    expect(await screen.findByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
+    const heading = await screen.findByRole('heading', { name: 'Set up your business' });
+    // The step moves focus to its heading once it has mounted. Typing before that lands the first key in the field and the rest nowhere.
+    await waitFor(() => expect(heading).toHaveFocus());
     expect(screen.queryByRole('navigation', { name: 'Contract tool' })).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Business or personal name'), 'Asha Rao');
     await userEvent.type(screen.getByLabelText('Address line 1'), '12 Linking Road');
@@ -98,7 +100,9 @@ describe('first use of the contract tool', () => {
   it('then lets the invoice tool ask only for the GST status', async () => {
     const store = createMemoryStore();
     renderContract(store);
-    await userEvent.type(await screen.findByLabelText('Business or personal name'), 'Asha Rao');
+    const field = await screen.findByLabelText('Business or personal name');
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Set up your business' })).toHaveFocus());
+    await userEvent.type(field, 'Asha Rao');
     await userEvent.type(screen.getByLabelText('Address line 1'), '12 Linking Road');
     await userEvent.type(screen.getByLabelText('City'), 'Mumbai');
     await userEvent.type(screen.getByLabelText('Email'), 'asha@example.com');
