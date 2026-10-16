@@ -1,0 +1,32 @@
+{
+  "name": "@solokit/tool-contract-export",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-pdf/renderer": "^4.9.0",
+    "@solokit/tool-contract": "workspace:*",
+    "@solokit/tool-invoice": "workspace:*",
+    "@solokit/tool-invoice-pdf": "workspace:*",
+    "docx": "^9.5.0",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "esbuild": "^0.25.0",
+    "fontkit": "^2.0.4",
+    "jszip": "^3.10.1",
+    "pdfjs-dist": "^6.4.0",
+    "saxes": "6.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

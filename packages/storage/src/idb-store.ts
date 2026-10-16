@@ -1,8 +1,9 @@
 import { emptyCollections, parseSnapshot } from './snapshot';
-import { COLLECTIONS, StorageError, type CollectionName, type DataStore, type Snapshot, type StoredRecord } from './types';
+import { COLLECTIONS, StorageBlockedError, StorageError, StorageVersionError, type CollectionName, type DataStore, type Snapshot, type StoredRecord } from './types';
 
 const DEFAULT_NAME = 'solokit';
-const VERSION = 1;
+// Version 2 added the contracts collection; the upgrade creates any object store that is missing.
+const VERSION = 2;
 
 function toPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -46,12 +47,14 @@ function openDatabase(factory: IDBFactory, name: string): Promise<IDBDatabase> {
       request.onerror = () => {
         if (settled) return;
         settled = true;
-        reject(new StorageError(request.error?.message ?? 'Could not open IndexedDB'));
+        // The database was upgraded by a newer SoloKit (another tab, or this page is an old copy): it cannot be opened at our version.
+        if (request.error?.name === 'VersionError') reject(new StorageVersionError(request.error.message));
+        else reject(new StorageError(request.error?.message ?? 'Could not open IndexedDB'));
       };
       request.onblocked = () => {
         if (settled) return;
         settled = true;
-        reject(new StorageError('IndexedDB is blocked by another tab'));
+        reject(new StorageBlockedError());
       };
     } catch (error) {
       settled = true;

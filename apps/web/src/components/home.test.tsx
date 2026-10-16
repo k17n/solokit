@@ -35,11 +35,12 @@ describe('Home page', () => {
     }
   });
 
-  it('links the invoice generator now that it is available', () => {
+  it('links the invoice and contract generators now that they are available', () => {
     render(<Home />);
     const section = screen.getByRole('region', { name: 'Tools' });
     expect(within(section).getByRole('link', { name: /Invoice generator/ })).toHaveAttribute('href', '/tools/invoice/');
-    expect(within(section).getByText('Ready')).toBeInTheDocument();
+    expect(within(section).getByRole('link', { name: /Contract and NDA generator/ })).toHaveAttribute('href', '/tools/contract/');
+    expect(within(section).getAllByText('Ready')).toHaveLength(2);
   });
 
   it('explains why local-first matters', () => {

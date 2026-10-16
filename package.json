@@ -7,7 +7,7 @@
     "build": "pnpm --filter @solokit/web build",
     "preview": "pnpm dlx serve apps/web/out -l 4173",
     "e2e": "pnpm build && pnpm --filter @solokit/web e2e",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --workspace-concurrency=2 test",
     "typecheck": "pnpm -r typecheck"
   }
 }

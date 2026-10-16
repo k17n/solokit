@@ -41,10 +41,11 @@ const TOOLS: readonly ToolDefinition[] = [
   {
     slug: 'contract',
     name: 'Contract and NDA generator',
-    tagline: 'Plain-English agreements for client work',
-    description: 'Start from a clear freelance agreement or NDA and fill in the details for each client.',
+    tagline: 'Plain-English NDAs and freelance agreements, ready to review',
+    description:
+      'Make a mutual or one-way NDA, or a freelance services agreement, in plain English. Answer a few questions, check a summary of your choices, and download a PDF, an editable Word file, or a review pack to send to your lawyer. A template, not legal advice.',
     category: 'clients',
-    status: 'coming-soon',
+    status: 'available',
   },
   {
     slug: 'time-tracker',

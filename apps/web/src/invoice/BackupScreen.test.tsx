@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
+import { createContractStorage } from '@solokit/tool-contract';
+import { makeContract } from '@solokit/tool-contract/testing';
 import { createBackup, createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { BackupScreen } from './BackupScreen';
@@ -208,6 +210,63 @@ describe('BackupScreen: restoring an older backup', () => {
     await storage.invoices.save(makeInvoice({ id: 'one' }));
     const snapshot = JSON.parse((await createBackup(same, NOW)).json);
     snapshot.exportedAt = '2026-10-17T00:00:00.000Z';
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    expect(within(summary).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('counts agreements in the file and on the device, and keeps them in a backup', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => NOW }).save(makeContract('nda-mutual', { id: 'nda-1' }));
+    const { store } = await setup(device);
+    const source = createMemoryStore();
+    const contracts = createContractStorage(source, { now: () => NOW });
+    await contracts.save(makeContract('services', { id: 's1' }));
+    await contracts.save(makeContract('nda-one-way', { id: 's2' }));
+    const file = (await createBackup(source, NOW)).json;
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(file));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    expect(within(summary).getByText(/The backup holds 0 invoices, 2 agreements/)).toBeInTheDocument();
+    expect(within(summary).getByText(/This device now holds 1 invoice, 1 agreement/)).toBeInTheDocument();
+    expect(JSON.parse((await createBackup(store, NOW)).json).collections.contracts).toHaveLength(1);
+  });
+
+  it('warns, naming final agreements and drafts, when the device has agreements the file lacks', async () => {
+    const device = createMemoryStore();
+    const contracts = createContractStorage(device, { now: () => NOW });
+    await contracts.save(makeContract('services', { id: 'sv', title: 'Website for Acme' }));
+    await contracts.save(makeContract('nda-mutual', { id: 'nd', title: 'NDA with Zed' }));
+    await contracts.finalise('nd');
+    await setup(device);
+    // The file has no agreements and is newer than every change on the device, so only the missing agreements are at stake.
+    const snapshot = JSON.parse(await olderFile());
+    snapshot.exportedAt = '2026-10-20T00:00:00.000Z';
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    const warning = within(summary).getByRole('alert');
+    expect(warning).toHaveTextContent('1 final agreement on this device would be lost');
+    expect(warning.querySelector('strong')).toHaveTextContent('"NDA with Zed"');
+    expect(warning).toHaveTextContent(/may already be signed/);
+    expect(warning).toHaveTextContent('1 draft agreement that is not in the backup would also be deleted: "Website for Acme"');
+    expect(warning).not.toHaveTextContent(/before the latest changes/);
+  });
+
+  it('warns about a draft agreement alone, and about a file made before the latest change to an agreement', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => new Date('2026-10-15T00:00:00.000Z') }).save(makeContract('services', { id: 'sv', title: 'Website for Acme' }));
+    await setup(device);
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
+    const warning = within(await screen.findByRole('region', { name: 'Restore this backup?' })).getByRole('alert');
+    expect(warning).toHaveTextContent(/Website for Acme/);
+    expect(warning).toHaveTextContent(/before the latest changes/);
+  });
+
+  it('does not warn about agreements that the file also holds', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => EARLIER }).save(makeContract('services', { id: 'sv', title: 'Website for Acme' }));
+    await setup(device);
+    const snapshot = JSON.parse((await createBackup(device, NOW)).json);
+    snapshot.exportedAt = '2026-10-20T00:00:00.000Z';
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
     const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
     expect(within(summary).queryByRole('alert')).not.toBeInTheDocument();

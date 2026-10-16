@@ -34,16 +34,25 @@ describe('tool registry', () => {
     expect(getToolBySlug('nope')).toBeUndefined();
   });
 
-  it('has the invoice generator available, and every other tool still coming soon', () => {
+  it('has the invoice generator and the contract generator available, and every other tool still coming soon', () => {
     const available = getAvailableTools().map((tool) => tool.slug);
-    expect(available).toEqual(['invoice']);
+    expect(available).toEqual(['invoice', 'contract']);
     expect(getToolBySlug('invoice')?.status).toBe('available');
+    expect(getToolBySlug('contract')?.status).toBe('available');
     expect(getToolBySlug('quote')).toBeUndefined();
     expect(getToolBySlug('rate-calculator')?.status).toBe('coming-soon');
   });
 
+  it('describes the contract tool honestly', () => {
+    const contract = getToolBySlug('contract');
+    expect(contract?.name).toBe('Contract and NDA generator');
+    expect(contract?.description).toMatch(/NDA/);
+    expect(contract?.description).toMatch(/not legal advice/i);
+  });
+
   it('builds trailing-slash hrefs', () => {
     expect(toolHref('invoice')).toBe('/tools/invoice/');
+    expect(toolHref('contract')).toBe('/tools/contract/');
   });
 
   it('returns copies so callers cannot change the registry', () => {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { StorageError, type DataStore } from '@solokit/storage';
+import { createContractStorage } from '@solokit/tool-contract';
 import {
   MAX_BACKUP_BYTES,
   compareWithDevice,
@@ -31,6 +32,7 @@ const realNow = () => new Date();
 interface Counts {
   invoices: number;
   clients: number;
+  contracts: number;
   themes: number;
   hasProfile: boolean;
 }
@@ -38,7 +40,7 @@ interface Counts {
 const plural = (count: number, one: string) => `${count} ${count === 1 ? one : `${one}s`}`;
 
 function describeCounts(counts: Counts): string {
-  return `${plural(counts.invoices, 'invoice')}, ${plural(counts.clients, 'client')}, ${plural(counts.themes, 'custom theme')}${counts.hasProfile ? ' and your business profile' : ' and no business profile'}`;
+  return `${plural(counts.invoices, 'invoice')}, ${plural(counts.contracts, 'agreement')}, ${plural(counts.clients, 'client')}, ${plural(counts.themes, 'custom theme')}${counts.hasProfile ? ' and your business profile' : ' and no business profile'}`;
 }
 
 function formatWhen(iso: string): string {
@@ -62,6 +64,11 @@ interface Pending {
   comparison: DeviceComparison;
 }
 
+function listTitles(titles: string[]): string {
+  const shown = titles.slice(0, 10).map((title) => `"${title || 'Untitled'}"`).join(', ');
+  return titles.length > 10 ? `${shown} and ${titles.length - 10} more` : shown;
+}
+
 function listNumbers(numbers: string[]): string {
   const shown = numbers.slice(0, 10).join(', ');
   return numbers.length > 10 ? `${shown} and ${numbers.length - 10} more` : shown;
@@ -69,6 +76,7 @@ function listNumbers(numbers: string[]): string {
 
 export function BackupScreen({ store, onRestored, restoreOnly = false, now = realNow }: BackupScreenProps) {
   const storage = useMemo(() => createInvoiceStorage(store), [store]);
+  const contractStorage = useMemo(() => createContractStorage(store), [store]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
   const [current, setCurrent] = useState<Counts | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -85,16 +93,17 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
   const summaryId = useId();
 
   const refresh = useCallback(async () => {
-    const [settings, invoices, clients, themes, profile] = await Promise.all([
+    const [settings, invoices, contracts, clients, themes, profile] = await Promise.all([
       storage.settings.get(),
       storage.invoices.list(),
+      contractStorage.list(),
       storage.clients.list(),
       storage.themes.list(),
       storage.profile.get(),
     ]);
     setLastBackupAt(settings.lastBackupAt);
-    setCurrent({ invoices: invoices.length, clients: clients.length, themes: themes.length, hasProfile: profile !== undefined });
-  }, [storage]);
+    setCurrent({ invoices: invoices.length, contracts: contracts.length, clients: clients.length, themes: themes.length, hasProfile: profile !== undefined });
+  }, [storage, contractStorage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -213,7 +222,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
           Download a backup
         </h3>
         <Notice tone="warning" title="Keep this file private">
-          The backup file is not encrypted. Anyone who gets it can read your bank details, UPI ID, clients and invoices. Store it somewhere private and do not email or share it.
+          The backup file is not encrypted. Anyone who gets it can read your bank details, UPI ID, clients, invoices and agreements. Store it somewhere private and do not email or share it.
         </Notice>
         <p className={styles.status}>
           {current === null
@@ -309,17 +318,26 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
 }
 
 function LossWarning({ comparison }: { comparison: DeviceComparison }) {
-  const { missing, missingIssued, reusableNumbers, fileIsOlder } = comparison;
+  const { missing, missingIssued, reusableNumbers, fileIsOlder, missingContracts, missingFinalContracts } = comparison;
   const drafts = missing.length - missingIssued;
-  if (missing.length === 0 && !fileIsOlder) return null;
+  const draftAgreements = missingContracts.length - missingFinalContracts;
+  if (missing.length === 0 && missingContracts.length === 0 && !fileIsOlder) return null;
   const owning = missing.filter((invoice) => invoice.status !== 'draft').map((invoice) => invoice.number);
+  const finalAgreements = missingContracts.filter((contract) => contract.status === 'final').map((contract) => contract.title);
+  const lostThings = [missingIssued > 0 ? plural(missingIssued, 'issued invoice') : '', missingFinalContracts > 0 ? plural(missingFinalContracts, 'final agreement') : ''].filter(Boolean);
   return (
-    <Notice tone="danger" title={missingIssued > 0 ? `${plural(missingIssued, 'issued invoice')} on this device would be lost` : 'This backup is older than the data on this device'}>
+    <Notice tone="danger" title={lostThings.length > 0 ? `${lostThings.join(' and ')} on this device would be lost` : 'This backup is older than the data on this device'}>
       {missingIssued > 0 ? <p>These invoices are on this device but not in the backup file, and restoring will delete them: {listNumbers(owning)}.</p> : null}
       {reusableNumbers.length > 0 ? (
         <p>Their numbers ({listNumbers(reusableNumbers)}) would be free again, so new invoices could reuse them. Reusing an invoice number you already gave to a client can cause trouble with GST records.</p>
       ) : null}
       {drafts > 0 ? <p>{plural(drafts, 'draft')} that is not in the backup would also be deleted.</p> : null}
+      {missingFinalContracts > 0 ? (
+        <p>
+          These final agreements are on this device but not in the backup file, and restoring will delete them: <strong>{listTitles(finalAgreements)}</strong>. They may already be signed.
+        </p>
+      ) : null}
+      {draftAgreements > 0 ? <p>{plural(draftAgreements, 'draft agreement')} that is not in the backup would also be deleted: {listTitles(missingContracts.filter((contract) => contract.status !== 'final').map((contract) => contract.title))}.</p> : null}
       {fileIsOlder ? <p>The file was made before the latest changes on this device, so anything changed since then would be lost.</p> : null}
       <p>If you are not sure, download a backup of the current data first.</p>
     </Notice>

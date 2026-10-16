@@ -15,8 +15,17 @@ const valid = {
 };
 
 describe('parseSnapshot', () => {
+  it('reads a backup made before contracts existed as having no contracts', () => {
+    expect(parseSnapshot(valid).collections.contracts).toEqual([]);
+  });
+
+  it('keeps contract records', () => {
+    const withContracts = { ...valid, collections: { ...valid.collections, contracts: [{ id: 'k1' }] } };
+    expect(parseSnapshot(withContracts).collections.contracts).toEqual([{ id: 'k1' }]);
+  });
+
   it('accepts a valid snapshot', () => {
-    expect(parseSnapshot(valid)).toEqual(valid);
+    expect(parseSnapshot(valid)).toEqual({ ...valid, collections: { ...valid.collections, contracts: [] } });
   });
 
   it('treats a missing collection as empty', () => {

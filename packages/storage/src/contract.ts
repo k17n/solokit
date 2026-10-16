@@ -72,7 +72,7 @@ export function describeStoreContract(label: string, makeStore: () => DataStore)
       const snapshot = await store.exportAll();
       expect(snapshot.version).toBe(1);
       expect(typeof snapshot.exportedAt).toBe('string');
-      expect(Object.keys(snapshot.collections).sort()).toEqual(['clients', 'invoices', 'profile', 'settings', 'themes']);
+      expect(Object.keys(snapshot.collections).sort()).toEqual(['clients', 'contracts', 'invoices', 'profile', 'settings', 'themes']);
       expect(snapshot.collections.profile).toEqual([{ id: 'me', name: 'Asha' }]);
     });
 

@@ -1,4 +1,4 @@
-export const COLLECTIONS = ['profile', 'clients', 'invoices', 'themes', 'settings'] as const;
+export const COLLECTIONS = ['profile', 'clients', 'invoices', 'themes', 'settings', 'contracts'] as const;
 export type CollectionName = (typeof COLLECTIONS)[number];
 
 export interface StoredRecord {
@@ -16,6 +16,30 @@ export class StorageError extends Error {
     super(message);
     this.name = 'StorageError';
   }
+}
+
+/**
+ * The database on this device is newer than the code running in this tab (SoloKit was updated in another tab, or this
+ * page came from an old cache). Nothing more can be saved until the page is reloaded.
+ */
+export class StorageVersionError extends StorageError {
+  constructor(message = 'The saved data was made by a newer version of SoloKit') {
+    super(message);
+    this.name = 'StorageVersionError';
+  }
+}
+
+/** Another tab still holds an older version of the database open, so it cannot be upgraded yet. */
+export class StorageBlockedError extends StorageError {
+  constructor(message = 'IndexedDB is blocked by another tab') {
+    super(message);
+    this.name = 'StorageBlockedError';
+  }
+}
+
+/** True when the error means "reload this page": the data was upgraded, or an upgrade is waiting on this tab. */
+export function isOutdatedStoreError(error: unknown): boolean {
+  return error instanceof StorageVersionError || error instanceof StorageBlockedError || (error instanceof Error && error.name === 'VersionError');
 }
 
 /** Where SoloKit keeps the user's data. Today: this device. Later: an optional synced adapter. */

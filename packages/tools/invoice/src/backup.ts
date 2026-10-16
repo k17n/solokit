@@ -1,3 +1,4 @@
+import { checkContractRecords, type Contract } from '@solokit/tool-contract';
 import { StorageError, parseSnapshot, type DataStore, type Snapshot } from '@solokit/storage';
 import { createInvoiceStorage } from './repositories';
 import { numberSeriesOf } from './series';
@@ -40,6 +41,8 @@ export interface BackupSummary {
   exportedAt: string;
   invoices: number;
   clients: number;
+  /** Agreements (NDAs and services agreements). */
+  contracts: number;
   themes: number;
   hasProfile: boolean;
   profileName?: string;
@@ -133,6 +136,7 @@ function checkRecords(snapshot: Snapshot): void {
     const client = record as unknown as Record<string, unknown>;
     if (typeof client['name'] !== 'string' || !isRecord(client['address'])) throw new StorageError('The backup has a client that is incomplete, so it was not restored');
   }
+  checkContractRecords(snapshot.collections.contracts);
   for (const record of snapshot.collections.themes) {
     const theme = record as unknown as Record<string, unknown>;
     if (!isUsableTheme(theme) || isPresetThemeId(record.id)) {
@@ -150,6 +154,7 @@ export function inspectBackup(text: string): BackupSummary {
     exportedAt: snapshot.exportedAt,
     invoices: snapshot.collections.invoices.length,
     clients: snapshot.collections.clients.length,
+    contracts: snapshot.collections.contracts.length,
     themes: snapshot.collections.themes.length,
     hasProfile: profile !== undefined,
     ...(typeof profile?.name === 'string' ? { profileName: profile.name } : {}),
@@ -163,14 +168,18 @@ export interface DeviceComparison {
   missingIssued: number;
   /** Numbers of missing issued or cancelled invoices that appear nowhere in the file, so they could be handed out again. */
   reusableNumbers: string[];
-  /** The file was made before the newest change on this device. */
+  /** Agreements on this device that are not in the file (by id): final ones first, then drafts. */
+  missingContracts: { id: string; title: string; status: string }[];
+  /** How many of those are final, which means they may have been signed. */
+  missingFinalContracts: number;
+  /** The file was made before the newest change on this device (an invoice or an agreement). */
   fileIsOlder: boolean;
 }
 
 /** Compares a backup file with what is on this device, so the screen can warn about what a restore would lose. */
 export async function compareWithDevice(store: DataStore, text: string): Promise<DeviceComparison> {
   const snapshot = parseSnapshot(parseBackupText(text));
-  const device = await store.list<InvoiceRecord>('invoices');
+  const [device, deviceContracts] = await Promise.all([store.list<InvoiceRecord>('invoices'), store.list<Contract>('contracts')]);
   const key = (record: { kind?: InvoiceKind; number: string }) => `${numberSeriesOf(record)}|${record.number.trim().toUpperCase()}`;
   const inFileIds = new Set(snapshot.collections.invoices.map((record) => record.id));
   const inFileNumbers = new Set(
@@ -185,12 +194,20 @@ export async function compareWithDevice(store: DataStore, text: string): Promise
     .map((invoice) => ({ id: invoice.id, number: invoice.number, status: invoice.status }))
     .sort((a, b) => Number(a.status === 'draft') - Number(b.status === 'draft') || a.number.localeCompare(b.number, undefined, { numeric: true }));
   const owning = missing.filter((invoice) => invoice.status !== 'draft');
+  const contractIdsInFile = new Set(snapshot.collections.contracts.map((record) => record.id));
+  const missingContracts = deviceContracts
+    .filter((contract) => !contractIdsInFile.has(contract.id))
+    .map((contract) => ({ id: contract.id, title: contract.title, status: contract.status }))
+    .sort((a, b) => Number(a.status !== 'final') - Number(b.status !== 'final') || a.title.localeCompare(b.title, undefined, { numeric: true }));
   const exported = Date.parse(snapshot.exportedAt);
-  const newest = device.reduce((latest, invoice) => Math.max(latest, Date.parse(invoice.updatedAt) || 0), 0);
+  const newestInvoice = device.reduce((latest, invoice) => Math.max(latest, Date.parse(invoice.updatedAt) || 0), 0);
+  const newest = deviceContracts.reduce((latest, contract) => Math.max(latest, Date.parse(contract.updatedAt) || 0), newestInvoice);
   return {
     missing,
     missingIssued: owning.length,
     reusableNumbers: owning.filter((invoice) => !inFileNumbers.has(keyOf.get(invoice.id) ?? '')).map((invoice) => invoice.number),
+    missingContracts,
+    missingFinalContracts: missingContracts.filter((contract) => contract.status === 'final').length,
     fileIsOlder: !Number.isNaN(exported) && newest > exported,
   };
 }
