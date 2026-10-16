@@ -73,6 +73,24 @@ describe('usePdfPreview', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-2');
   });
 
+  it('drops the PDF when the invoice becomes unavailable, so a stale one is not shown', async () => {
+    const render_ = vi.fn<PdfRenderer>().mockImplementation(async () => blob());
+    const { result, rerender } = renderHook(
+      ({ inv, on }: { inv: typeof invoice | null; on: boolean }) => usePdfPreview({ invoice: inv, theme, enabled: on, delayMs: 0, render: render_ }),
+      { initialProps: { inv: invoice as typeof invoice | null, on: true } },
+    );
+    await waitFor(() => expect(result.current.url).toBe('blob:fake-1'));
+    rerender({ inv: null, on: true });
+    await waitFor(() => expect(result.current.url).toBeNull());
+    expect(result.current.status).toBe('idle');
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-1');
+    rerender({ inv: invoice, on: true });
+    await waitFor(() => expect(result.current.url).toBe('blob:fake-2'));
+    rerender({ inv: invoice, on: false });
+    await waitFor(() => expect(result.current.url).toBeNull());
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:fake-2');
+  });
+
   it('ignores a slow render that was overtaken by a newer one', async () => {
     let finishFirst: (value: Blob) => void = () => {};
     const render_ = vi

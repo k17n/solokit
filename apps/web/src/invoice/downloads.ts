@@ -8,5 +8,6 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Some browsers start the download after the click returns, so the address must outlive it.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

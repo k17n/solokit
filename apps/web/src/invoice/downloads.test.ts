@@ -3,7 +3,10 @@ import { downloadBlob } from './downloads';
 import { makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { invoiceFileName } from './fileName';
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 describe('downloadBlob', () => {
   it('clicks a temporary link with the file name and then cleans up', () => {
@@ -17,8 +20,18 @@ describe('downloadBlob', () => {
     downloadBlob(new Blob(['x'], { type: 'application/pdf' }), 'Invoice-1.pdf');
     expect(create).toHaveBeenCalledOnce();
     expect(clicked).toEqual([{ href: 'blob:fake-1', download: 'Invoice-1.pdf' }]);
-    expect(revoke).toHaveBeenCalledWith('blob:fake-1');
     expect(document.querySelector('a[download]')).toBeNull();
+  });
+
+  it('keeps the address alive for a moment so the browser can start the download', () => {
+    vi.useFakeTimers();
+    const revoke = vi.fn();
+    Object.assign(URL, { createObjectURL: vi.fn().mockReturnValue('blob:fake-2'), revokeObjectURL: revoke });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    downloadBlob(new Blob(['x']), 'a.pdf');
+    expect(revoke).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1000);
+    expect(revoke).toHaveBeenCalledWith('blob:fake-2');
   });
 });
 

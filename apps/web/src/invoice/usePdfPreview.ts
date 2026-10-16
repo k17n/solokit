@@ -50,6 +50,10 @@ export function usePdfPreview({ invoice, theme, enabled, delayMs = 500, render =
 
   useEffect(() => {
     if (!enabled || !invoice || !theme) {
+      // Nothing to show: drop the last PDF so a stale one is never displayed.
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+      setUrl(null);
       setStatus('idle');
       return;
     }
