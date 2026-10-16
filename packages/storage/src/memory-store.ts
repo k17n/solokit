@@ -1,5 +1,5 @@
 import { parseSnapshot, emptyCollections } from './snapshot';
-import { COLLECTIONS, StorageError, type CollectionName, type DataStore, type Snapshot, type StoredRecord } from './types';
+import { COLLECTIONS, StorageDeletedError, StorageError, type CollectionName, type RemovableStore, type Snapshot, type StoredRecord } from './types';
 
 function cloneRecord<T>(record: T): T {
   try {
@@ -16,16 +16,22 @@ function assertRecord(record: StoredRecord): void {
 }
 
 /** In-memory adapter: used by tests and as the fallback when the browser blocks IndexedDB. */
-export function createMemoryStore(): DataStore {
+export function createMemoryStore(): RemovableStore {
+  let removed = false;
   const tables = new Map<CollectionName, Map<string, StoredRecord>>(COLLECTIONS.map((name) => [name, new Map()]));
 
   function table(collection: CollectionName): Map<string, StoredRecord> {
+    if (removed) throw new StorageDeletedError();
     const found = tables.get(collection);
     if (!found) throw new StorageError(`Unknown collection "${collection}"`);
     return found;
   }
 
   return {
+    async markRemoved() {
+      removed = true;
+    },
+
     async get<T extends StoredRecord>(collection: CollectionName, id: string) {
       const record = table(collection).get(id);
       return record === undefined ? undefined : (structuredClone(record) as T);

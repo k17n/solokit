@@ -1,6 +1,6 @@
 import { createIndexedDbStore, type IndexedDbStore } from './idb-store';
 import { createMemoryStore } from './memory-store';
-import { StorageBlockedError, StorageError, type DataStore } from './types';
+import { StorageBlockedError, StorageError, type DataStore, type RemovableStore } from './types';
 
 /**
  * Business workspaces. Every Business keeps its data in its own IndexedDB database, and a small separate database
@@ -24,6 +24,11 @@ export interface Workspace {
   /** The IndexedDB database holding this Business's data. */
   dbName: string;
   archivedAt?: string;
+  /**
+   * True while the Business's name follows the name in its profile: set when it is created from the setup screen's
+   * suggestion, cleared as soon as someone renames it on purpose. Absent on Businesses made before this existed.
+   */
+  nameInSync?: boolean;
 }
 
 export type WorkspaceErrorCode = 'last-active' | 'not-found' | 'invalid-name' | 'archived';
@@ -45,8 +50,13 @@ export interface WorkspaceManagerOptions {
   now?: () => Date;
   /** Makes the id of a new Business (it becomes part of the database name, so keep it to letters, digits and dashes). */
   newId?: () => string;
-  /** Where the current Business is remembered synchronously. `null` disables it. Default: localStorage when it works. */
+  /** Where the default Business for new tabs is remembered synchronously. `null` disables it. Default: localStorage when it works. */
   storage?: KeyValueStorage | null;
+  /**
+   * Where this tab remembers its own current Business. Each tab keeps its own, so switching in one tab does not move
+   * another one. Default: sessionStorage when it works (and nothing when `storage` is `null`); the choice is also kept in memory.
+   */
+  tabStorage?: KeyValueStorage | null;
   registryName?: string;
   legacyDbName?: string;
   /** How long a delete may wait for another tab to let go of the database before it fails. Default 5 seconds. */
@@ -60,19 +70,28 @@ export type WorkspaceListener = () => void;
 export interface WorkspaceManager {
   /** False when the registry could not be kept on this device (memory fallback): Businesses made now are lost on reload. */
   readonly persistent: boolean;
+  /** False when Businesses' data lives in memory only (no IndexedDB): it is lost on reload. */
+  readonly storesPersistent: boolean;
   /** Every Business, active and archived, oldest first. Creates the first one if there is none. */
   list(): Promise<Workspace[]>;
-  /** The Business to show: the remembered one if it still exists and is not archived, else the oldest active one. */
+  /**
+   * The Business to show in this tab: the one this tab chose if it is still active, else the default for new tabs (the
+   * last one chosen anywhere), else the oldest active one. If no Business is active any more it brings the most recently
+   * changed one back (or makes the default one), so this does not fail for good.
+   */
   current(): Promise<Workspace>;
   setCurrent(id: string): Promise<void>;
-  create(name: string): Promise<Workspace>;
-  rename(id: string, name: string): Promise<Workspace>;
-  /** Hides a Business from the switcher without touching its data. Refuses the last active one. */
+  create(name: string, options?: { nameInSync?: boolean }): Promise<Workspace>;
+  /** Renames a Business. That is a deliberate choice of name, so it stops following the profile name unless `keepInSync` says the rename is the follow itself. */
+  rename(id: string, name: string, options?: { keepInSync?: boolean }): Promise<Workspace>;
+  /** Hides a Business from the switcher without touching its data. Refuses the last active one (checked and done in one step, so two tabs cannot archive the last two). */
   archive(id: string): Promise<Workspace>;
   unarchive(id: string): Promise<Workspace>;
-  /** Deletes the Business and its database for good. Refuses the last active one. */
+  /** Deletes the Business and its database for good. Refuses the last active one. Stores of the Business, here and in other tabs, then reject every request. */
   remove(id: string): Promise<void>;
-  /** The Business's store. The same instance is returned until the Business is deleted or the manager is closed. */
+  /** Lets go of a cached store (a short look at a Business that is not shown). The store stays usable; the next request opens it again. */
+  release(id: string): Promise<void>;
+  /** The Business's store. The same instance is returned until the Business is deleted, released or the manager is closed. */
   openStore(id: string): Promise<DataStore>;
   /** Called when another tab changed the list (created, renamed, archived, deleted, switched). Returns the unsubscribe function. */
   subscribe(listener: WorkspaceListener): () => void;
@@ -90,9 +109,17 @@ interface RegistryBackend {
   delete(id: string): Promise<void>;
   /** Adds the workspace only if the registry is empty, in one step, so two tabs starting together make one. Returns whether it added. */
   putIfEmpty(workspace: Workspace): Promise<boolean>;
+  /** Reads every row, decides and writes in one transaction, so a check cannot be outrun by another tab. Throwing from `decide` changes nothing. */
+  transact<T>(decide: (rows: Workspace[]) => TransactionOutcome<T>): Promise<T>;
   getCurrent(): Promise<string | undefined>;
   setCurrent(id: string): Promise<void>;
   close(): void;
+}
+
+interface TransactionOutcome<T> {
+  put?: Workspace[];
+  delete?: string[];
+  result: T;
 }
 
 function memoryBackend(): RegistryBackend {
@@ -107,6 +134,12 @@ function memoryBackend(): RegistryBackend {
       if (rows.size > 0) return false;
       rows.set(workspace.id, { ...workspace });
       return true;
+    },
+    async transact(decide) {
+      const outcome = decide([...rows.values()].map((row) => ({ ...row })));
+      for (const workspace of outcome.put ?? []) rows.set(workspace.id, { ...workspace });
+      for (const id of outcome.delete ?? []) rows.delete(id);
+      return outcome.result;
     },
     getCurrent: async () => currentId,
     setCurrent: async (id) => void (currentId = id),
@@ -222,6 +255,28 @@ function idbBackend(factory: IDBFactory, name: string): { open(): Promise<Regist
           await done;
           return true;
         },
+        async transact(decide) {
+          const db = await database();
+          const tx = db.transaction('workspaces', 'readwrite');
+          const done = transactionComplete(tx);
+          const store = tx.objectStore('workspaces');
+          let outcome;
+          try {
+            outcome = decide((await requestResult(store.getAll())) as Workspace[]);
+            for (const workspace of outcome.put ?? []) store.put(workspace);
+            for (const id of outcome.delete ?? []) store.delete(id);
+          } catch (error) {
+            try {
+              tx.abort();
+            } catch {
+              // It already finished.
+            }
+            await done.catch(() => undefined);
+            throw error;
+          }
+          await done;
+          return outcome.result;
+        },
         async getCurrent() {
           const db = await database();
           const row = (await requestResult(db.transaction('meta').objectStore('meta').get('current'))) as { value?: unknown } | undefined;
@@ -279,6 +334,14 @@ function defaultStorage(): KeyValueStorage | null {
   }
 }
 
+function defaultTabStorage(): KeyValueStorage | null {
+  try {
+    return globalThis.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function defaultFactory(): IDBFactory | null {
   try {
     return globalThis.indexedDB ?? null;
@@ -308,6 +371,7 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
   const now = options.now ?? (() => new Date());
   const newId = options.newId ?? defaultNewId;
   const local = options.storage === undefined ? defaultStorage() : options.storage;
+  const tab = options.tabStorage !== undefined ? options.tabStorage : options.storage === null ? null : defaultTabStorage();
   const registryName = options.registryName ?? REGISTRY_DB_NAME;
   const legacyDbName = options.legacyDbName ?? LEGACY_DB_NAME;
   const deleteTimeoutMs = options.deleteTimeoutMs ?? 5000;
@@ -316,7 +380,7 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
   let backendPromise: Promise<RegistryBackend> | undefined;
   /** Optimistic until the registry has been opened; false afterwards if it fell back to memory. */
   let persistentFlag = factory !== null;
-  const stores = new Map<string, DataStore>();
+  const stores = new Map<string, RemovableStore>();
   const listeners = new Set<WorkspaceListener>();
   let channel: BroadcastChannel | undefined;
 
@@ -328,6 +392,23 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
       else local?.setItem(CURRENT_WORKSPACE_KEY, id);
     } catch {
       // It is only a convenience.
+    }
+  }
+
+  /** This tab's own choice. Kept in memory too, so it works when sessionStorage does not. */
+  let tabCurrent: string | undefined;
+  try {
+    tabCurrent = tab?.getItem(CURRENT_WORKSPACE_KEY) ?? undefined;
+  } catch {
+    tabCurrent = undefined;
+  }
+
+  function rememberInTab(id: string) {
+    tabCurrent = id;
+    try {
+      tab?.setItem(CURRENT_WORKSPACE_KEY, id);
+    } catch {
+      // The in-memory copy is enough while this page stays open.
     }
   }
 
@@ -350,8 +431,18 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
     }
   }
 
-  function openStoreFor(workspace: Workspace): DataStore {
-    return factory ? createIndexedDbStore({ name: workspace.dbName, factory }) : createMemoryStore();
+  function openStoreFor(workspace: Workspace): RemovableStore {
+    if (!factory) return createMemoryStore();
+    const store: IndexedDbStore = createIndexedDbStore({
+      name: workspace.dbName,
+      factory,
+      // Another tab deleted this Business's database: forget the dead store and tell the screens, which move on.
+      onRemoved: () => {
+        if (stores.get(workspace.id) === store) stores.delete(workspace.id);
+        for (const notify of [...listeners]) notify();
+      },
+    });
+    return store;
   }
 
   /** The saved business name in the old database, for naming the first Business. Never throws. */
@@ -382,7 +473,7 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
       if ((await backend.all()).length === 0) {
         const name = await legacyBusinessName();
         const stampNow = stamp();
-        await backend.putIfEmpty({ id: DEFAULT_WORKSPACE_ID, name, createdAt: stampNow, updatedAt: stampNow, dbName: legacyDbName });
+        await backend.putIfEmpty({ id: DEFAULT_WORKSPACE_ID, name, createdAt: stampNow, updatedAt: stampNow, dbName: legacyDbName, nameInSync: true });
       }
     } catch (error) {
       // The registry cannot be written. Keep going with a memory list that still points at the existing data.
@@ -390,7 +481,7 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
       backend.close();
       backend = memoryBackend();
       const stampNow = stamp();
-      await backend.put({ id: DEFAULT_WORKSPACE_ID, name: DEFAULT_WORKSPACE_NAME, createdAt: stampNow, updatedAt: stampNow, dbName: legacyDbName });
+      await backend.put({ id: DEFAULT_WORKSPACE_ID, name: DEFAULT_WORKSPACE_NAME, createdAt: stampNow, updatedAt: stampNow, dbName: legacyDbName, nameInSync: true });
     }
     return backend;
   }
@@ -422,19 +513,34 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
     return next;
   }
 
-  async function activeOtherThan(id: string): Promise<Workspace[]> {
-    return (await (await registry()).all()).filter((row) => row.id !== id && row.archivedAt === undefined);
-  }
-
   async function closeStore(id: string): Promise<void> {
     const open = stores.get(id);
     stores.delete(id);
     await (open as Partial<IndexedDbStore> | undefined)?.close?.();
   }
 
+  /** Brings a Business back when none is active (every one archived, or the list emptied), in one step. */
+  async function healIfNoneActive(backend: RegistryBackend): Promise<void> {
+    const stampNow = stamp();
+    const changed = await backend.transact((rows) => {
+      if (rows.some((row) => row.archivedAt === undefined)) return { result: false };
+      if (rows.length === 0) {
+        return { put: [{ id: DEFAULT_WORKSPACE_ID, name: DEFAULT_WORKSPACE_NAME, createdAt: stampNow, updatedAt: stampNow, dbName: legacyDbName, nameInSync: true }], result: true };
+      }
+      const latest = [...rows].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || byAge(a, b))[0]!;
+      const { archivedAt: _archived, ...rest } = latest;
+      return { put: [{ ...rest, updatedAt: stampNow }], result: true };
+    });
+    if (changed) announce();
+  }
+
   const manager: WorkspaceManager = {
     get persistent() {
       return persistentFlag;
+    },
+
+    get storesPersistent() {
+      return factory !== null;
     },
 
     async list() {
@@ -443,44 +549,63 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
 
     async current() {
       const backend = await registry();
-      const active = (await backend.all()).filter((row) => row.archivedAt === undefined).sort(byAge);
-      const wanted = (await backend.getCurrent().catch(() => undefined)) ?? recalled();
-      const found = active.find((row) => row.id === wanted) ?? active[0];
+      let active = (await backend.all()).filter((row) => row.archivedAt === undefined).sort(byAge);
+      if (active.length === 0) {
+        await healIfNoneActive(backend);
+        active = (await backend.all()).filter((row) => row.archivedAt === undefined).sort(byAge);
+      }
+      const shared = (await backend.getCurrent().catch(() => undefined)) ?? recalled();
+      const found = active.find((row) => row.id === tabCurrent) ?? active.find((row) => row.id === shared) ?? active[0];
       if (!found) throw new WorkspaceError('not-found', 'There is no active business');
+      // This tab sticks with its choice from now on, whatever other tabs choose.
+      if (found.id !== tabCurrent) rememberInTab(found.id);
       return found;
     },
 
     async setCurrent(id) {
       const row = await getRow(id);
       if (row.archivedAt !== undefined) throw new WorkspaceError('archived', 'That business is archived');
+      rememberInTab(id);
       rememberLocally(id);
       await (await registry()).setCurrent(id);
       announce();
     },
 
-    async create(name) {
+    async create(name, createOptions = {}) {
       const clean = cleanName(name);
       const backend = await registry();
       const id = newId();
       const stampNow = stamp();
-      const row: Workspace = { id, name: clean, createdAt: stampNow, updatedAt: stampNow, dbName: `solokit-ws-${id}` };
+      const row: Workspace = { id, name: clean, createdAt: stampNow, updatedAt: stampNow, dbName: `solokit-ws-${id}`, ...(createOptions.nameInSync === true ? { nameInSync: true } : {}) };
       if ((await backend.all()).some((other) => other.id === id)) throw new StorageError('A business with this id already exists');
       await backend.put(row);
       announce();
       return row;
     },
 
-    rename: async (id, name) => {
+    rename: async (id, name, renameOptions = {}) => {
       const clean = cleanName(name);
-      return update(id, (row) => ({ ...row, name: clean }));
+      return update(id, (row) => {
+        const { nameInSync: _was, ...rest } = row;
+        // Following the profile name keeps the flag as it is; a rename by hand ends the following.
+        return { ...rest, name: clean, ...(renameOptions.keepInSync === true ? (row.nameInSync === undefined ? {} : { nameInSync: row.nameInSync }) : { nameInSync: false }) };
+      });
     },
 
     async archive(id) {
-      const row = await getRow(id);
-      if (row.archivedAt === undefined && (await activeOtherThan(id)).length === 0) {
-        throw new WorkspaceError('last-active', 'You need at least one business. Create another before archiving this one.');
-      }
-      return update(id, (current) => ({ ...current, archivedAt: current.archivedAt ?? stamp() }));
+      const stampNow = stamp();
+      // The check and the change are one step: two tabs archiving the last two Businesses cannot both pass.
+      const archived = await (await registry()).transact((rows) => {
+        const row = rows.find((other) => other.id === id);
+        if (!row) throw new WorkspaceError('not-found', 'That business no longer exists');
+        if (row.archivedAt === undefined && !rows.some((other) => other.id !== id && other.archivedAt === undefined)) {
+          throw new WorkspaceError('last-active', 'You need at least one business. Create another before archiving this one.');
+        }
+        const next = { ...row, archivedAt: row.archivedAt ?? stampNow, updatedAt: stampNow };
+        return { put: [next], result: next };
+      });
+      announce();
+      return archived;
     },
 
     unarchive: (id) =>
@@ -490,16 +615,30 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
       }),
 
     async remove(id) {
-      const row = await getRow(id);
-      const others = await activeOtherThan(id);
-      if (row.archivedAt === undefined && others.length === 0) {
-        throw new WorkspaceError('last-active', 'You need at least one business. Create another before deleting this one.');
-      }
-      // Let go of our own connection first, or the delete would wait on us.
-      await closeStore(id);
-      if (factory) await deleteDatabase(factory, row.dbName, deleteTimeoutMs);
       const backend = await registry();
-      await backend.delete(id);
+      // The check and the removal of the list entry are one step, so two tabs cannot delete the last two Businesses.
+      // The entry goes first: other tabs then stop showing the Business before its database disappears under them.
+      const { row, others } = await backend.transact((rows) => {
+        const found = rows.find((other) => other.id === id);
+        if (!found) throw new WorkspaceError('not-found', 'That business no longer exists');
+        const rest = rows.filter((other) => other.id !== id && other.archivedAt === undefined);
+        if (found.archivedAt === undefined && rest.length === 0) {
+          throw new WorkspaceError('last-active', 'You need at least one business. Create another before deleting this one.');
+        }
+        return { delete: [id], result: { row: found, others: rest } };
+      });
+      // Let go of our own connection first, or the delete would wait on us.
+      const open = stores.get(id);
+      try {
+        await closeStore(id);
+        if (factory) await deleteDatabase(factory, row.dbName, deleteTimeoutMs);
+      } catch (error) {
+        // Nothing was deleted: the Business is still here.
+        if (open) stores.set(id, open);
+        await backend.put(row).catch(() => undefined);
+        throw error;
+      }
+      await open?.markRemoved();
       const wanted = (await backend.getCurrent().catch(() => undefined)) ?? recalled();
       if (wanted === id) {
         const next = others.sort(byAge)[0];
@@ -511,6 +650,10 @@ export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): W
         }
       }
       announce();
+    },
+
+    async release(id) {
+      await closeStore(id);
     },
 
     async openStore(id) {

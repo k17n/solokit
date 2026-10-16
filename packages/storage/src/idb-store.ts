@@ -1,5 +1,5 @@
 import { emptyCollections, parseSnapshot } from './snapshot';
-import { COLLECTIONS, StorageBlockedError, StorageError, StorageVersionError, type CollectionName, type DataStore, type Snapshot, type StoredRecord } from './types';
+import { COLLECTIONS, StorageBlockedError, StorageDeletedError, StorageError, StorageVersionError, type CollectionName, type DataStore, type RemovableStore, type Snapshot, type StoredRecord } from './types';
 
 const DEFAULT_NAME = 'solokit';
 // Version 2 added the contracts collection; the upgrade creates any object store that is missing.
@@ -66,9 +66,11 @@ function openDatabase(factory: IDBFactory, name: string): Promise<IDBDatabase> {
 export interface IndexedDbStoreOptions {
   name?: string;
   factory?: IDBFactory;
+  /** Called when the database is deleted by someone else (another tab): the store has then marked itself removed. */
+  onRemoved?: () => void;
 }
 
-export interface IndexedDbStore extends DataStore {
+export interface IndexedDbStore extends RemovableStore {
   /**
    * Closes the connection so the database can be deleted or upgraded by someone else. The store stays usable: the next
    * request opens it again (so after the database is deleted, the next request would create an empty one).
@@ -83,13 +85,21 @@ export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): Index
   const name = options.name ?? DEFAULT_NAME;
 
   let opening: Promise<IDBDatabase> | undefined;
+  let removed = false;
   const database = (): Promise<IDBDatabase> => {
+    // After a delete, opening again would quietly create a new, empty database under the deleted Business's name.
+    if (removed) return Promise.reject(new StorageDeletedError());
     if (!opening) {
       const attempt: Promise<IDBDatabase> = openDatabase(factory, name).then(
         (db) => {
-          db.onversionchange = () => {
+          db.onversionchange = (event) => {
             db.close();
             if (opening === attempt) opening = undefined;
+            // newVersion is null when the database is being deleted rather than upgraded.
+            if (event.newVersion === null && !removed) {
+              removed = true;
+              options.onRemoved?.();
+            }
           };
           db.onclose = () => {
             if (opening === attempt) opening = undefined;
@@ -107,6 +117,17 @@ export function createIndexedDbStore(options: IndexedDbStoreOptions = {}): Index
   };
 
   return {
+    async markRemoved() {
+      removed = true;
+      const pending = opening;
+      opening = undefined;
+      try {
+        (await pending)?.close();
+      } catch {
+        // It never opened, so there is nothing to close.
+      }
+    },
+
     async close() {
       const pending = opening;
       opening = undefined;

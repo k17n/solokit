@@ -25,6 +25,7 @@ function setup(overrides: WorkspaceManagerOptions = {}) {
     createWorkspaceManager({
       factory,
       storage,
+      tabStorage: memoryStorage(),
       broadcast: false,
       now: () => new Date(Date.UTC(2026, 9, 17, 9, 0, ++ticks)),
       newId: () => `w${++ids}`,
