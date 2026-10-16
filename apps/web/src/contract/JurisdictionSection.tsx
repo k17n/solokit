@@ -14,7 +14,7 @@ export function JurisdictionSection({ contract, errors, onChange }: { contract: 
       <div className={styles.row}>
         <TextField
           label="City whose courts apply"
-          hint="Disputes go to the courts of this city, or to arbitration seated here if you chose arbitration. Often the city where you work."
+          hint="Disputes go to the courts of this city, or to arbitration seated here if you chose arbitration. Choose a city with a real connection to the parties or the work, for example where one of you is based or where the work is done."
           required
           autoComplete="off"
           value={jurisdiction.city}

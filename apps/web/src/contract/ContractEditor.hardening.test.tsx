@@ -237,3 +237,11 @@ describe('ContractEditor: unsaved changes', () => {
     expect(props.onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ContractEditor: jurisdiction help', () => {
+  it('tells the person to choose a city that has a connection to the parties or the work', async () => {
+    await setup();
+    const city = screen.getByLabelText('City whose courts apply');
+    expect(city).toHaveAccessibleDescription(/connection to the parties or the work/);
+  });
+});
