@@ -218,8 +218,8 @@ describe('InvoiceApp: invoices', () => {
 
   /** Opens the "+ New" chooser on the list and picks a kind by its card name. */
   async function startNew(name: string) {
-    await userEvent.click(screen.getByRole('button', { name: 'New' }));
-    await userEvent.click(within(screen.getByRole('group', { name: 'Choose a document type' })).getByRole('button', { name }));
+    await userEvent.click(await screen.findByRole('button', { name: 'New' }));
+    await userEvent.click(within(await screen.findByRole('group', { name: 'Choose a document type' })).getByRole('button', { name }));
   }
 
   it('shows the documents list first, with four tabs and no tab for creating', async () => {
