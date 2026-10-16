@@ -107,7 +107,9 @@ describe('InvoiceApp with a saved profile', () => {
     const notice = await screen.findByText('Your browser is not saving data');
     expect(notice).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('normal browser window');
-    expect(screen.getByRole('alert')).toHaveTextContent('download a backup');
+    // First run has no Backup & restore tab yet, so the warning must not send people there.
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/Backup & restore tab/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/restore from a backup/);
   });
 
   it('does not warn when storage works', async () => {
@@ -340,6 +342,33 @@ describe('InvoiceApp: restoring on a new device', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
     expect(await screen.findByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
     expect(await screen.findByText('2026-27/0042')).toBeInTheDocument();
+  });
+
+  it('shows a Backup restored message with focus on it after a first-run restore', async () => {
+    const other = createMemoryStore();
+    await createInvoiceStorage(other).profile.save(makeSeller({ name: 'Moved Co' }));
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(other);
+
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    const message = await screen.findByText('Backup restored');
+    await waitFor(() => expect(document.activeElement).toContainElement(message));
+    expect(message.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('asks the user to complete setup when the restored backup has no profile', async () => {
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(createMemoryStore());
+
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    expect(await screen.findByText(/no business profile. Complete setup/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
   });
 
   it('goes back to setup', async () => {

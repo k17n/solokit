@@ -35,9 +35,16 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   /** Changes every time "New invoice" is chosen, so the editor starts fresh even when it is already open. */
   const [newCount, setNewCount] = useState(0);
   const [restoring, setRestoring] = useState(false);
+  /** Shown after a restore from the first-run screen, because that screen is gone by then. */
+  const [restoredNotice, setRestoredNotice] = useState<{ hasProfile: boolean } | null>(null);
+  const restoredRef = useRef<HTMLDivElement>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const asked = useRef(false);
+
+  useEffect(() => {
+    if (restoredNotice) restoredRef.current?.focus();
+  }, [restoredNotice]);
 
   useEffect(() => {
     if (!storage) return;
@@ -69,6 +76,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     async (next: SellerProfile) => {
       if (!storage) return;
       await storage.profile.save(next);
+      setRestoredNotice(null);
       try {
         await storage.settings.update({ onboarded: true });
       } catch (error) {
@@ -105,14 +113,26 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
 
   const storageWarning = !persistent ? (
     <Notice tone="danger" title="Your browser is not saving data">
-      What you enter will be lost when you close this tab. Use a normal browser window so your work is kept, or download a backup from the Backup & restore tab before you leave.
+      {profile === null
+        ? 'What you enter, or restore from a backup, will be lost when you close this tab. Use a normal browser window so your work is kept.'
+        : 'What you enter will be lost when you close this tab. Use a normal browser window so your work is kept, or download a backup from the Backup & restore tab before you leave.'}
     </Notice>
+  ) : null;
+  const restoredBanner = restoredNotice ? (
+    <div ref={restoredRef} tabIndex={-1}>
+      <Notice tone="info" title="Backup restored">
+        {restoredNotice.hasProfile
+          ? 'Your invoices, clients, themes and settings are back on this device.'
+          : 'The backup had no business profile. Complete setup below to start using SoloKit.'}
+      </Notice>
+    </div>
   ) : null;
 
   if (profile === null) {
     return (
       <div className={styles.app}>
         {storageWarning}
+        {restoredBanner}
         {restoring && store ? (
           <>
             <div>
@@ -123,7 +143,8 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
             <BackupScreen
               store={store}
               restoreOnly
-              onRestored={() => {
+              onRestored={(summary) => {
+                setRestoredNotice({ hasProfile: summary.hasProfile });
                 setRestoring(false);
                 setLoadAttempt((attempt) => attempt + 1);
               }}
@@ -147,6 +168,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   return (
     <div className={styles.app}>
       {storageWarning}
+      {restoredBanner}
       <nav aria-label="Invoice tool">
         <div className={styles.tabs}>
           {TABS.map((tab) => (
@@ -159,6 +181,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
                 if (tab.target.name === 'new') setNewCount((count) => count + 1);
                 setView(tab.target);
                 setSavedNotice(false);
+                setRestoredNotice(null);
               }}
             >
               {tab.label}

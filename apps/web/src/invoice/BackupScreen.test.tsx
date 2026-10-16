@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
@@ -130,5 +130,148 @@ describe('BackupScreen: restore', () => {
     const json = (await createBackup(empty, NOW)).json;
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(json));
     expect(await screen.findByText(/asked to set it up again/i)).toBeInTheDocument();
+  });
+});
+
+describe('BackupScreen: failures leave the backup time alone', () => {
+  const PREVIOUS = '2026-09-01T00:00:00.000Z';
+
+  it('keeps the previous time when the download fails', async () => {
+    vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {
+      throw new Error('no');
+    });
+    const { storage } = await setup();
+    await storage.settings.update({ lastBackupAt: PREVIOUS });
+    await userEvent.click(screen.getByRole('button', { name: 'Download backup' }));
+    expect(await screen.findByText(/could not be created/i)).toBeInTheDocument();
+    expect((await storage.settings.get()).lastBackupAt).toBe(PREVIOUS);
+  });
+
+  it('keeps the previous time when the export fails', async () => {
+    const download = vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {});
+    const inner = createMemoryStore();
+    const failing: DataStore = { ...inner, exportAll: () => Promise.reject(new Error('no')) };
+    const storage = createInvoiceStorage(inner, { now: () => NOW });
+    await storage.settings.update({ lastBackupAt: PREVIOUS });
+    render(<BackupScreen store={failing} now={() => NOW} onRestored={vi.fn()} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Download backup' }));
+    expect(await screen.findByText(/could not be created/i)).toBeInTheDocument();
+    expect(download).not.toHaveBeenCalled();
+    expect((await storage.settings.get()).lastBackupAt).toBe(PREVIOUS);
+  });
+
+  it('leaves the time unset when a first backup fails', async () => {
+    vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {
+      throw new Error('no');
+    });
+    const { storage } = await setup();
+    await userEvent.click(screen.getByRole('button', { name: 'Download backup' }));
+    await screen.findByText(/could not be created/i);
+    expect((await storage.settings.get()).lastBackupAt).toBeUndefined();
+  });
+});
+
+describe('BackupScreen: restoring an older backup', () => {
+  const EARLIER = new Date('2026-10-01T00:00:00.000Z');
+
+  async function olderFile() {
+    const other = createMemoryStore();
+    const storage = createInvoiceStorage(other, { now: () => EARLIER });
+    await storage.profile.save(makeSeller({ name: 'Older Co' }));
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
+    return (await createBackup(other, EARLIER)).json;
+  }
+
+  async function deviceWithMore() {
+    const base = await setup();
+    await base.storage.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0002' }));
+    await base.storage.invoices.save(makeInvoice({ id: 'c', number: '2026-27/0003', status: 'cancelled' }));
+    return base;
+  }
+
+  it('names the invoice numbers that would be lost and says they could be reused', async () => {
+    await deviceWithMore();
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    const warning = within(summary).getByRole('alert');
+    expect(warning).toHaveTextContent('2026-27/0002');
+    expect(warning).toHaveTextContent('2026-27/0003');
+    expect(warning).toHaveTextContent(/lost/i);
+    expect(warning).toHaveTextContent(/reuse/i);
+    expect(warning).toHaveTextContent(/before the latest changes/i);
+  });
+
+  it('shows no loss warning when the file holds everything on the device', async () => {
+    await setup();
+    const same = createMemoryStore();
+    const storage = createInvoiceStorage(same, { now: () => NOW });
+    await storage.invoices.save(makeInvoice({ id: 'one' }));
+    const snapshot = JSON.parse((await createBackup(same, NOW)).json);
+    snapshot.exportedAt = '2026-10-17T00:00:00.000Z';
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    expect(within(summary).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('can download a backup of the current data from the confirm step', async () => {
+    const download = vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {});
+    const { storage } = await deviceWithMore();
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the current data first' }));
+    await waitFor(() => expect(download).toHaveBeenCalledOnce());
+    const ids = (JSON.parse(await textOf(download.mock.calls[0]![0])).collections.invoices as { id: string }[]).map((invoice) => invoice.id).sort();
+    expect(ids).toEqual(['b', 'c', 'one']);
+    expect((await storage.settings.get()).lastBackupAt).toBe(NOW.toISOString());
+    // The restore is still waiting for confirmation, and nothing was replaced.
+    expect(screen.getByRole('button', { name: 'Yes, replace my data' })).toBeInTheDocument();
+    expect((await storage.profile.get())?.name).toBe('Original Co');
+  });
+
+  it('does not record a backup when the safety download fails', async () => {
+    vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {
+      throw new Error('no');
+    });
+    const { storage } = await deviceWithMore();
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the current data first' }));
+    expect(await screen.findByText(/current data could not be created/i)).toBeInTheDocument();
+    expect((await storage.settings.get()).lastBackupAt).toBeUndefined();
+  });
+});
+
+describe('BackupScreen: file checks and the result of a restore', () => {
+  it('refuses a file over the size limit without reading it', async () => {
+    await setup();
+    const big = fileOf('{}');
+    Object.defineProperty(big, 'size', { value: 51 * 1024 * 1024 });
+    await userEvent.upload(screen.getByLabelText('Backup file'), big);
+    expect(await screen.findByText(/too large/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Yes, replace my data' })).not.toBeInTheDocument();
+  });
+
+  it('says a newer backup needs a newer app', async () => {
+    await setup();
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify({ version: 2, exportedAt: 'x', collections: {} })));
+    expect(await screen.findByText(/newer version of SoloKit/i)).toBeInTheDocument();
+    expect(screen.getByText(/update the app/i)).toBeInTheDocument();
+  });
+
+  it('moves focus to the success message after a restore', async () => {
+    await setup();
+    const other = createMemoryStore();
+    await createInvoiceStorage(other, { now: () => NOW }).profile.save(makeSeller({ name: 'Restored Co' }));
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf((await createBackup(other, NOW)).json));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    const status = await screen.findByText(/Backup restored/);
+    await waitFor(() => expect(document.activeElement).toContainElement(status));
+    expect(status.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('tells the user to complete setup when the restored backup has no profile', async () => {
+    await setup();
+    const empty = createMemoryStore();
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf((await createBackup(empty, NOW)).json));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    expect(await screen.findByText(/complete setup/i)).toBeInTheDocument();
   });
 });
