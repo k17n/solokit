@@ -12,13 +12,14 @@
   padding: 1rem 1.1rem;
   background: var(--surface);
   border: 1.5px solid var(--border);
+  border-left: 6px solid var(--k-line);
   border-radius: var(--radius-m);
 }
 
 .top {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.5rem 1rem;
 }
@@ -77,4 +78,102 @@
   background: none;
   border: 0;
   cursor: pointer;
+}
+
+.empty {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.lead {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 0;
+  max-width: 44rem;
+  color: var(--text-muted);
+}
+
+.chooser {
+  flex-basis: 100%;
+  padding: 1rem;
+  background: var(--surface-2);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-m);
+}
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  margin-bottom: 1rem;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  font: 600 0.95rem/1 var(--ff-sans);
+  white-space: nowrap;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+}
+
+.segment:hover {
+  color: var(--text);
+}
+
+.segment[aria-pressed='true'] {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--edge);
+  box-shadow: 0 2px 0 var(--edge);
+}
+
+.count {
+  min-width: 1.4rem;
+  padding: 0.1rem 0.4rem;
+  font: 600 0.75rem/1.3 var(--ff-mono);
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.segment[aria-pressed='true'] .count {
+  color: var(--ink);
+  background: var(--accent);
+}
+
+.ident {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.client {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--text);
 }

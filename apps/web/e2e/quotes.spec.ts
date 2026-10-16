@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Download, type Page } from '@playwright/test';
+import { startDocument } from './helpers';
 
 async function pdfText(download: Download): Promise<string> {
   const path = await download.path();
@@ -28,7 +29,7 @@ async function onboardRegular(page: Page) {
   await page.getByLabel('Address line 1').fill('12 Linking Road');
   await page.getByLabel('City').fill('Mumbai');
   await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
 }
 
 async function downloadPdf(page: Page): Promise<{ filename: string; text: string }> {
@@ -42,7 +43,7 @@ test('a quotation is issued, converted to an invoice, and the two number series 
   page.on('pageerror', (error) => problems.push(error.message));
   await onboardRegular(page);
 
-  await page.getByRole('button', { name: 'Create a quotation' }).click();
+  await startDocument(page, 'Quotation');
   await expect(page.getByRole('heading', { name: 'New quotation' })).toBeVisible();
   const quoteNumber = await page.getByLabel('Quotation number').inputValue();
   expect(quoteNumber).toMatch(/^QT\/\d{4}-\d{2}\/0001$/);
@@ -86,19 +87,19 @@ test('a quotation is issued, converted to an invoice, and the two number series 
   expect(squash(invoicePdf.text)).not.toContain('Validuntil');
   await expect(page.getByText(/Made from quotation/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Back to invoices' }).click();
+  await page.getByRole('button', { name: 'Back to documents' }).click();
   const quoteRow = page.getByRole('listitem').filter({ hasText: quoteNumber });
   await expect(quoteRow).toContainText('Converted');
   await expect(quoteRow).toContainText('Issued');
-  const show = page.getByRole('group', { name: 'Show' });
-  const rows = page.getByRole('list', { name: 'Invoices' }).getByRole('listitem');
-  await show.getByRole('button', { name: 'Quotes' }).click();
+  const show = page.getByRole('group', { name: 'Filter by type' });
+  const rows = page.getByRole('list', { name: 'Documents' }).getByRole('listitem');
+  await show.getByRole('button', { name: /^Quotations/ }).click();
   await expect(rows).toHaveCount(1);
-  await show.getByRole('button', { name: 'Invoices' }).click();
+  await show.getByRole('button', { name: /^Invoices/ }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText(invoiceNumber);
 
-  await page.getByRole('button', { name: 'New quotation' }).click();
+  await startDocument(page, 'Quotation');
   await expect(page.getByLabel('Quotation number')).toHaveValue(quoteNumber.replace(/0001$/, '0002'));
   await page.reload();
   expect(problems).toEqual([]);

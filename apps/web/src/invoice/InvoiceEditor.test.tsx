@@ -5,6 +5,7 @@ import { createMemoryStore } from '@solokit/storage';
 import { createInvoiceStorage, type InvoiceStorage, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { InvoiceEditor } from './InvoiceEditor';
+import { documentName } from './kinds';
 import type { PdfRenderer } from './usePdfPreview';
 
 beforeEach(() => {
@@ -48,8 +49,14 @@ async function setup(
   render(
     <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} initialKind={options.initialKind} onBack={onBack} onIssued={onIssued} renderPdf={options.renderPdf ?? fakeRender} now={NOW} />,
   );
-  await screen.findByRole('heading', { name: options.invoiceId ? 'Edit draft' : options.initialKind === 'quote' ? 'New quotation' : 'New invoice' });
+  await screen.findByRole('heading', { name: options.invoiceId ? 'Edit draft' : options.initialKind === 'quote' ? 'New quotation' : options.initialKind === 'proforma' ? 'New proforma invoice' : `New ${documentName('invoice', profile.gstStatus).toLowerCase()}` });
   return { storage, onBack, onIssued, profile };
+}
+
+/** Opens "Change type" and picks a kind by the name on its card. */
+async function changeType(name: string) {
+  await userEvent.click(screen.getByRole('button', { name: 'Change type' }));
+  await userEvent.click(within(screen.getByRole('group', { name: 'Change document type' })).getByRole('button', { name }));
 }
 
 async function fillClient() {
@@ -346,9 +353,9 @@ describe('InvoiceEditor: saving a draft', () => {
     expect(screen.getByLabelText('Invoice number')).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('shows "Back to invoices" and calls onBack', async () => {
+  it('shows "Back to documents" and calls onBack', async () => {
     const { onBack } = await setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to documents' }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 });
@@ -434,7 +441,7 @@ describe('InvoiceEditor: editing a draft', () => {
     await storage.invoices.save(issued);
     render(<InvoiceEditor storage={storage} profile={makeSeller()} invoiceId="i1" onBack={() => {}} onIssued={() => {}} renderPdf={fakeRender} now={NOW} />);
     expect(await screen.findByText('This invoice cannot be edited')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Back to invoices' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back to documents' })).toBeInTheDocument();
   });
 });
 
@@ -500,15 +507,15 @@ describe('InvoiceEditor: quotations and number series', () => {
       ],
     });
     expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0008');
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await changeType('Quotation');
     await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0004'));
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'proforma');
+    await changeType('Proforma invoice');
     await waitFor(() => expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0001'));
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'invoice');
+    await changeType('Tax invoice');
     await waitFor(() => expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0008'));
     await userEvent.clear(screen.getByLabelText('Invoice number'));
     await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await changeType('Quotation');
     await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0004'));
   });
 
@@ -516,7 +523,7 @@ describe('InvoiceEditor: quotations and number series', () => {
     await setup();
     await userEvent.clear(screen.getByLabelText('Invoice number'));
     await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await changeType('Quotation');
     await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0001'));
     expect(screen.getByText(/number MINE-1 was replaced/i)).toBeInTheDocument();
     // The new number is generated, so it follows the date again.
@@ -528,11 +535,11 @@ describe('InvoiceEditor: quotations and number series', () => {
 
   it('keeps a hand-typed number that already fits the new type', async () => {
     await setup();
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'quote');
+    await changeType('Quotation');
     await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0001'));
     await userEvent.clear(screen.getByLabelText('Quotation number'));
     await userEvent.type(screen.getByLabelText('Quotation number'), 'QT/2026-27/0099');
-    await userEvent.selectOptions(screen.getByLabelText('Document type'), 'proforma');
+    await changeType('Proforma invoice');
     await waitFor(() => expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0001'));
     await userEvent.clear(screen.getByLabelText('Proforma number'));
     await userEvent.type(screen.getByLabelText('Proforma number'), 'PF/2026-27/0050');
@@ -582,8 +589,37 @@ describe('InvoiceEditor: quotations and number series', () => {
     await setup({ initialKind: 'quote' });
     await fillClient();
     await fillFirstItem();
+    expect(screen.getByRole('button', { name: 'Change type' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
     await screen.findByText('Draft saved');
-    expect(screen.getByLabelText('Document type')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Change type' })).not.toBeInTheDocument();
+    expect(screen.getByText(/The type is fixed once a draft is saved/)).toBeInTheDocument();
+  });
+
+  it('shows the chosen kind as a badge with what it is for, and no type select', async () => {
+    await setup({ initialKind: 'proforma' });
+    const banner = screen.getByRole('region', { name: 'Document kind' });
+    expect(within(banner).getByText('Proforma invoice')).toBeInTheDocument();
+    expect(within(banner).getByText('Ask for payment before you start or ship')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Document type')).not.toBeInTheDocument();
+  });
+
+  it('names the tax invoice after the seller', async () => {
+    await setup({ profile: makeSeller({ gstStatus: 'composition' }) });
+    expect(screen.getByRole('heading', { name: 'New bill of supply' })).toBeInTheDocument();
+  });
+
+  it('keeps what was typed when the type changes, and the chooser closes with Escape back on its button', async () => {
+    await setup();
+    await fillClient();
+    await userEvent.click(screen.getByRole('button', { name: 'Change type' }));
+    expect(screen.getByRole('button', { name: 'Tax invoice' })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('group', { name: 'Change document type' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change type' })).toHaveFocus();
+    await changeType('Quotation');
+    expect(screen.getByRole('heading', { name: 'New quotation' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Client name')).toHaveValue('Northwind Traders');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change type' })).toHaveFocus());
   });
 });

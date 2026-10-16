@@ -19,8 +19,7 @@ import styles from './InvoiceApp.module.css';
 type View = { name: 'list' } | { name: 'new'; kind: InvoiceKind } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' } | { name: 'themes' } | { name: 'backup' };
 
 const TABS: { label: string; target: View; current: View['name'][] }[] = [
-  { label: 'Invoices', target: { name: 'list' }, current: ['list', 'view'] },
-  { label: 'New invoice', target: { name: 'new', kind: 'invoice' }, current: ['new', 'edit'] },
+  { label: 'Documents', target: { name: 'list' }, current: ['list', 'view', 'new', 'edit'] },
   { label: 'Themes', target: { name: 'themes' }, current: ['themes'] },
   { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
   { label: 'Profile', target: { name: 'profile' }, current: ['profile'] },
@@ -32,7 +31,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   const [view, setView] = useState<View>({ name: 'list' });
   const [savedNotice, setSavedNotice] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
-  /** Changes every time "New invoice" is chosen, so the editor starts fresh even when it is already open. */
+  /** Changes every time a new document is started, so the editor starts fresh even when it is already open. */
   const [newCount, setNewCount] = useState(0);
   const [restoring, setRestoring] = useState(false);
   /** Shown after a restore from the first-run screen, because that screen is gone by then. */
@@ -178,7 +177,6 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
               aria-current={tab.current.includes(view.name) ? 'page' : undefined}
               className={styles.tab}
               onClick={() => {
-                if (tab.target.name === 'new') setNewCount((count) => count + 1);
                 setView(tab.target);
                 setSavedNotice(false);
                 setRestoredNotice(null);
@@ -193,7 +191,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
         {view.name === 'list' ? (
           <InvoiceList
             storage={storage}
-            onNew={(kind = 'invoice') => {
+            onNew={(kind) => {
               setNewCount((count) => count + 1);
               setView({ name: 'new', kind });
             }}

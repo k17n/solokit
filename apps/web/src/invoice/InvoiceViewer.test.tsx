@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
@@ -54,7 +54,7 @@ describe('InvoiceViewer', () => {
 
   it('goes back to the list', async () => {
     const { onBack } = await setup(makeInvoice({ id: 'i1', status: 'issued' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Back to invoices' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Back to documents' }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 
@@ -86,7 +86,7 @@ describe('InvoiceViewer', () => {
 
   it('lets the user go back from a draft', async () => {
     const { onBack } = await setup(makeInvoice({ id: 'd1', status: 'draft' }), 'd1');
-    await userEvent.click(await screen.findByRole('button', { name: 'Back to invoices' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Back to documents' }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 
@@ -129,8 +129,31 @@ describe('InvoiceViewer: quotations and conversion', () => {
 
   it('offers the same conversion on an issued proforma', async () => {
     await setup(makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001' }), 'p1');
-    expect(await screen.findByRole('button', { name: 'Convert to invoice' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Convert to tax invoice' })).toBeInTheDocument();
     expect(screen.getByText('Proforma')).toBeInTheDocument();
+  });
+
+  it('puts a context banner on a proforma: not a tax invoice, with the convert button inside it', async () => {
+    await setup(makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001' }), 'p1');
+    const banner = await screen.findByRole('region', { name: 'About this proforma invoice' });
+    expect(banner).toHaveAttribute('data-kind', 'proforma');
+    expect(within(banner).getByText('Not a tax invoice')).toBeInTheDocument();
+    expect(within(banner).getByRole('button', { name: 'Convert to tax invoice' })).toBeInTheDocument();
+  });
+
+  it('puts the validity and the convert button of a quotation in its banner', async () => {
+    await setup(quote(), 'q1');
+    const banner = await screen.findByRole('region', { name: 'About this quotation' });
+    expect(banner).toHaveAttribute('data-kind', 'quote');
+    expect(within(banner).getByText('Valid until 13 Nov 2026')).toBeInTheDocument();
+    expect(within(banner).getByText(/not a tax document/)).toBeInTheDocument();
+    expect(within(banner).getByRole('button', { name: 'Convert to invoice' })).toBeInTheDocument();
+  });
+
+  it('has no banner on a plain invoice', async () => {
+    await setup(makeInvoice({ id: 'i1' }), 'i1');
+    await screen.findByRole('heading', { name: '2026-27/0001' });
+    expect(screen.queryByRole('region')).not.toBeInTheDocument();
   });
 
   it('shows an already converted quotation as converted, links to the draft and offers no second conversion', async () => {
@@ -171,7 +194,7 @@ describe('InvoiceViewer: quotations and conversion', () => {
 
   it('tells the user a proforma advance was carried over to the draft', async () => {
     const { storage, onEdit } = await setup(makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001', advanceReceived: 50000 }), 'p1');
-    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to tax invoice' }));
     await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
     expect((await storage.invoices.get(onEdit.mock.calls[0]![0]))?.advanceReceived).toBe(50000);
     expect(await screen.findByText(/advance received on this proforma was carried over/)).toBeInTheDocument();

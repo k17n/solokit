@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ConversionError,
   buildInvoiceDocument,
   KIND_LABEL,
   isBackupDue,
@@ -11,8 +12,10 @@ import {
   type InvoiceRecord,
   type InvoiceStorage,
   type InvoiceTheme,
+  type SellerProfile,
 } from '@solokit/tool-invoice';
 import { Badge, Button, Notice, formatIsoDate } from '@solokit/ui';
+import { KindBadge, KindCards, convertLabel, kindClasses } from './kinds';
 import { downloadBlob } from './downloads';
 import { duplicateInvoice, todayIso } from './editorModel';
 import { newId } from './ids';
@@ -22,8 +25,8 @@ import styles from './InvoiceList.module.css';
 
 export interface InvoiceListProps {
   storage: InvoiceStorage;
-  /** Starts a new document; the kind defaults to a tax invoice. */
-  onNew: (kind?: InvoiceKind) => void;
+  /** Starts a new document of the kind the user chose. */
+  onNew: (kind: InvoiceKind) => void;
   onEdit: (id: string) => void;
   onView: (id: string) => void;
   /** Opens the backup screen from the reminder. */
@@ -42,7 +45,7 @@ type Filter = 'all' | InvoiceKind;
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'invoice', label: 'Invoices' },
-  { value: 'quote', label: 'Quotes' },
+  { value: 'quote', label: 'Quotations' },
   { value: 'proforma', label: 'Proformas' },
 ];
 
@@ -60,9 +63,7 @@ export function totalOf(invoice: InvoiceRecord): string {
   }
 }
 
-export function KindBadge({ kind }: { kind: InvoiceKind | undefined }) {
-  return <Badge>{kind === 'quote' ? 'Quotation' : kind === 'proforma' ? 'Proforma' : 'Invoice'}</Badge>;
-}
+export { KindBadge };
 
 /** Shown beside the status of a quotation or proforma that has been turned into an invoice. */
 export function ConvertedBadge({ invoice }: { invoice: InvoiceRecord }) {
@@ -79,14 +80,17 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
   const [invoices, setInvoices] = useState<InvoiceRecord[] | null>(null);
   const [customThemes, setCustomThemes] = useState<InvoiceTheme[]>([]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
+  const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [pending, setPending] = useState<Pending>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const confirmRef = useRef<HTMLParagraphElement>(null);
+  const chooserRef = useRef<HTMLDivElement>(null);
   /** The accessible name of the button that opened a confirmation, so focus can go back to it. */
   const returnTo = useRef<string | null>(null);
 
@@ -103,11 +107,22 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
     }
   }, [pending]);
 
+  // A click anywhere outside the open chooser closes it.
+  useEffect(() => {
+    if (!choosing) return;
+    const close = (event: MouseEvent) => {
+      if (event.target instanceof Node && !chooserRef.current?.contains(event.target)) setChoosing(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [choosing]);
+
   const reload = useCallback(async () => {
-    const [list, themes, settings] = await Promise.all([storage.invoices.list(), storage.themes.list(), storage.settings.get()]);
+    const [list, themes, settings, seller] = await Promise.all([storage.invoices.list(), storage.themes.list(), storage.settings.get(), storage.profile.get()]);
     setInvoices(list);
     setLastBackupAt(settings.lastBackupAt);
     setCustomThemes(themes);
+    setProfile(seller ?? null);
   }, [storage]);
 
   useEffect(() => {
@@ -152,6 +167,19 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
     }
   }
 
+  async function convert(invoice: InvoiceRecord) {
+    setBusy(invoice.id);
+    setMessage(null);
+    try {
+      const draft = await storage.invoices.convert(invoice.id, { id: newId(), issueDate: todayIso(now()) });
+      onEdit(draft.id);
+    } catch (error) {
+      console.error('Could not convert the document', error);
+      setMessage({ id: invoice.id, text: error instanceof ConversionError ? error.message : 'It could not be converted to an invoice. Try again.' });
+      setBusy(null);
+    }
+  }
+
   async function confirm(invoice: InvoiceRecord, action: 'cancel' | 'delete') {
     setBusy(invoice.id);
     setMessage(null);
@@ -184,36 +212,56 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
 
   if (invoices.length === 0) {
     return (
-      <div style={{ display: 'grid', gap: '1rem', justifyItems: 'start' }}>
-        <p>No invoices yet.</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <Button onClick={() => onNew()}>Create your first invoice</Button>
-          <Button variant="secondary" onClick={() => onNew('quote')}>
-            Create a quotation
-          </Button>
-        </div>
+      <div className={styles.empty}>
+        <h2 style={{ fontSize: '1.8rem' }}>Start your first document</h2>
+        <p className={styles.lead}>Pick what you want to make. Each kind has its own numbers and its own use.</p>
+        <KindCards gstStatus={profile?.gstStatus} onPick={onNew} label="Choose a document type to start with" />
+        <p className={styles.hint}>
+          The usual order is <strong>Quotation → Invoice</strong>: send a price offer, then turn it into an invoice once the client says yes. If the price is already agreed, start with an invoice.
+        </p>
       </div>
     );
   }
 
+  const counts: Record<Filter, number> = { all: invoices.length, invoice: 0, quote: 0, proforma: 0 };
+  for (const invoice of invoices) counts[seriesOf(invoice)] += 1;
   const shown = filter === 'all' ? invoices : invoices.filter((invoice) => seriesOf(invoice) === filter);
+  const byId = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+
+  function choose(kind: InvoiceKind) {
+    setChoosing(false);
+    onNew(kind);
+  }
 
   return (
     <div>
-      <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>Invoices</h2>
-        <div className={styles.actions}>
-          <Button onClick={() => onNew()}>New invoice</Button>
-          <Button variant="secondary" onClick={() => onNew('quote')}>
-            New quotation
-          </Button>
-        </div>
+      <div
+        className={styles.header}
+        ref={chooserRef}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && choosing) {
+            event.stopPropagation();
+            setChoosing(false);
+            chooserRef.current?.querySelector<HTMLElement>('button[aria-expanded]')?.focus();
+          }
+        }}
+      >
+        <h2 style={{ fontSize: '1.8rem' }}>Documents</h2>
+        <Button aria-expanded={choosing} aria-controls="new-document-chooser" onClick={() => setChoosing((open) => !open)}>
+          <span aria-hidden="true">+</span> New
+        </Button>
+        {choosing ? (
+          <div id="new-document-chooser" className={styles.chooser}>
+            <KindCards gstStatus={profile?.gstStatus} onPick={choose} label="Choose a document type" autoFocus />
+          </div>
+        ) : null}
       </div>
-      <div className={styles.actions} role="group" aria-label="Show">
+      <div className={styles.segmented} role="group" aria-label="Filter by type">
         {FILTERS.map((option) => (
-          <Button key={option.value} variant={filter === option.value ? 'primary' : 'secondary'} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>
+          <button key={option.value} type="button" className={styles.segment} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>
             {option.label}
-          </Button>
+            <span className={styles.count}>{counts[option.value]}</span>
+          </button>
         ))}
       </div>
       {isBackupDue(lastBackupAt, now(), invoices.length > 0) ? (
@@ -232,21 +280,51 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
         </div>
       ) : null}
       {shown.length === 0 && filter !== 'all' ? <p role="status">{EMPTY_TEXT[filter]}</p> : null}
-      <ul className={styles.list} aria-label="Invoices" role="list" ref={listRef}>
+      <ul className={styles.list} aria-label="Documents" role="list" ref={listRef}>
         {shown.map((invoice) => {
           const isPending = pending?.id === invoice.id;
+          const kind = seriesOf(invoice);
+          const isBusy = busy === invoice.id;
+          const canConvert = kind !== 'invoice' && invoice.status === 'issued' && !invoice.convertedToId;
+          const invoiced = invoice.convertedToId ? byId.get(invoice.convertedToId) : undefined;
+          const open = (
+            <Button key="open" variant="secondary" aria-label={`Open ${invoice.number}`} onClick={() => (invoice.status === 'draft' ? onEdit(invoice.id) : onView(invoice.id))}>
+              Open
+            </Button>
+          );
+          const pdf = (
+            <Button key="pdf" variant="secondary" aria-label={`Download PDF ${invoice.number}`} disabled={isBusy} onClick={() => void download(invoice)}>
+              {isBusy ? 'Preparing…' : 'Download PDF'}
+            </Button>
+          );
+          // The main action depends on the kind and where the document is in its life; the rest follow in a fixed order.
+          const primary = canConvert ? (
+            <Button key="convert" aria-label={`${convertLabel(invoice)} ${invoice.number}`} disabled={isBusy} onClick={() => void convert(invoice)}>
+              {convertLabel(invoice)}
+            </Button>
+          ) : invoice.convertedToId && invoiced ? (
+            <Button key="invoiced" variant="secondary" aria-label={`Open invoice ${invoiced.number}`} onClick={() => (invoiced.status === 'draft' ? onEdit(invoiced.id) : onView(invoiced.id))}>
+              Invoiced <span aria-hidden="true">→</span> {invoiced.number}
+            </Button>
+          ) : kind === 'invoice' && invoice.status === 'issued' ? (
+            pdf
+          ) : (
+            open
+          );
           return (
-            <li key={invoice.id} className={styles.item}>
+            <li key={invoice.id} className={`${kindClasses.scope} ${styles.item}`} data-kind={kind}>
               <div className={styles.top}>
-                <span className={styles.number}>{invoice.number}</span>
-                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                <span className={styles.ident}>
                   <KindBadge kind={invoice.kind} />
+                  <span className={styles.number}>{invoice.number}</span>
+                </span>
+                <span className={styles.statuses}>
                   <StatusBadge status={invoice.status} />
                   <ConvertedBadge invoice={invoice} />
                 </span>
               </div>
               <div className={styles.meta}>
-                <span>{invoice.client.name}</span>
+                <span className={styles.client}>{invoice.client.name}</span>
                 <span>{formatIsoDate(invoice.issueDate)}</span>
                 <span className={styles.total}>{totalOf(invoice)}</span>
               </div>
@@ -258,7 +336,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
                       : `Delete draft ${invoice.number}? This cannot be undone.`}
                   </p>
                   <div className={styles.actions}>
-                    <Button disabled={busy === invoice.id} onClick={() => void confirm(invoice, pending.action)}>
+                    <Button disabled={isBusy} onClick={() => void confirm(invoice, pending.action)}>
                       {pending.action === 'cancel' ? `Yes, cancel ${kindNoun(invoice.kind)}` : 'Yes, delete draft'}
                     </Button>
                     <Button
@@ -274,13 +352,10 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
                 </div>
               ) : (
                 <div className={styles.actions}>
-                  <Button variant="secondary" aria-label={`Open ${invoice.number}`} onClick={() => (invoice.status === 'draft' ? onEdit(invoice.id) : onView(invoice.id))}>
-                    Open
-                  </Button>
-                  <Button variant="secondary" aria-label={`Download PDF ${invoice.number}`} disabled={busy === invoice.id} onClick={() => void download(invoice)}>
-                    {busy === invoice.id ? 'Preparing…' : 'Download PDF'}
-                  </Button>
-                  <Button variant="secondary" aria-label={`Duplicate ${invoice.number}`} disabled={busy === invoice.id} onClick={() => void duplicate(invoice)}>
+                  {primary}
+                  {primary.key === 'open' ? null : open}
+                  {primary.key === 'pdf' ? null : pdf}
+                  <Button variant="ghost" aria-label={`Duplicate ${invoice.number}`} disabled={isBusy} onClick={() => void duplicate(invoice)}>
                     Duplicate
                   </Button>
                   {invoice.status === 'issued' ? (

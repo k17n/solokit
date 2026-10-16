@@ -24,8 +24,9 @@ import { Button, Notice } from '@solokit/ui';
 import { ClientSection } from './ClientSection';
 import { clientToForm, emptyClientForm, formToClient, isBlankClient } from './clientFormState';
 import { DetailsSection } from './DetailsSection';
-import { editorToInvoice, fiscalYearOf, invoiceToEditor, newEditorState, taxApplies, todayIso, validateEditor, type EditorState } from './editorModel';
+import { DEFAULT_VALIDITY_DAYS, addDaysIso, editorToInvoice, fiscalYearOf, invoiceToEditor, newEditorState, taxApplies, todayIso, validateEditor, type EditorState } from './editorModel';
 import { invoiceFileName } from './fileName';
+import { KIND_USE, KindBadge, KindCards, documentName, kindClasses } from './kinds';
 import { newId } from './ids';
 import { LineItemsEditor } from './LineItemsEditor';
 import { PdfPreview } from './PdfPreview';
@@ -80,6 +81,8 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   const [busy, setBusy] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [numberPending, setNumberPending] = useState(false);
+  const [changingType, setChangingType] = useState(false);
+  const changeTypeRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   /** The series (document type and financial year) the current number was worked out for. */
@@ -198,6 +201,17 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   const taxed = taxApplies(state, profile);
   const clientErrors = errors;
   const noun = KIND_LABEL[state.kind].toLowerCase();
+  const name = documentName(state.kind, profile.gstStatus, state.exemptSupply);
+  // The type is chosen when the document is started and can be changed until the draft is saved, because its number belongs to that type's series.
+  const canChangeType = isNew && state.createdAt === '';
+
+  const currentState = state;
+  function changeType(next: InvoiceKind) {
+    const validUntil = next === 'quote' && currentState.validUntil === '' ? addDaysIso(currentState.issueDate, DEFAULT_VALIDITY_DAYS) : null;
+    if (next !== currentState.kind) change({ kind: next, ...(validUntil ? { validUntil } : {}) });
+    setChangingType(false);
+    requestAnimationFrame(() => changeTypeRef.current?.focus());
+  }
 
   function focusFirstProblem() {
     requestAnimationFrame(() => {
@@ -257,11 +271,36 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   return (
     <div className={styles.editor}>
       <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>{isNew ? `New ${noun}` : 'Edit draft'}</h2>
+        <h2 style={{ fontSize: '1.8rem' }}>{isNew ? `New ${name.toLowerCase()}` : 'Edit draft'}</h2>
         <Button variant="secondary" onClick={onBack}>
-          Back to invoices
+          Back to documents
         </Button>
       </div>
+
+      <section
+        className={`${kindClasses.scope} ${kindClasses.banner}`}
+        data-kind={state.kind}
+        aria-label="Document kind"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && changingType) {
+            event.stopPropagation();
+            setChangingType(false);
+            changeTypeRef.current?.focus();
+          }
+        }}
+      >
+        <p className={kindClasses.bannerText}>
+          <KindBadge kind={state.kind} label={name} large />
+          <span>{KIND_USE[state.kind]}</span>
+          {canChangeType ? (
+            <button ref={changeTypeRef} type="button" className={kindClasses.textButton} aria-expanded={changingType} onClick={() => setChangingType((open) => !open)}>
+              Change type
+            </button>
+          ) : null}
+        </p>
+        {!canChangeType ? <p className={styles.status}>The type is fixed once a draft is saved, because each type has its own numbers.</p> : null}
+        {changingType ? <KindCards gstStatus={profile.gstStatus} current={state.kind} onPick={changeType} label="Change document type" autoFocus /> : null}
+      </section>
 
       <div className={styles.layout}>
         <div className={styles.form} ref={formRef}>
@@ -317,7 +356,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
             />
           </fieldset>
 
-          <DetailsSection state={state} onChange={change} profile={profile} themes={themes} errors={errors} numberHint={numberNotice ?? undefined} kindLocked={state.createdAt !== ''} />
+          <DetailsSection state={state} onChange={change} profile={profile} themes={themes} errors={errors} numberHint={numberNotice ?? undefined} />
 
           <fieldset className={styles.section}>
             <legend className={styles.sectionTitle}>Items</legend>
@@ -383,7 +422,7 @@ function renderProblem(kind: 'cannot-edit' | 'failed', onBack: () => void) {
           : 'Your browser could not read what was saved on this device. Go back and try again.'}
       </Notice>
       <div>
-        <Button onClick={onBack}>Back to invoices</Button>
+        <Button onClick={onBack}>Back to documents</Button>
       </div>
     </div>
   );
