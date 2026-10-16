@@ -299,7 +299,9 @@ function cleanName(name: string): string {
   return trimmed;
 }
 
-const byAge = (a: Workspace, b: Workspace) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+/** Oldest first. The first Business (the pre-existing database) wins a tie on the clock. */
+const byAge = (a: Workspace, b: Workspace) =>
+  a.createdAt.localeCompare(b.createdAt) || Number(b.id === DEFAULT_WORKSPACE_ID) - Number(a.id === DEFAULT_WORKSPACE_ID) || a.id.localeCompare(b.id);
 
 export function createWorkspaceManager(options: WorkspaceManagerOptions = {}): WorkspaceManager {
   const factory = options.factory === undefined ? defaultFactory() : options.factory;
