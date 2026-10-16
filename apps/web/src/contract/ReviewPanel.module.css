@@ -1,0 +1,88 @@
+.panel {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.card {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.card h4 {
+  margin: 0;
+  font: 700 1.1rem/1.2 var(--ff-display);
+}
+
+.lead {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.rows {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.row {
+  display: grid;
+  gap: 0.1rem 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 40rem) {
+  .row {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+}
+
+.row dt {
+  font-weight: 600;
+}
+
+.row dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.list {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.topic {
+  font-weight: 700;
+}
+
+.ref {
+  color: var(--text-muted);
+}
+
+.clause {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.clause p {
+  margin: 0;
+}
+
+.card > summary {
+  cursor: pointer;
+  font-weight: 600;
+}

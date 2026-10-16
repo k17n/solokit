@@ -1,0 +1,150 @@
+/* One colour per agreement kind, used for the badge, the list stripe and the chooser cards.
+   Mutual NDA = violet, one-way NDA = teal, services agreement = coral. They stay apart from the invoice tool's emerald, amber and blue. */
+.scope {
+  --k-line: #9b6bd6;
+  --k-ink: #5b2fa6;
+  --k-soft: color-mix(in srgb, #9b6bd6 14%, transparent);
+}
+
+.scope[data-kind='nda-one-way'] {
+  --k-line: #1fa5a0;
+  --k-ink: #0b6663;
+  --k-soft: color-mix(in srgb, #1fa5a0 15%, transparent);
+}
+
+.scope[data-kind='services'] {
+  --k-line: #ee7a5f;
+  --k-ink: #9a3419;
+  --k-soft: color-mix(in srgb, #ee7a5f 17%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .scope {
+    --k-line: #b394ea;
+    --k-ink: #d3c3ff;
+    --k-soft: color-mix(in srgb, #b394ea 18%, transparent);
+  }
+
+  .scope[data-kind='nda-one-way'] {
+    --k-line: #3cc4be;
+    --k-ink: #8fe6e1;
+    --k-soft: color-mix(in srgb, #3cc4be 17%, transparent);
+  }
+
+  .scope[data-kind='services'] {
+    --k-line: #f08f78;
+    --k-ink: #ffc2b3;
+    --k-soft: color-mix(in srgb, #f08f78 18%, transparent);
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  font: 600 0.75rem/1.2 var(--ff-sans);
+  white-space: nowrap;
+  color: var(--k-ink);
+  background: var(--k-soft);
+  border: 1px solid var(--k-line);
+  border-radius: var(--radius-s);
+}
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.4rem;
+  font: 700 0.7rem/1.2 var(--ff-mono);
+  letter-spacing: 0.06em;
+  color: #0b1b3a;
+  background: var(--k-line);
+}
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+}
+
+.large {
+  font-size: 0.95rem;
+}
+
+.large .glyph {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.large .name {
+  padding: 0.3rem 0.7rem;
+}
+
+.cards {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: start;
+  align-content: start;
+  padding: 1rem 1.1rem 1.1rem;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-top: 5px solid var(--k-line);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.card:hover {
+  border-color: var(--k-line);
+  box-shadow: 0 3px 0 var(--k-line);
+  transform: translateY(-1px);
+}
+
+.tile {
+  display: inline-flex;
+  padding: 0.25rem 0.5rem;
+  font: 700 0.8rem/1.2 var(--ff-mono);
+  letter-spacing: 0.06em;
+  color: #0b1b3a;
+  background: var(--k-line);
+  border-radius: var(--radius-s);
+}
+
+.cardTitle {
+  font: 700 1.2rem/1.2 var(--ff-display);
+}
+
+.cardUse {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--k-soft);
+  border: 1.5px solid var(--k-line);
+  border-left-width: 6px;
+  border-radius: var(--radius-m);
+}
+
+.bannerText {
+  margin: 0;
+}

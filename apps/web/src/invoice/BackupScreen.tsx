@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { StorageError, type DataStore } from '@solokit/storage';
+import { createContractStorage } from '@solokit/tool-contract';
 import {
   MAX_BACKUP_BYTES,
   compareWithDevice,
@@ -31,6 +32,7 @@ const realNow = () => new Date();
 interface Counts {
   invoices: number;
   clients: number;
+  contracts: number;
   themes: number;
   hasProfile: boolean;
 }
@@ -38,7 +40,7 @@ interface Counts {
 const plural = (count: number, one: string) => `${count} ${count === 1 ? one : `${one}s`}`;
 
 function describeCounts(counts: Counts): string {
-  return `${plural(counts.invoices, 'invoice')}, ${plural(counts.clients, 'client')}, ${plural(counts.themes, 'custom theme')}${counts.hasProfile ? ' and your business profile' : ' and no business profile'}`;
+  return `${plural(counts.invoices, 'invoice')}, ${plural(counts.contracts, 'agreement')}, ${plural(counts.clients, 'client')}, ${plural(counts.themes, 'custom theme')}${counts.hasProfile ? ' and your business profile' : ' and no business profile'}`;
 }
 
 function formatWhen(iso: string): string {
@@ -69,6 +71,7 @@ function listNumbers(numbers: string[]): string {
 
 export function BackupScreen({ store, onRestored, restoreOnly = false, now = realNow }: BackupScreenProps) {
   const storage = useMemo(() => createInvoiceStorage(store), [store]);
+  const contractStorage = useMemo(() => createContractStorage(store), [store]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
   const [current, setCurrent] = useState<Counts | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -85,16 +88,17 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
   const summaryId = useId();
 
   const refresh = useCallback(async () => {
-    const [settings, invoices, clients, themes, profile] = await Promise.all([
+    const [settings, invoices, contracts, clients, themes, profile] = await Promise.all([
       storage.settings.get(),
       storage.invoices.list(),
+      contractStorage.list(),
       storage.clients.list(),
       storage.themes.list(),
       storage.profile.get(),
     ]);
     setLastBackupAt(settings.lastBackupAt);
-    setCurrent({ invoices: invoices.length, clients: clients.length, themes: themes.length, hasProfile: profile !== undefined });
-  }, [storage]);
+    setCurrent({ invoices: invoices.length, contracts: contracts.length, clients: clients.length, themes: themes.length, hasProfile: profile !== undefined });
+  }, [storage, contractStorage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -213,7 +217,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
           Download a backup
         </h3>
         <Notice tone="warning" title="Keep this file private">
-          The backup file is not encrypted. Anyone who gets it can read your bank details, UPI ID, clients and invoices. Store it somewhere private and do not email or share it.
+          The backup file is not encrypted. Anyone who gets it can read your bank details, UPI ID, clients, invoices and agreements. Store it somewhere private and do not email or share it.
         </Notice>
         <p className={styles.status}>
           {current === null

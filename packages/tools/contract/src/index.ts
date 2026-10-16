@@ -2,7 +2,22 @@ export * from './model';
 export * from './library-types';
 export * from './dates';
 export * from './format';
-export { ContractRenderError, createContext, evalCondition, renderTemplate, tokensIn, type Context, type RenderErrorCode } from './engine';
+export {
+  ContractRenderError,
+  clauseTitle,
+  createContext,
+  evalCondition,
+  isClauseIncluded,
+  isValidChoice,
+  optionVisible,
+  partyTerms,
+  renderTemplate,
+  tokensIn,
+  variableDefault,
+  variableVisible,
+  type Context,
+  type RenderErrorCode,
+} from './engine';
 export * from './library';
 export * from './validation';
 export * from './document';

@@ -1,0 +1,127 @@
+.list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-left: 6px solid var(--k-line);
+  border-radius: var(--radius-m);
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--ff-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  color: var(--text-muted);
+}
+
+.dates {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.confirm {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.reminder {
+  margin-bottom: 1rem;
+}
+
+.linkButton {
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-text);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.empty {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.lead {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin: 0;
+  max-width: 44rem;
+  color: var(--text-muted);
+}
+
+.chooser {
+  flex-basis: 100%;
+  padding: 1rem;
+  background: var(--surface-2);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-m);
+}
+
+.ident {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.parties {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+  color: var(--text);
+}

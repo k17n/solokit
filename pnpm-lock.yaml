@@ -180,6 +180,12 @@ importers:
       '@solokit/tax-engines':
         specifier: workspace:*
         version: link:../../packages/tax-engines
+      '@solokit/tool-contract':
+        specifier: workspace:*
+        version: link:../../packages/tools/contract
+      '@solokit/tool-contract-export':
+        specifier: workspace:*
+        version: link:../../packages/tools/contract-export
       '@solokit/tool-invoice':
         specifier: workspace:*
         version: link:../../packages/tools/invoice
@@ -250,6 +256,9 @@ importers:
       jsdom:
         specifier: ^25.0.0
         version: 25.0.1(supports-color@7.2.0)
+      jszip:
+        specifier: ^3.10.2
+        version: 3.10.2
       pdfjs-dist:
         specifier: ^6.4.299
         version: 6.4.299
