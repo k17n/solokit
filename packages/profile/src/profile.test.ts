@@ -48,6 +48,17 @@ describe('migrateProfile', () => {
   });
 });
 
+describe('migrateProfile: brand theme link and GST placeholder', () => {
+  it('keeps a well-formed link and the placeholder flag, and drops malformed ones', () => {
+    const kept = migrateProfile({ ...makeProfile(), brandTheme: { themeId: 't1', signature: 'abc' }, gstUnconfirmed: true })!;
+    expect(kept.brandTheme).toEqual({ themeId: 't1', signature: 'abc' });
+    expect(kept.gstUnconfirmed).toBe(true);
+    const dropped = migrateProfile({ ...makeProfile(), brandTheme: { themeId: 1 }, gstUnconfirmed: 'yes' })!;
+    expect('brandTheme' in dropped).toBe(false);
+    expect('gstUnconfirmed' in dropped).toBe(false);
+  });
+});
+
 describe('profile repository', () => {
   it('saves under the fixed id with the schema version, and reads it back', async () => {
     const store = createMemoryStore();
@@ -113,6 +124,13 @@ describe('missingFields', () => {
   it('a contract needs an email but not a GSTIN', () => {
     const profile = makeProfile({ email: undefined, gstin: undefined, gstStatus: 'unregistered' });
     expect(paths(missingFields(profile, 'contract'))).toEqual(['email']);
+  });
+
+  it('asks for the GST status again when it was only a placeholder, and not for GSTIN until it is chosen', () => {
+    const profile = makeProfile({ gstStatus: 'unregistered', gstUnconfirmed: true, gstin: undefined });
+    expect(paths(missingFields(profile, 'invoice'))).toEqual(['gstStatus']);
+    expect(missingFields(profile, 'contract')).toEqual([]);
+    expect(paths(missingFields({ ...profile, gstUnconfirmed: undefined }, 'invoice'))).toEqual([]);
   });
 
   it('lists recommended fields only when asked, and treats whitespace as empty', () => {

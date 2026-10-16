@@ -20,8 +20,12 @@ export function migrateProfile(raw: unknown): BusinessProfile | undefined {
   const version = typeof raw['schemaVersion'] === 'number' ? raw['schemaVersion'] : 1;
   if (version > PROFILE_SCHEMA_VERSION) return raw as unknown as BusinessProfile;
 
-  const { brand: rawBrand, brandSource: rawSource, ...rest } = raw;
+  const { brand: rawBrand, brandSource: rawSource, brandTheme: rawTheme, gstUnconfirmed: rawUnconfirmed, ...rest } = raw;
   const profile = { ...rest, id: PROFILE_ID, schemaVersion: PROFILE_SCHEMA_VERSION } as unknown as BusinessProfile;
+  if (rawUnconfirmed === true) profile.gstUnconfirmed = true;
+  if (isRecord(rawTheme) && typeof rawTheme['themeId'] === 'string' && typeof rawTheme['signature'] === 'string') {
+    profile.brandTheme = { themeId: rawTheme['themeId'], signature: rawTheme['signature'] };
+  }
   if (!isRecord(raw['address'])) profile.address = { line1: '', city: '', country: 'India' };
 
   if (isRecord(rawBrand)) {

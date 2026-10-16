@@ -40,6 +40,16 @@ export interface BrandColours {
 export type BrandSource = 'logo' | 'manual';
 
 /**
+ * The custom invoice theme that was made from the brand colours, and what it looked like when SoloKit last wrote it. The
+ * signature lets SoloKit tell a theme nobody has touched (safe to update when the logo changes) from one the person
+ * edited (never overwritten).
+ */
+export interface BrandThemeLink {
+  themeId: string;
+  signature: string;
+}
+
+/**
  * The person or business behind a Business workspace. Saved once and reused by every tool (invoice, contract, ...).
  * Tools read only the fields they need; see `PROFILE_REQUIREMENTS`.
  */
@@ -49,6 +59,11 @@ export interface BusinessProfile extends StoredRecord {
   schemaVersion?: number;
   name: string;
   gstStatus: SellerGstStatus;
+  /**
+   * True when `gstStatus` is only a placeholder because the profile was started in a tool that does not ask about GST
+   * (the contract tool). The invoice tool then still asks for the real status. Absent once the person has answered.
+   */
+  gstUnconfirmed?: boolean;
   gstin?: string;
   pan?: string;
   udyam?: string;
@@ -60,6 +75,8 @@ export interface BusinessProfile extends StoredRecord {
   logoDataUrl?: string;
   brand?: BrandColours;
   brandSource?: BrandSource;
+  /** The invoice theme made from the brand colours, if any. */
+  brandTheme?: BrandThemeLink;
   bank?: BankDetails;
   upiId?: string;
   lutNumber?: string;

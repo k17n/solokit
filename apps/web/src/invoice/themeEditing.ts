@@ -2,18 +2,7 @@ import type { InvoiceRecord } from '@solokit/tool-invoice';
 import type { BusinessProfile } from '@solokit/profile';
 import { fiscalYearOf } from './editorModel';
 
-/** Turns what was typed into #RRGGBB, or null when it is not a colour. Accepts a missing hash and the short #RGB form. */
-export function normaliseHex(input: string): string | null {
-  const text = input.trim().replace(/^#/, '');
-  if (/^[0-9a-fA-F]{3}$/.test(text)) {
-    return `#${text
-      .split('')
-      .map((digit) => digit + digit)
-      .join('')
-      .toUpperCase()}`;
-  }
-  return /^[0-9a-fA-F]{6}$/.test(text) ? `#${text.toUpperCase()}` : null;
-}
+export { normaliseHex } from '@solokit/profile';
 
 /** The wanted name, or the name with the first free number after it. Names are compared ignoring case. */
 export function uniqueThemeName(wanted: string, taken: readonly string[]): string {

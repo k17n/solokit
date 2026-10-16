@@ -51,6 +51,11 @@ function valueAt(profile: BusinessProfile, path: string): unknown {
   return value;
 }
 
+/** The profile's value at a path. A GST status that is only a placeholder counts as not given. */
+function answered(profile: BusinessProfile, path: string): unknown {
+  return path === 'gstStatus' && profile.gstUnconfirmed === true ? undefined : valueAt(profile, path);
+}
+
 const isFilled = (value: unknown) => (typeof value === 'string' ? value.trim() !== '' : value !== undefined && value !== null);
 
 export interface MissingFieldsOptions {
@@ -63,10 +68,10 @@ export interface MissingFieldsOptions {
  * unconditional field is missing; fields that depend on the GST status are left out until the status is known.
  */
 export function missingFields(profile: BusinessProfile | undefined, toolId: ProfileToolId, options: MissingFieldsOptions = {}): ProfileRequirement[] {
-  const registered = profile !== undefined && profile.gstStatus !== undefined && profile.gstStatus !== 'unregistered';
+  const registered = profile !== undefined && profile.gstUnconfirmed !== true && profile.gstStatus !== undefined && profile.gstStatus !== 'unregistered';
   return PROFILE_REQUIREMENTS[toolId].filter((requirement) => {
     if (requirement.need === 'recommended' && !options.includeRecommended) return false;
     if (requirement.when === 'gst-registered' && !registered) return false;
-    return profile === undefined || !isFilled(valueAt(profile, requirement.path));
+    return profile === undefined || !isFilled(answered(profile, requirement.path));
   });
 }
