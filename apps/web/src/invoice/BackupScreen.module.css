@@ -29,6 +29,7 @@
 
 .fileRow {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.4rem;
   min-width: 0;
 }
@@ -38,7 +39,9 @@
 }
 
 .fileRow input {
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
   font: inherit;
   color: var(--text);
 }

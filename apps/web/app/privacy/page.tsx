@@ -27,8 +27,10 @@ export default function PrivacyPage() {
 
       <h2>Back up your data</h2>
       <p>
-        Because the data lives in your browser, clearing your browser data erases it. Export a backup file regularly and
-        keep it somewhere safe. You can restore it on any device.
+        Because the data lives in your browser, clearing your browser data erases it. In the invoice tool, open
+        Backup &amp; restore to download a backup file regularly and keep it somewhere safe. You can restore it on any
+        device. The file is not encrypted and contains your bank details and clients, so treat it like a bank
+        statement.
       </p>
 
       <h2>Tax information</h2>
