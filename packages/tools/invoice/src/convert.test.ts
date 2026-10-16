@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
 import { convertToInvoice } from './convert';
 import { ConversionError, createInvoiceStorage } from './repositories';
+import type { InvoiceRecord } from './model';
 import { makeInvoice, makeSeller } from './testing';
 
 const now = new Date('2026-10-20T09:00:00.000Z');
@@ -118,7 +119,7 @@ describe('storage.invoices.convert', () => {
   it('refuses a record without a kind, which is a tax invoice', async () => {
     const storage = createInvoiceStorage(createMemoryStore(), { now: () => now });
     const { kind: _kind, ...legacy } = makeInvoice({ id: 'legacy', number: '2026-27/0001' });
-    await storage.invoices.save(legacy);
+    await storage.invoices.save(legacy as unknown as InvoiceRecord);
     await expect(storage.invoices.convert('legacy', { id: 'x', issueDate: '2026-10-20' })).rejects.toBeInstanceOf(ConversionError);
   });
 
@@ -157,11 +158,11 @@ describe('storage.invoices.convert', () => {
     let linked = false;
     const racing = {
       ...store,
-      get: async (collection: string, id: string) => {
+      get: async (collection: Parameters<typeof store.get>[0], id: string) => {
         const result = await realGet(collection, id);
         if (collection === 'profile' && !linked) {
           linked = true;
-          await store.put('invoices', { ...(await realGet('invoices', 'q1')), convertedToId: 'other' } as never);
+          await store.put('invoices', { ...((await realGet('invoices', 'q1')) as InvoiceRecord), convertedToId: 'other' });
         }
         return result;
       },
@@ -176,7 +177,7 @@ describe('storage.invoices.convert', () => {
     await storage.invoices.save(quote());
     const failing = {
       ...store,
-      put: async (collection: string, record: { id: string }) => {
+      put: async (collection: Parameters<typeof store.put>[0], record: { id: string }) => {
         if (collection === 'invoices' && record.id === 'q1') throw new Error('disk full');
         return store.put(collection, record as never);
       },
