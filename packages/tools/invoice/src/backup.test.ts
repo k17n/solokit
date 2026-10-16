@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { StorageError, createMemoryStore } from '@solokit/storage';
-import { createBackup, isBackupDue, restoreBackup } from './backup';
+import { createBackup, inspectBackup, isBackupDue, restoreBackup } from './backup';
 import { createInvoiceStorage } from './repositories';
 import { makeClient, makeInvoice, makeSeller } from './testing';
 
@@ -118,5 +118,51 @@ describe('backup time and file handling', () => {
   it('does not trust a backup time far in the future', () => {
     expect(isBackupDue('2027-01-01T00:00:00.000Z', NOW, true)).toBe(true);
     expect(isBackupDue('2026-10-15T00:00:00.000Z', NOW, true)).toBe(false);
+  });
+});
+
+describe('inspectBackup', () => {
+  async function sampleJson() {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => NOW });
+    await storage.profile.save(makeSeller({ name: 'Summary Co' }));
+    await storage.clients.save(makeClient());
+    await storage.invoices.save(makeInvoice());
+    await storage.themes.save({ id: 't1', name: 'Mine', layout: 'modern', accent: '#047857', text: '#14213D', background: '#FFFFFF', fontId: 'inter' });
+    return (await createBackup(store, NOW)).json;
+  }
+
+  it('summarises what a backup holds without changing anything', async () => {
+    const summary = inspectBackup(await sampleJson());
+    expect(summary).toMatchObject({ invoices: 1, clients: 1, themes: 1, hasProfile: true, profileName: 'Summary Co', exportedAt: expect.any(String) });
+  });
+
+  it('accepts a file with a byte-order mark', async () => {
+    expect(inspectBackup('﻿' + (await sampleJson())).invoices).toBe(1);
+  });
+
+  it('rejects files that are not backups', () => {
+    for (const text of ['', 'nope', '[]', '{"version":2}', '{"version":1,"exportedAt":"x","collections":{"invoices":[{"id":"a"}]}}']) {
+      expect(() => inspectBackup(text)).toThrow(StorageError);
+    }
+  });
+
+  it('rejects themes with unusable colours or unknown fonts', async () => {
+    const parsed = JSON.parse(await sampleJson());
+    parsed.collections.themes[0].accent = 'red';
+    expect(() => inspectBackup(JSON.stringify(parsed))).toThrow(/theme/i);
+    parsed.collections.themes[0].accent = '#047857';
+    parsed.collections.themes[0].fontId = 'comic-sans';
+    expect(() => inspectBackup(JSON.stringify(parsed))).toThrow(/theme/i);
+  });
+
+  it('refuses to restore a file whose invoices are malformed, changing nothing', async () => {
+    const store = createMemoryStore();
+    const storage = createInvoiceStorage(store, { now: () => NOW });
+    await storage.invoices.save(makeInvoice({ id: 'keep' }));
+    const parsed = JSON.parse(await sampleJson());
+    delete parsed.collections.invoices[0].lines;
+    await expect(restoreBackup(store, JSON.stringify(parsed))).rejects.toBeInstanceOf(StorageError);
+    expect((await storage.invoices.list()).map((invoice) => invoice.id)).toEqual(['keep']);
   });
 });
