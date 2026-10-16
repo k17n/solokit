@@ -98,6 +98,7 @@ function MetaRows({ doc, color, labelColor, align }: { doc: InvoiceDocument; col
     ['Date', doc.issueDate],
   ];
   if (doc.dueDate) rows.push(['Due', doc.dueDate]);
+  if (doc.validUntil) rows.push(['Valid until', doc.validUntil]);
   return (
     <View style={{ alignItems: align }}>
       {rows.map(([label, value]) => (
