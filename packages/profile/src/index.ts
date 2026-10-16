@@ -5,3 +5,4 @@ export * from './validation';
 export * from './migrate';
 export * from './repository';
 export * from './requirements';
+export * from './brand';

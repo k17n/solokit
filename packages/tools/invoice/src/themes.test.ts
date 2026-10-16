@@ -1,4 +1,4 @@
-import { contrastRatio } from '@solokit/profile';
+import { contrastRatio, extractPalette, suggestBrandTheme } from '@solokit/profile';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_THEME_ID,
@@ -98,4 +98,28 @@ describe('contrastRatio with saturated colours', () => {
     expect(contrastRatio('#0000FF', '#FFFFFF')).toBeCloseTo(8.592, 2);
     expect(contrastRatio('#00FF00', '#FFFFFF')).toBeCloseTo(1.372, 2);
   });
+});
+
+describe('themes suggested from a logo', () => {
+  const solid = (r: number, g: number, b: number, a = 255) => Array.from({ length: 100 }, () => [r, g, b, a]).flat();
+  const logos = {
+    red: solid(255, 0, 0),
+    yellow: solid(250, 220, 0),
+    blueAndYellow: [...solid(20, 70, 200), ...solid(250, 200, 20)],
+    pastel: solid(255, 182, 193),
+    grey: solid(128, 128, 128),
+    black: solid(0, 0, 0),
+    transparent: solid(0, 0, 0, 0),
+    whiteOnTransparent: [...solid(255, 255, 255), ...solid(0, 0, 0, 0)],
+  };
+
+  for (const [name, pixels] of Object.entries(logos)) {
+    it(`passes validateTheme in every layout for a ${name} logo`, () => {
+      const suggestion = suggestBrandTheme(extractPalette(pixels));
+      for (const base of PRESET_THEMES) {
+        const theme = createCustomTheme(base, { accent: suggestion.accent, text: suggestion.text, background: suggestion.background }, 'brand');
+        expect(validateTheme(theme)).toEqual([]);
+      }
+    });
+  }
 });
