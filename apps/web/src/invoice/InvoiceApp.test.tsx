@@ -206,7 +206,7 @@ describe('InvoiceApp: invoices', () => {
     for (const invoice of invoices) await storage.invoices.save(invoice);
     render(
       <StoreProvider factory={() => store}>
-        <InvoiceApp renderPdf={fakeRender} />
+        <InvoiceApp renderPdf={fakeRender} now={() => new Date(2026, 9, 14, 10, 0)} />
       </StoreProvider>,
     );
     await screen.findByRole('navigation', { name: 'Invoice tool' });
@@ -229,6 +229,15 @@ describe('InvoiceApp: invoices', () => {
     expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
     expect(await screen.findByRole('heading', { name: 'New invoice' })).toBeInTheDocument();
+  });
+
+  it('starts a fresh invoice when "New invoice" is chosen while already on it', async () => {
+    await openApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
+    await userEvent.type(await screen.findByLabelText('Client name'), 'Half typed');
+    expect(screen.getByLabelText('Client name')).toHaveValue('Half typed');
+    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
+    await waitFor(() => expect(screen.getByLabelText('Client name')).toHaveValue(''));
   });
 
   it('opens a draft from the list in the editor', async () => {

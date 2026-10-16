@@ -16,7 +16,7 @@ async function setup(invoices: ReturnType<typeof makeInvoice>[] = [], renderPdf?
   await storage.profile.save(makeSeller());
   for (const invoice of invoices) await storage.invoices.save(invoice);
   const handlers = { onNew: vi.fn(), onEdit: vi.fn(), onView: vi.fn() };
-  render(<InvoiceList storage={storage} {...handlers} renderPdf={renderPdf ?? (async () => pdf)} />);
+  render(<InvoiceList storage={storage} {...handlers} renderPdf={renderPdf ?? (async () => pdf)} now={() => new Date(2026, 9, 14, 10, 0)} />);
   return { storage, ...handlers };
 }
 
@@ -131,6 +131,22 @@ describe('InvoiceList: cancelling and deleting', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Yes, cancel invoice' }));
     await waitFor(async () => expect((await storage.invoices.get('i1'))?.status).toBe('cancelled'));
     expect(await screen.findByText('Cancelled')).toBeInTheDocument();
+  });
+
+  it('moves focus to the question, and back to the button when the user keeps the invoice', async () => {
+    await setup([issued]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel invoice 2026-27/0001' }));
+    expect(screen.getByText('Cancel invoice 2026-27/0001? Its number stays used.')).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(screen.getByRole('button', { name: 'Cancel invoice 2026-27/0001' })).toHaveFocus();
+  });
+
+  it('moves focus to the question when deleting a draft, and back when it is kept', async () => {
+    await setup([draft]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete draft 2026-27/0002' }));
+    expect(screen.getByText('Delete draft 2026-27/0002? This cannot be undone.')).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(screen.getByRole('button', { name: 'Delete draft 2026-27/0002' })).toHaveFocus();
   });
 
   it('can back out of cancelling', async () => {

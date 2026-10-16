@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   buildInvoiceDocument,
   resolveTheme,
@@ -22,7 +22,11 @@ export interface InvoiceListProps {
   onEdit: (id: string) => void;
   onView: (id: string) => void;
   renderPdf?: PdfRenderer;
+  /** The current time. Tests pass a fixed one. */
+  now?: () => Date;
 }
+
+const realNow = () => new Date();
 
 type Pending = { id: string; action: 'cancel' | 'delete' } | null;
 
@@ -41,7 +45,7 @@ export function StatusBadge({ status }: { status: InvoiceRecord['status'] }) {
   return <Badge>Draft</Badge>;
 }
 
-export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaultPdfRenderer }: InvoiceListProps) {
+export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceListProps) {
   const [invoices, setInvoices] = useState<InvoiceRecord[] | null>(null);
   const [customThemes, setCustomThemes] = useState<InvoiceTheme[]>([]);
   const [failed, setFailed] = useState(false);
@@ -49,6 +53,23 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const confirmRef = useRef<HTMLParagraphElement>(null);
+  /** The accessible name of the button that opened a confirmation, so focus can go back to it. */
+  const returnTo = useRef<string | null>(null);
+
+  // A two-step confirm replaces the buttons, so move focus to the question and give it back when the user keeps the invoice.
+  useEffect(() => {
+    if (pending) {
+      confirmRef.current?.focus();
+    } else if (returnTo.current) {
+      const label = returnTo.current;
+      returnTo.current = null;
+      Array.from(listRef.current?.querySelectorAll<HTMLElement>('button[aria-label]') ?? [])
+        .find((button) => button.getAttribute('aria-label') === label)
+        ?.focus();
+    }
+  }, [pending]);
 
   const reload = useCallback(async () => {
     const [list, themes] = await Promise.all([storage.invoices.list(), storage.themes.list()]);
@@ -86,8 +107,9 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
     setBusy(invoice.id);
     setMessage(null);
     try {
-      const today = todayIso(new Date());
-      const copy = duplicateInvoice(invoice, { id: newId(), number: await storage.invoices.nextNumber(today), issueDate: today });
+      const stamp = now();
+      const today = todayIso(stamp);
+      const copy = duplicateInvoice(invoice, { id: newId(), number: await storage.invoices.nextNumber(today), issueDate: today, now: stamp });
       const saved = await storage.invoices.save(copy);
       onEdit(saved.id);
     } catch (error) {
@@ -142,7 +164,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
         <h2 style={{ fontSize: '1.8rem' }}>Invoices</h2>
         <Button onClick={onNew}>New invoice</Button>
       </div>
-      <ul className={styles.list} aria-label="Invoices" role="list">
+      <ul className={styles.list} aria-label="Invoices" role="list" ref={listRef}>
         {invoices.map((invoice) => {
           const isPending = pending?.id === invoice.id;
           return (
@@ -158,7 +180,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
               </div>
               {isPending && pending ? (
                 <div className={styles.confirm}>
-                  <p>
+                  <p ref={confirmRef} tabIndex={-1}>
                     {pending.action === 'cancel'
                       ? `Cancel invoice ${invoice.number}? Its number stays used.`
                       : `Delete draft ${invoice.number}? This cannot be undone.`}
@@ -167,7 +189,13 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
                     <Button disabled={busy === invoice.id} onClick={() => void confirm(invoice, pending.action)}>
                       {pending.action === 'cancel' ? 'Yes, cancel invoice' : 'Yes, delete draft'}
                     </Button>
-                    <Button variant="secondary" onClick={() => setPending(null)}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        returnTo.current = `${pending.action === 'cancel' ? 'Cancel invoice' : 'Delete draft'} ${invoice.number}`;
+                        setPending(null);
+                      }}
+                    >
                       Keep it
                     </Button>
                   </div>

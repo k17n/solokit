@@ -18,7 +18,7 @@ async function setup(invoice: ReturnType<typeof makeInvoice> | null, id = 'i1') 
   await storage.profile.save(makeSeller());
   if (invoice) await storage.invoices.save(invoice);
   const handlers = { onBack: vi.fn(), onEdit: vi.fn() };
-  render(<InvoiceViewer storage={storage} invoiceId={id} {...handlers} renderPdf={fakeRender} />);
+  render(<InvoiceViewer storage={storage} invoiceId={id} {...handlers} renderPdf={fakeRender} now={() => new Date(2026, 9, 14, 10, 0)} />);
   return { storage, ...handlers };
 }
 
@@ -62,7 +62,21 @@ describe('InvoiceViewer', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Duplicate as new draft' }));
     await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
     const copy = (await storage.invoices.list()).find((invoice) => invoice.id !== 'i1');
-    expect(copy).toMatchObject({ status: 'draft', number: '2026-27/0002' });
+    expect(copy).toMatchObject({ status: 'draft', number: '2026-27/0002', issueDate: '2026-10-14' });
+  });
+
+  it('moves focus to the question when cancelling, and back to the button when kept', async () => {
+    await setup(makeInvoice({ id: 'i1', status: 'issued' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel invoice' }));
+    expect(screen.getByText('Cancel this invoice? Its number stays used.')).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(screen.getByRole('button', { name: 'Cancel invoice' })).toHaveFocus();
+  });
+
+  it('lets the user go back from a draft', async () => {
+    const { onBack } = await setup(makeInvoice({ id: 'd1', status: 'draft' }), 'd1');
+    await userEvent.click(await screen.findByRole('button', { name: 'Back to invoices' }));
+    expect(onBack).toHaveBeenCalledOnce();
   });
 
   it('sends a draft to the editor instead of showing it', async () => {

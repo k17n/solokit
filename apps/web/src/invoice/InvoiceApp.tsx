@@ -22,12 +22,14 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Profile', target: { name: 'profile' }, current: ['profile'] },
 ];
 
-export function InvoiceApp({ renderPdf }: { renderPdf?: PdfRenderer } = {}) {
+export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
   const { storage, ready, persistent } = useInvoiceStorage();
   const [profile, setProfile] = useState<SellerProfile | null | undefined>(undefined);
   const [view, setView] = useState<View>({ name: 'list' });
   const [savedNotice, setSavedNotice] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
+  /** Changes every time "New invoice" is chosen, so the editor starts fresh even when it is already open. */
+  const [newCount, setNewCount] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const asked = useRef(false);
@@ -123,6 +125,7 @@ export function InvoiceApp({ renderPdf }: { renderPdf?: PdfRenderer } = {}) {
               aria-current={tab.current.includes(view.name) ? 'page' : undefined}
               className={styles.tab}
               onClick={() => {
+                if (tab.target.name === 'new') setNewCount((count) => count + 1);
                 setView(tab.target);
                 setSavedNotice(false);
               }}
@@ -136,21 +139,26 @@ export function InvoiceApp({ renderPdf }: { renderPdf?: PdfRenderer } = {}) {
         {view.name === 'list' ? (
           <InvoiceList
             storage={storage}
-            onNew={() => setView({ name: 'new' })}
+            onNew={() => {
+              setNewCount((count) => count + 1);
+              setView({ name: 'new' });
+            }}
             onEdit={(id) => setView({ name: 'edit', id })}
             onView={(id) => setView({ name: 'view', id })}
             {...(renderPdf ? { renderPdf } : {})}
+            {...(now ? { now } : {})}
           />
         ) : null}
         {view.name === 'new' || view.name === 'edit' ? (
           <InvoiceEditor
-            key={view.name === 'edit' ? view.id : 'new'}
+            key={view.name === 'edit' ? view.id : `new-${newCount}`}
             storage={storage}
             profile={profile}
             invoiceId={view.name === 'edit' ? view.id : undefined}
             onBack={() => setView({ name: 'list' })}
             onIssued={(id) => setView({ name: 'view', id })}
             {...(renderPdf ? { renderPdf } : {})}
+            {...(now ? { now } : {})}
           />
         ) : null}
         {view.name === 'view' ? (
@@ -160,6 +168,7 @@ export function InvoiceApp({ renderPdf }: { renderPdf?: PdfRenderer } = {}) {
             onBack={() => setView({ name: 'list' })}
             onEdit={(id) => setView({ name: 'edit', id })}
             {...(renderPdf ? { renderPdf } : {})}
+            {...(now ? { now } : {})}
           />
         ) : null}
         {view.name === 'profile' ? (

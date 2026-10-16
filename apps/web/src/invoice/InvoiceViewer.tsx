@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { resolveTheme, type InvoiceRecord, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
 import { Button, Notice, formatIsoDate } from '@solokit/ui';
 import { duplicateInvoice, todayIso } from './editorModel';
@@ -16,14 +16,31 @@ export interface InvoiceViewerProps {
   onBack: () => void;
   onEdit: (id: string) => void;
   renderPdf?: PdfRenderer;
+  /** The current time. Tests pass a fixed one. */
+  now?: () => Date;
 }
 
-export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = defaultPdfRenderer }: InvoiceViewerProps) {
+const realNow = () => new Date();
+
+export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceViewerProps) {
   const [invoice, setInvoice] = useState<InvoiceRecord | null | undefined>(undefined);
   const [customThemes, setCustomThemes] = useState<InvoiceTheme[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirmRef = useRef<HTMLParagraphElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const keptIt = useRef(false);
+
+  // The confirm replaces the buttons: focus its question, and give focus back to the trigger when the user keeps the invoice.
+  useEffect(() => {
+    if (confirming) {
+      confirmRef.current?.focus();
+    } else if (keptIt.current) {
+      keptIt.current = false;
+      actionsRef.current?.querySelector<HTMLElement>('[data-cancel-trigger]')?.focus();
+    }
+  }, [confirming]);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +79,12 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
     return (
       <div style={{ display: 'grid', gap: '1rem', justifyItems: 'start' }}>
         <p>This invoice is a draft</p>
-        <Button onClick={() => onEdit(invoice.id)}>Edit draft</Button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Button onClick={() => onEdit(invoice.id)}>Edit draft</Button>
+          <Button variant="secondary" onClick={onBack}>
+            Back to invoices
+          </Button>
+        </div>
       </div>
     );
   }
@@ -73,8 +95,9 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
     setBusy(true);
     setError(null);
     try {
-      const today = todayIso(new Date());
-      const copy = duplicateInvoice(current, { id: newId(), number: await storage.invoices.nextNumber(today), issueDate: today });
+      const stamp = now();
+      const today = todayIso(stamp);
+      const copy = duplicateInvoice(current, { id: newId(), number: await storage.invoices.nextNumber(today), issueDate: today, now: stamp });
       const saved = await storage.invoices.save(copy);
       onEdit(saved.id);
     } catch (failure) {
@@ -114,23 +137,31 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
       </p>
       {confirming ? (
         <div style={{ display: 'grid', gap: '0.6rem' }}>
-          <p>Cancel this invoice? Its number stays used.</p>
+          <p ref={confirmRef} tabIndex={-1}>
+            Cancel this invoice? Its number stays used.
+          </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <Button disabled={busy} onClick={() => void cancel()}>
               Yes, cancel invoice
             </Button>
-            <Button variant="secondary" onClick={() => setConfirming(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                keptIt.current = true;
+                setConfirming(false);
+              }}
+            >
               Keep it
             </Button>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div ref={actionsRef} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Button variant="secondary" disabled={busy} onClick={() => void duplicate()}>
             Duplicate as new draft
           </Button>
           {current.status === 'issued' ? (
-            <Button variant="ghost" onClick={() => setConfirming(true)}>
+            <Button variant="ghost" data-cancel-trigger="" onClick={() => setConfirming(true)}>
               Cancel invoice
             </Button>
           ) : null}
