@@ -23,20 +23,12 @@ const TOOLS: readonly ToolDefinition[] = [
   {
     slug: 'invoice',
     name: 'Invoice generator',
-    tagline: 'GST-ready invoices in minutes',
+    tagline: 'GST-ready invoices and quotations in minutes',
     description:
-      'Create tax invoices, bills of supply and plain invoices for India. Works for GST-registered, composition and unregistered sellers, with TDS, advances and export invoices for consultants.',
+      'Create tax invoices, bills of supply, proforma invoices and quotations for India, each with its own numbers. Works for GST-registered, composition and unregistered sellers, with TDS, advances and export invoices for consultants. Turn a quotation into an invoice when the client says yes.',
     category: 'money',
     status: 'available',
     featured: true,
-  },
-  {
-    slug: 'quote',
-    name: 'Quote generator',
-    tagline: 'Send an estimate, turn it into an invoice later',
-    description: 'Build a clear quote with the same details as your invoices, and convert it when the client says yes.',
-    category: 'money',
-    status: 'coming-soon',
   },
   {
     slug: 'rate-calculator',

@@ -58,6 +58,11 @@ describe('renderInvoicePdf', () => {
 });
 
 describe('pdfFilename', () => {
+  it('names quotations and proformas by their own prefix', () => {
+    expect(pdfFilename(makeInvoice({ kind: 'quote', number: 'QT/2026-27/0001' }))).toBe('Quotation-QT-2026-27-0001.pdf');
+    expect(pdfFilename(makeInvoice({ kind: 'proforma', number: 'PF/2026-27/0001' }))).toBe('Proforma-Invoice-PF-2026-27-0001.pdf');
+  });
+
   it('sanitises the number: runs of other characters become one dash, edges are trimmed', () => {
     expect(pdfFilename(makeInvoice({ number: 'INV 1/' }))).toBe('Tax-Invoice-INV-1.pdf');
     expect(pdfFilename(makeInvoice({ number: '  A / / B__C  ' }))).toBe('Tax-Invoice-A-B-C.pdf');

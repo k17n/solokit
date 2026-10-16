@@ -6,7 +6,7 @@ Status as of 2026-10-16: the invoice tool (editor, live PDF preview, themes, bac
 
 Demand evidence is circumstantial: vendor pages, blogs and Product Hunt, not real Reddit or X threads. Check r/IndianFreelancers and r/developersIndia before committing.
 
-1. **Quote / estimate generator.** Reuses the invoice editor, themes, PDF and storage. "Convert to invoice" button. No local-first, no-signup competitor found (Refrens, Ozydo and Ownly all need accounts).
+1. **Quote / estimate generator.** Done 2026-10-16 as a document type inside the invoice tool (see `docs/superpowers/plans/2026-10-16-quotes-and-numbering.md`). Reuses the invoice editor, themes, PDF and storage. "Convert to invoice" button. No local-first, no-signup competitor found (Refrens, Ozydo and Ownly all need accounts).
 2. **Payment tracker with reminders.** Record payments against invoices, mark overdue, generate WhatsApp/email reminder text. Late payment is the most repeated pain (a PayPal survey cited 61% of Indian freelancers unpaid at least once; vendor-reported). Automatic sending is a paid server feature.
 3. **TDS and advance-tax tracker.** Log TDS per invoice, compare with Form 26AS, show advance-tax due dates. No free local tool found.
 4. Lower priority: hourly-rate / project-pricing calculators (Harvest and SoloStack already offer free ones).

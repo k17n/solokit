@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { resolveTheme, type InvoiceRecord, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
+import { ConversionError, resolveTheme, seriesOf, type InvoiceRecord, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
 import { Button, Notice, formatIsoDate } from '@solokit/ui';
 import { duplicateInvoice, todayIso } from './editorModel';
 import { invoiceFileName } from './fileName';
 import { newId } from './ids';
-import { StatusBadge, totalOf } from './InvoiceList';
+import { ConvertedBadge, KindBadge, StatusBadge, kindNoun, totalOf } from './InvoiceList';
 import { PdfPreview } from './PdfPreview';
 import { defaultPdfRenderer, usePdfPreview, type PdfRenderer } from './usePdfPreview';
 
@@ -15,6 +15,8 @@ export interface InvoiceViewerProps {
   invoiceId: string;
   onBack: () => void;
   onEdit: (id: string) => void;
+  /** Opens another issued document, such as the quotation an invoice was made from. */
+  onView?: (id: string) => void;
   renderPdf?: PdfRenderer;
   /** The current time. Tests pass a fixed one. */
   now?: () => Date;
@@ -22,9 +24,11 @@ export interface InvoiceViewerProps {
 
 const realNow = () => new Date();
 
-export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceViewerProps) {
+export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceViewerProps) {
   const [invoice, setInvoice] = useState<InvoiceRecord | null | undefined>(undefined);
   const [customThemes, setCustomThemes] = useState<InvoiceTheme[]>([]);
+  /** The invoice made from this document, or the document this invoice was made from. */
+  const [related, setRelated] = useState<InvoiceRecord | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,11 +48,15 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
 
   useEffect(() => {
     let cancelled = false;
+    setRelated(null);
     Promise.all([storage.invoices.get(invoiceId), storage.themes.list()])
-      .then(([found, themes]) => {
+      .then(async ([found, themes]) => {
+        const linkedId = found?.convertedToId ?? found?.convertedFromId;
+        const linked = linkedId ? await storage.invoices.get(linkedId) : undefined;
         if (cancelled) return;
         setInvoice(found ?? null);
         setCustomThemes(themes);
+        setRelated(linked ?? null);
       })
       .catch((failure: unknown) => {
         console.error('Could not open the invoice', failure);
@@ -90,6 +98,8 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
   }
 
   const current = invoice;
+  const noun = kindNoun(current.kind);
+  const canConvert = current.kind !== undefined && current.kind !== 'invoice' && current.status === 'issued' && !current.convertedToId;
 
   async function duplicate() {
     setBusy(true);
@@ -97,12 +107,28 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
     try {
       const stamp = now();
       const today = todayIso(stamp);
-      const copy = duplicateInvoice(current, { id: newId(), number: await storage.invoices.nextNumber(today), issueDate: today, now: stamp });
+      const copy = duplicateInvoice(current, { id: newId(), number: await storage.invoices.nextNumber(today, seriesOf(current)), issueDate: today, now: stamp });
       const saved = await storage.invoices.save(copy);
       onEdit(saved.id);
     } catch (failure) {
       console.error('Could not duplicate the invoice', failure);
       setError('The invoice could not be duplicated. Try again.');
+      setBusy(false);
+    }
+  }
+
+  async function convert() {
+    setBusy(true);
+    setError(null);
+    try {
+      const draft = await storage.invoices.convert(current.id, { id: newId(), issueDate: todayIso(now()) });
+      setInvoice({ ...current, convertedToId: draft.id });
+      setRelated(draft);
+      setBusy(false);
+      onEdit(draft.id);
+    } catch (failure) {
+      console.error('Could not convert the document', failure);
+      setError(failure instanceof ConversionError ? failure.message : 'It could not be converted to an invoice. Try again.');
       setBusy(false);
     }
   }
@@ -126,7 +152,9 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
           <h2 style={{ fontSize: '1.8rem', fontFamily: 'var(--ff-mono)' }}>{current.number}</h2>
+          <KindBadge kind={current.kind} />
           <StatusBadge status={current.status} />
+          <ConvertedBadge invoice={current} />
         </div>
         <Button variant="secondary" onClick={onBack}>
           Back to invoices
@@ -134,15 +162,32 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
       </div>
       <p style={{ color: 'var(--text-muted)' }}>
         {current.client.name} · {formatIsoDate(current.issueDate)} · {totalOf(current)}
+        {current.kind === 'quote' && current.validUntil ? ` · Valid until ${formatIsoDate(current.validUntil)}` : ''}
       </p>
+      {related ? (
+        <p style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+          {current.convertedToId ? `Converted to ${related.status === 'draft' ? 'draft ' : ''}invoice ${related.number}.` : `Made from ${kindNoun(related.kind)} ${related.number}.`}
+          <Button variant="ghost" aria-label={`Open ${related.number}`} onClick={() => (related.status === 'draft' ? onEdit(related.id) : onView?.(related.id))}>
+            Open
+          </Button>
+        </p>
+      ) : null}
+      {related && current.convertedToId && current.kind === 'proforma' && related.advanceReceived ? (
+        <Notice tone="info">The advance received on this proforma was carried over to invoice {related.number}.</Notice>
+      ) : null}
+      {related && current.convertedToId && related.status === 'cancelled' ? (
+        <Notice tone="info">
+          Invoice {related.number} was cancelled. This {noun} stays marked as converted and its number stays used. To invoice the work again, duplicate this {noun} as a new draft.
+        </Notice>
+      ) : null}
       {confirming ? (
         <div style={{ display: 'grid', gap: '0.6rem' }}>
           <p ref={confirmRef} tabIndex={-1}>
-            Cancel this invoice? Its number stays used.
+            Cancel this {noun}? Its number stays used.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <Button disabled={busy} onClick={() => void cancel()}>
-              Yes, cancel invoice
+              Yes, cancel {noun}
             </Button>
             <Button
               variant="secondary"
@@ -157,12 +202,17 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
         </div>
       ) : (
         <div ref={actionsRef} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {canConvert ? (
+            <Button disabled={busy} onClick={() => void convert()}>
+              Convert to invoice
+            </Button>
+          ) : null}
           <Button variant="secondary" disabled={busy} onClick={() => void duplicate()}>
             Duplicate as new draft
           </Button>
           {current.status === 'issued' ? (
             <Button variant="ghost" data-cancel-trigger="" onClick={() => setConfirming(true)}>
-              Cancel invoice
+              Cancel {noun}
             </Button>
           ) : null}
         </div>

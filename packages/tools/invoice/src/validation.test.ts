@@ -268,3 +268,35 @@ describe('validateInvoice with an enormous total', () => {
     expect(issues.map((issue) => issue.path)).toContain('lines');
   });
 });
+
+describe('validateInvoice: quotations', () => {
+  const quote = (overrides = {}) => makeInvoice({ kind: 'quote', number: 'QT/2026-27/0001', issueDate: '2026-10-14', validUntil: '2026-11-13', ...overrides });
+
+  it('accepts a quotation with a valid-until date and no due date', () => {
+    expect(validateInvoice(quote())).toEqual([]);
+    expect(validateInvoice(quote({ validUntil: '2026-10-14' }))).toEqual([]);
+  });
+
+  it('requires valid-until, a real date, not before the issue date', () => {
+    const { validUntil: _unused, ...without } = quote();
+    expect(paths(validateInvoice(without as never))).toEqual(['validUntil']);
+    expect(paths(validateInvoice(quote({ validUntil: '2026-02-30' })))).toEqual(['validUntil']);
+    expect(validateInvoice(quote({ validUntil: '2026-10-13' }))[0]?.message).toMatch(/before the issue date/);
+  });
+
+  it('has no due date', () => {
+    expect(paths(validateInvoice(quote({ dueDate: '2026-11-01' })))).toEqual(['dueDate']);
+  });
+
+  it('keeps the same line checks', () => {
+    expect(paths(validateInvoice(quote({ lines: [] })))).toEqual(['lines']);
+  });
+
+  it('does not require valid-until on an invoice', () => {
+    expect(validateInvoice(makeInvoice())).toEqual([]);
+  });
+
+  it('ignores TDS and advance on a quotation, so they never make it invalid', () => {
+    expect(validateInvoice(quote({ advanceReceived: 99999999, tds: { ratePercent: 10 } }))).toEqual([]);
+  });
+});

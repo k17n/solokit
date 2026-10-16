@@ -12,3 +12,5 @@ export * from './backup';
 export * from './gst-input';
 export * from './normalise';
 export * from './draft';
+export * from './series';
+export * from './convert';

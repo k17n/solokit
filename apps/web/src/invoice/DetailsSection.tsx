@@ -2,7 +2,7 @@
 
 import { SUPPORTED_CURRENCIES, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
 import { CheckboxField, Notice, SelectField, TextAreaField, TextField } from '@solokit/ui';
-import { taxApplies, type EditorState } from './editorModel';
+import { DEFAULT_VALIDITY_DAYS, addDaysIso, taxApplies, type EditorState } from './editorModel';
 import { selectableStates } from './profileFormState';
 
 export interface DetailsSectionProps {
@@ -12,39 +12,66 @@ export interface DetailsSectionProps {
   themes: InvoiceTheme[];
   /** Messages keyed like `issueDate`. */
   errors: Record<string, string>;
+  /** The document type cannot change once a draft has been saved, because its number belongs to that type's series. */
+  kindLocked?: boolean;
+  /** Said under the number, for example when it was replaced after the type changed. */
+  numberHint?: string | undefined;
 }
 
 const groupStyle = { display: 'grid', gap: '1rem', minWidth: 0, margin: 0, padding: 0, border: 0 } as const;
 const legendStyle = { padding: 0, marginBottom: '0.25rem', fontFamily: 'var(--ff-display)', fontSize: '1.25rem', fontWeight: 700 } as const;
 const rowStyle = { display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', alignItems: 'start' } as const;
 
-export function DetailsSection({ state, onChange, profile, themes, errors }: DetailsSectionProps) {
+/** What an ordinary invoice is called for this seller and supply. */
+function invoiceLabel(state: EditorState, profile: SellerProfile): string {
+  if (profile.gstStatus === 'unregistered') return 'Invoice';
+  if (profile.gstStatus === 'composition' || state.exemptSupply) return 'Bill of supply';
+  return 'Tax invoice';
+}
+
+const NUMBER_LABEL: Record<EditorState['kind'], string> = { invoice: 'Invoice number', proforma: 'Proforma number', quote: 'Quotation number' };
+const DETAILS_LEGEND: Record<EditorState['kind'], string> = { invoice: 'Invoice details', proforma: 'Proforma invoice details', quote: 'Quotation details' };
+
+export function DetailsSection({ state, onChange, profile, themes, errors, kindLocked = false, numberHint }: DetailsSectionProps) {
   const taxed = taxApplies(state, profile);
   const regular = profile.gstStatus === 'regular';
+  const quote = state.kind === 'quote';
 
   return (
     <div style={{ display: 'grid', gap: '1.75rem' }}>
       <fieldset style={groupStyle}>
-        <legend style={legendStyle}>Invoice details</legend>
+        <legend style={legendStyle}>{DETAILS_LEGEND[state.kind]}</legend>
         <div style={rowStyle}>
           <TextField
-            label="Invoice number"
+            label={NUMBER_LABEL[state.kind]}
             autoComplete="off"
             value={state.number}
             onChange={(event) => onChange({ number: event.target.value, numberEdited: true })}
             error={errors['number']}
+            hint={numberHint}
           />
           <SelectField
-            label="Document"
+            label="Document type"
             options={[
-              { value: 'invoice', label: 'Invoice' },
+              { value: 'invoice', label: invoiceLabel(state, profile) },
               { value: 'proforma', label: 'Proforma invoice' },
+              { value: 'quote', label: 'Quotation' },
             ]}
             value={state.kind}
-            onChange={(event) => onChange({ kind: event.target.value as EditorState['kind'] })}
+            disabled={kindLocked}
+            hint={kindLocked ? 'Fixed once the draft is saved, because each type has its own numbers.' : undefined}
+            onChange={(event) => {
+              const kind = event.target.value as EditorState['kind'];
+              const validUntil = kind === 'quote' && state.validUntil === '' ? addDaysIso(state.issueDate, DEFAULT_VALIDITY_DAYS) : null;
+              onChange({ kind, ...(validUntil ? { validUntil } : {}) });
+            }}
           />
           <TextField label="Issue date" type="date" value={state.issueDate} onChange={(event) => onChange({ issueDate: event.target.value })} error={errors['issueDate']} />
-          <TextField label="Due date" type="date" value={state.dueDate} onChange={(event) => onChange({ dueDate: event.target.value })} error={errors['dueDate']} />
+          {quote ? (
+            <TextField label="Valid until" type="date" value={state.validUntil} onChange={(event) => onChange({ validUntil: event.target.value })} error={errors['validUntil']} />
+          ) : (
+            <TextField label="Due date" type="date" value={state.dueDate} onChange={(event) => onChange({ dueDate: event.target.value })} error={errors['dueDate']} />
+          )}
         </div>
       </fieldset>
 
@@ -95,7 +122,7 @@ export function DetailsSection({ state, onChange, profile, themes, errors }: Det
             error={errors['placeOfSupplyStateCode']}
           />
         ) : null}
-        {taxed ? (
+        {taxed && !quote ? (
           <CheckboxField
             label="Reverse charge applies"
             hint="The buyer pays the GST instead of you."
@@ -113,6 +140,7 @@ export function DetailsSection({ state, onChange, profile, themes, errors }: Det
         ) : null}
       </fieldset>
 
+      {quote ? null : (
       <fieldset style={groupStyle}>
         <legend style={legendStyle}>Payment</legend>
         <CheckboxField label="Client deducts TDS" checked={state.tdsEnabled} onChange={(event) => onChange({ tdsEnabled: event.target.checked })} />
@@ -137,13 +165,14 @@ export function DetailsSection({ state, onChange, profile, themes, errors }: Det
           error={errors['advanceReceived']}
         />
       </fieldset>
+      )}
 
       <fieldset style={groupStyle}>
         <legend style={legendStyle}>Notes and style</legend>
         <TextAreaField label="Notes" value={state.notes} onChange={(event) => onChange({ notes: event.target.value })} />
         <TextAreaField label="Terms" value={state.terms} onChange={(event) => onChange({ terms: event.target.value })} />
         <SelectField
-          label="Invoice theme"
+          label={quote ? 'Quotation theme' : 'Invoice theme'}
           options={themes.map((theme) => ({ value: theme.id, label: theme.name }))}
           hint="Make or change themes in the Themes tab."
           value={state.themeId}

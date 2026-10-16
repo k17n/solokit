@@ -106,6 +106,14 @@ export function validateInvoice(invoice: InvoiceRecord): Issue[] {
       add('dueDate', 'The due date cannot be before the issue date');
     }
   }
+  if (invoice.kind === 'quote') {
+    if (invoice.dueDate !== undefined) add('dueDate', 'A quotation has a "valid until" date, not a due date');
+    if (invoice.validUntil === undefined || blank(invoice.validUntil)) add('validUntil', 'Enter the date until which this quotation is valid');
+    else if (!isRealIsoDate(invoice.validUntil)) add('validUntil', 'Enter a valid "valid until" date');
+    else if (isRealIsoDate(invoice.issueDate) && invoice.validUntil < invoice.issueDate) {
+      add('validUntil', 'The "valid until" date cannot be before the issue date');
+    }
+  }
   if (isRealIsoDate(invoice.issueDate) && invoice.fiscalYear !== indianFiscalYear(invoice.issueDate)) {
     add('fiscalYear', 'The financial year must match the issue date');
   }

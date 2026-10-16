@@ -37,6 +37,8 @@ export interface EditorState {
   kind: InvoiceKind;
   issueDate: string;
   dueDate: string;
+  /** Quotations only: the last day the quoted prices hold. */
+  validUntil: string;
   clientId: string;
   client: ClientFormState;
   saveClient: boolean;
@@ -55,6 +57,8 @@ export interface EditorState {
   notes: string;
   terms: string;
   themeId: string;
+  /** The quotation or proforma this draft was converted from; kept so saving the draft does not drop the link. */
+  convertedFromId: string;
   createdAt: string;
 }
 
@@ -62,6 +66,17 @@ export interface EditorState {
 export function fiscalYearOf(isoDate: string): string | null {
   return isRealIsoDate(isoDate) ? indianFiscalYear(isoDate) : null;
 }
+
+/** An ISO date some days later (or earlier), or null when the date is not a real one. Pure date arithmetic, no time zones. */
+export function addDaysIso(isoDate: string, days: number): string | null {
+  if (!isRealIsoDate(isoDate)) return null;
+  const [year, month, day] = isoDate.split('-').map(Number) as [number, number, number];
+  const moved = new Date(Date.UTC(year, month - 1, day + days));
+  return moved.toISOString().slice(0, 10);
+}
+
+/** How long a new quotation is valid for unless the user changes it. */
+export const DEFAULT_VALIDITY_DAYS = 30;
 
 export function todayIso(now: Date): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -95,6 +110,8 @@ export interface NewEditorInput {
   today: string;
   profile: SellerProfile;
   defaultThemeId: string;
+  /** Defaults to a tax invoice. */
+  kind?: InvoiceKind;
 }
 
 export function newEditorState(input: NewEditorInput): EditorState {
@@ -102,9 +119,10 @@ export function newEditorState(input: NewEditorInput): EditorState {
     invoiceId: input.invoiceId,
     number: input.number,
     numberEdited: false,
-    kind: 'invoice',
+    kind: input.kind ?? 'invoice',
     issueDate: input.today,
     dueDate: '',
+    validUntil: input.kind === 'quote' ? (addDaysIso(input.today, DEFAULT_VALIDITY_DAYS) ?? '') : '',
     clientId: input.clientId,
     client: emptyClientForm(),
     saveClient: true,
@@ -121,6 +139,7 @@ export function newEditorState(input: NewEditorInput): EditorState {
     notes: input.profile.defaultNotes ?? '',
     terms: input.profile.defaultTerms ?? '',
     themeId: input.defaultThemeId,
+    convertedFromId: '',
     createdAt: '',
   };
 }
@@ -156,6 +175,7 @@ export function invoiceToEditor(invoice: InvoiceRecord): EditorState {
     kind: invoice.kind,
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate ?? '',
+    validUntil: invoice.validUntil ?? '',
     clientId: invoice.client.id,
     client: {
       name: invoice.client.name,
@@ -184,6 +204,7 @@ export function invoiceToEditor(invoice: InvoiceRecord): EditorState {
     notes: invoice.notes ?? '',
     terms: invoice.terms ?? '',
     themeId: invoice.themeId,
+    convertedFromId: invoice.convertedFromId ?? '',
     createdAt: invoice.createdAt,
   };
 }
@@ -202,6 +223,7 @@ function clientFormFor(state: EditorState): ClientFormState {
 export function editorToInvoice(state: EditorState, profile: SellerProfile, now: Date): BuildResult {
   const parseIssues: Issue[] = [];
   const taxed = taxApplies(state, profile);
+  const quote = state.kind === 'quote';
 
   const lines: LineItem[] = state.lines.map((draft, index) => {
     const at = `lines[${index}]`;
@@ -250,23 +272,27 @@ export function editorToInvoice(state: EditorState, profile: SellerProfile, now:
     seller: profile,
     client: formToClient(clientFormFor(state), state.clientId),
     defaultThemeId: state.themeId,
+    kind: state.kind,
     now,
   });
-  invoice.kind = state.kind;
   invoice.isExport = state.isExport;
   invoice.currency = state.isExport ? state.currency : 'INR';
-  invoice.reverseCharge = taxed && state.reverseCharge;
+  invoice.reverseCharge = taxed && state.reverseCharge && !quote;
   invoice.exemptSupply = profile.gstStatus === 'regular' && state.exemptSupply;
   if (taxed && state.placeOfSupplyStateCode !== '') invoice.placeOfSupplyStateCode = state.placeOfSupplyStateCode;
   else delete invoice.placeOfSupplyStateCode;
   invoice.lines = lines;
-  if (state.dueDate !== '') invoice.dueDate = state.dueDate;
-  if (state.tdsEnabled) {
+  if (quote) {
+    if (state.validUntil !== '') invoice.validUntil = state.validUntil;
+  } else if (state.dueDate !== '') {
+    invoice.dueDate = state.dueDate;
+  }
+  if (state.tdsEnabled && !quote) {
     const ratePercent = parsePercentInput(state.tdsPercent);
     if (ratePercent === null) parseIssues.push({ path: 'tds.ratePercent', message: 'Enter a TDS rate between 0 and 100' });
     else invoice.tds = { ratePercent };
   }
-  if (state.advance.trim() !== '') {
+  if (state.advance.trim() !== '' && !quote) {
     const advance = parseAmountInput(state.advance);
     if (advance === null) parseIssues.push({ path: 'advanceReceived', message: 'Enter the advance as an amount such as 10000' });
     else invoice.advanceReceived = advance;
@@ -277,6 +303,7 @@ export function editorToInvoice(state: EditorState, profile: SellerProfile, now:
   const terms = state.terms.trim();
   if (terms !== '') invoice.terms = terms;
   else delete invoice.terms;
+  if (state.convertedFromId !== '') invoice.convertedFromId = state.convertedFromId;
   if (state.createdAt !== '') invoice.createdAt = state.createdAt;
   return { invoice, parseIssues };
 }
@@ -300,7 +327,7 @@ export function validateEditor(state: EditorState, profile: SellerProfile, now: 
   }
   add(validateClientForm(clientFormFor(state)), 'client.');
   add(validateInvoice(invoice));
-  const numberYear = /^(\d{4}-\d{2})\//.exec(invoice.number)?.[1];
+  const numberYear = /(\d{4}-\d{2})\/\d+$/.exec(invoice.number)?.[1];
   const dateYear = fiscalYearOf(state.issueDate);
   if (numberYear && dateYear && numberYear !== dateYear) {
     add([{ path: 'number', message: `This number belongs to financial year ${numberYear} but the date is in ${dateYear}` }]);
@@ -343,6 +370,13 @@ export function duplicateInvoice(source: InvoiceRecord, input: DuplicateInput): 
   delete copy.dueDate;
   delete copy.advanceReceived;
   delete copy.themeSnapshot;
+  delete copy.convertedFromId;
+  delete copy.convertedToId;
+  delete copy.validUntil;
+  if (source.kind === 'quote') {
+    const validUntil = addDaysIso(input.issueDate, DEFAULT_VALIDITY_DAYS);
+    if (validUntil) copy.validUntil = validUntil;
+  }
   return {
     ...copy,
     id: input.id,

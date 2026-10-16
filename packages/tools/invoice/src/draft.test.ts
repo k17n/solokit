@@ -7,6 +7,11 @@ const now = new Date('2026-10-14T09:30:00.000Z');
 const base = { id: 'inv-9', number: '2026-27/0009', issueDate: '2026-10-14', seller: makeSeller(), client: makeClient(), now };
 
 describe('createDraftInvoice', () => {
+  it('can start a quote or proforma', () => {
+    expect(createDraftInvoice({ ...base, kind: 'quote' }).kind).toBe('quote');
+    expect(createDraftInvoice({ ...base, kind: 'proforma' }).kind).toBe('proforma');
+  });
+
   it('builds an empty draft from the seller and client', () => {
     const draft = createDraftInvoice(base);
     expect(draft).toMatchObject({

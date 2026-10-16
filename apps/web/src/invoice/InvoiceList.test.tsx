@@ -212,3 +212,68 @@ describe('InvoiceList: backup reminder', () => {
     expect(screen.queryByText('Back up your invoices')).not.toBeInTheDocument();
   });
 });
+
+describe('InvoiceList: quotations and proformas', () => {
+  const quote = makeInvoice({ id: 'q1', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', issueDate: '2026-10-14' });
+  const proforma = makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001', issueDate: '2026-10-13' });
+  const converted = makeInvoice({ id: 'q2', kind: 'quote', number: 'QT/2026-27/0002', validUntil: '2026-11-13', issueDate: '2026-10-12', convertedToId: 'x' });
+  const row = (number: string) => screen.getAllByRole('listitem').find((item) => item.textContent?.startsWith(number))!;
+
+  it('shows a badge for each kind, and Converted on a converted quotation', async () => {
+    await setup([issued, quote, proforma, converted]);
+    await screen.findByRole('list', { name: 'Invoices' });
+    expect(row('2026-27/0001')).toHaveTextContent('Invoice');
+    expect(row('QT/2026-27/0001')).toHaveTextContent('Quotation');
+    expect(row('QT/2026-27/0001')).not.toHaveTextContent('Converted');
+    expect(row('PF/2026-27/0001')).toHaveTextContent('Proforma');
+    expect(row('QT/2026-27/0002')).toHaveTextContent('Converted');
+  });
+
+  it('filters by kind', async () => {
+    await setup([issued, quote, proforma]);
+    await screen.findByRole('list', { name: 'Invoices' });
+    const visible = () => screen.getAllByRole('listitem').map((item) => item.textContent ?? '');
+    expect(visible()).toHaveLength(3);
+    await userEvent.click(screen.getByRole('button', { name: 'Quotes' }));
+    expect(screen.getByRole('button', { name: 'Quotes' })).toHaveAttribute('aria-pressed', 'true');
+    expect(visible()).toHaveLength(1);
+    expect(visible()[0]).toContain('QT/2026-27/0001');
+    await userEvent.click(screen.getByRole('button', { name: 'Proformas' }));
+    expect(visible()[0]).toContain('PF/2026-27/0001');
+    await userEvent.click(screen.getByRole('button', { name: 'Invoices' }));
+    expect(visible()).toHaveLength(1);
+    expect(visible()[0]).toContain('2026-27/0001');
+    await userEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(visible()).toHaveLength(3);
+  });
+
+  it('says so when a filter matches nothing', async () => {
+    await setup([issued]);
+    await screen.findByRole('list', { name: 'Invoices' });
+    await userEvent.click(screen.getByRole('button', { name: 'Quotes' }));
+    expect(screen.getByText('No quotations yet.')).toBeInTheDocument();
+  });
+
+  it('starts a new quotation from the list', async () => {
+    const { onNew } = await setup([issued]);
+    await userEvent.click(await screen.findByRole('button', { name: 'New quotation' }));
+    expect(onNew).toHaveBeenCalledWith('quote');
+    await userEvent.click(screen.getByRole('button', { name: 'New invoice' }));
+    expect(onNew).toHaveBeenLastCalledWith();
+  });
+
+  it('cancels a quotation under its own name, keeping its number', async () => {
+    const { storage } = await setup([quote]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel quotation QT/2026-27/0001' }));
+    expect(screen.getByText('Cancel quotation QT/2026-27/0001? Its number stays used.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, cancel quotation' }));
+    await waitFor(async () => expect((await storage.invoices.get('q1'))?.status).toBe('cancelled'));
+  });
+
+  it('duplicates a quotation into the next quotation number, not a tax invoice number', async () => {
+    const { storage, onEdit } = await setup([issued, quote]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Duplicate QT/2026-27/0001' }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
+    expect(await storage.invoices.get(onEdit.mock.calls[0]![0])).toMatchObject({ kind: 'quote', number: 'QT/2026-27/0002', status: 'draft', validUntil: '2026-11-13' });
+  });
+});

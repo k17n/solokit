@@ -5,8 +5,9 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 ## Status
 
 - Done: monorepo, core primitives, India GST/TDS engine, design system, app shell, tool registry, local storage layer, installable offline site.
-- Done: invoice editor with live PDF preview, issuing, PDF download, and the invoice list (duplicate, cancel).
+- Done: invoice editor with live PDF preview, issuing, PDF download, and the invoice list (kind badge and filter, duplicate, cancel).
 - Done: invoice themes (six presets, your own colours and font, default and per-invoice choice) and the backup and restore screens (unencrypted JSON file, reminder after 30 days, restore on a fresh device).
+- Done: quotations and proforma invoices inside the invoice tool, each with its own number series (tax invoices keep theirs), a validity date on quotations, and Convert to invoice. A quotation is an estimate, not a tax invoice, and carries no tax-invoice wording.
 - Next: more tools and countries.
 
 ## Layout

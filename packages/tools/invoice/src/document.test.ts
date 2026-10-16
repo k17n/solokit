@@ -436,3 +436,42 @@ describe('buildInvoiceDocument: odd seller data that validation lets through', (
     expect(doc.payment.upi?.id).toBe('asha@okhdfc');
   });
 });
+
+describe('buildInvoiceDocument: quotations', () => {
+  const quote = (overrides = {}) => makeInvoice({ kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', ...overrides });
+
+  it('is titled Quotation with a validity date, no due date and the estimate note only', () => {
+    const doc = buildInvoiceDocument(quote({ reverseCharge: true, tds: { ratePercent: 10 }, advanceReceived: 1000, dueDate: '2026-10-29' }));
+    expect(doc.title).toBe('Quotation');
+    expect(doc.estimate).toBe(true);
+    expect(doc.validUntil).toBe('13 Nov 2026');
+    expect(doc.dueDate).toBeUndefined();
+    expect(doc.declarations).toEqual(['This is an estimate, not a tax invoice.']);
+  });
+
+  it('marks tax and the total as estimated, and ignores TDS, advance and reverse charge', () => {
+    const doc = buildInvoiceDocument(quote({ reverseCharge: true, tds: { ratePercent: 10 }, advanceReceived: 1000 }));
+    const labels = doc.totals.map((row) => row.label);
+    expect(labels).toEqual(['Taxable value', 'CGST @9% (estimated)', 'SGST @9% (estimated)', 'Estimated total']);
+    expect(doc.totals.at(-1)?.amount).toBe('₹84,960.00');
+  });
+
+  it('shows no payment details or UPI code', () => {
+    expect(buildInvoiceDocument(quote()).payment).toEqual({});
+  });
+
+  it('adds no GST for unregistered or composition sellers', () => {
+    for (const gstStatus of ['unregistered', 'composition'] as const) {
+      const doc = buildInvoiceDocument(quote({ seller: makeSeller({ gstStatus, gstin: undefined }) }));
+      expect(doc.showTax).toBe(false);
+      expect(doc.declarations).toEqual(['This is an estimate, not a tax invoice.']);
+      expect(doc.title).toBe('Quotation');
+    }
+  });
+
+  it('does not give an invoice a validity date', () => {
+    const doc = buildInvoiceDocument(makeInvoice({ validUntil: '2026-11-13' }));
+    expect(doc.validUntil).toBeUndefined();
+    expect(doc.estimate).toBe(false);
+  });
+});

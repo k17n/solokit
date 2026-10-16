@@ -38,7 +38,8 @@ describe('tool registry', () => {
     const available = getAvailableTools().map((tool) => tool.slug);
     expect(available).toEqual(['invoice']);
     expect(getToolBySlug('invoice')?.status).toBe('available');
-    expect(getToolBySlug('quote')?.status).toBe('coming-soon');
+    expect(getToolBySlug('quote')).toBeUndefined();
+    expect(getToolBySlug('rate-calculator')?.status).toBe('coming-soon');
   });
 
   it('builds trailing-slash hrefs', () => {

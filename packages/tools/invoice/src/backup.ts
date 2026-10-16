@@ -1,6 +1,7 @@
 import { StorageError, parseSnapshot, type DataStore, type Snapshot } from '@solokit/storage';
 import { createInvoiceStorage } from './repositories';
-import type { InvoiceRecord } from './model';
+import { numberSeriesOf } from './series';
+import type { InvoiceKind, InvoiceRecord } from './model';
 import { FONT_OPTIONS, isPresetThemeId } from './themes';
 
 export interface BackupFile {
@@ -65,6 +66,9 @@ function parseBackupText(text: string): unknown {
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
+/** Documents older than quotes have no `kind` at all, or only the first two. */
+const INVOICE_KINDS: readonly string[] = ['invoice', 'proforma', 'quote'];
+
 const LAYOUTS: readonly string[] = ['classic', 'modern', 'minimal', 'bold', 'consultant', 'formal'];
 
 function isUsableTheme(theme: Record<string, unknown>): boolean {
@@ -110,6 +114,13 @@ function checkRecords(snapshot: Snapshot): void {
       !isAddress(seller['address']) ||
       !Array.isArray(invoice['lines']) ||
       typeof invoice['status'] !== 'string'
+    ) {
+      throw new StorageError('The backup has an invoice that is incomplete, so it was not restored');
+    }
+    const optionalText = ['validUntil', 'convertedFromId', 'convertedToId'];
+    if (
+      (invoice['kind'] !== undefined && !INVOICE_KINDS.includes(invoice['kind'] as string)) ||
+      optionalText.some((key) => invoice[key] !== undefined && typeof invoice[key] !== 'string')
     ) {
       throw new StorageError('The backup has an invoice that is incomplete, so it was not restored');
     }
@@ -160,9 +171,15 @@ export interface DeviceComparison {
 export async function compareWithDevice(store: DataStore, text: string): Promise<DeviceComparison> {
   const snapshot = parseSnapshot(parseBackupText(text));
   const device = await store.list<InvoiceRecord>('invoices');
-  const key = (number: string) => number.trim().toUpperCase();
+  const key = (record: { kind?: InvoiceKind; number: string }) => `${numberSeriesOf(record)}|${record.number.trim().toUpperCase()}`;
   const inFileIds = new Set(snapshot.collections.invoices.map((record) => record.id));
-  const inFileNumbers = new Set(snapshot.collections.invoices.map((record) => key(String((record as unknown as { number?: unknown }).number ?? ''))));
+  const inFileNumbers = new Set(
+    snapshot.collections.invoices.map((record) => {
+      const { kind, number } = record as unknown as { kind?: InvoiceKind; number?: unknown };
+      return key({ ...(kind ? { kind } : {}), number: String(number ?? '') });
+    }),
+  );
+  const keyOf = new Map(device.map((invoice) => [invoice.id, key(invoice)]));
   const missing = device
     .filter((invoice) => !inFileIds.has(invoice.id))
     .map((invoice) => ({ id: invoice.id, number: invoice.number, status: invoice.status }))
@@ -173,7 +190,7 @@ export async function compareWithDevice(store: DataStore, text: string): Promise
   return {
     missing,
     missingIssued: owning.length,
-    reusableNumbers: owning.filter((invoice) => !inFileNumbers.has(key(invoice.number))).map((invoice) => invoice.number),
+    reusableNumbers: owning.filter((invoice) => !inFileNumbers.has(keyOf.get(invoice.id) ?? '')).map((invoice) => invoice.number),
     fileIsOlder: !Number.isNaN(exported) && newest > exported,
   };
 }

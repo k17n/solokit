@@ -257,6 +257,25 @@ describe('InvoiceApp: invoices', () => {
     expect(screen.getByRole('button', { name: 'Invoices' })).toHaveAttribute('aria-current', 'page');
   });
 
+  it('issues a quotation, converts it to a draft invoice, and keeps the quotation in the list', async () => {
+    const { storage } = await openApp([makeInvoice({ id: 'q1', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13' })]);
+    await userEvent.click(await screen.findByRole('button', { name: 'New quotation' }));
+    expect(await screen.findByRole('heading', { name: 'New quotation' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0002');
+    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Open QT/2026-27/0001' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
+    expect(await screen.findByRole('heading', { name: 'Edit draft' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
+    expect(screen.getByLabelText('Document type')).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await screen.findByText('Draft saved');
+    expect((await storage.invoices.list()).find((invoice) => invoice.kind === 'invoice')?.convertedFromId).toBe('q1');
+    await userEvent.click(screen.getByRole('button', { name: 'Back to invoices' }));
+    expect(await screen.findByText('QT/2026-27/0001')).toBeInTheDocument();
+    expect(screen.getByText('Converted')).toBeInTheDocument();
+  });
+
   it('shows the viewer after an invoice is issued', async () => {
     await openApp();
     await userEvent.click(await screen.findByRole('button', { name: 'Create your first invoice' }));

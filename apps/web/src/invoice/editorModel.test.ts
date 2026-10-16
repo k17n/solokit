@@ -2,6 +2,7 @@ import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testi
 import { describe, expect, it } from 'vitest';
 import { clientToForm } from './clientFormState';
 import {
+  addDaysIso,
   duplicateInvoice,
   editorToInvoice,
   emptyLine,
@@ -380,5 +381,73 @@ describe('duplicateInvoice', () => {
   it('works out the financial year of the new date', () => {
     const copy = duplicateInvoice(makeInvoice(), { id: 'n', number: '2027-28/0001', issueDate: '2027-04-02' });
     expect(copy.fiscalYear).toBe('2027-28');
+  });
+});
+
+describe('quotations in the editor model', () => {
+  const quoteState = (overrides: Partial<EditorState> = {}) =>
+    complete({ kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', ...overrides });
+
+  it('adds days to a date without time zone surprises', () => {
+    expect(addDaysIso('2026-10-14', 30)).toBe('2026-11-13');
+    expect(addDaysIso('2026-12-20', 30)).toBe('2027-01-19');
+    expect(addDaysIso('2028-02-01', 28)).toBe('2028-02-29');
+    expect(addDaysIso('nope', 1)).toBeNull();
+  });
+
+  it('starts a quotation valid for 30 days', () => {
+    const state = newEditorState({ invoiceId: 'i', clientId: 'c', lineId: 'l', number: 'QT/2026-27/0001', today: '2026-10-14', profile: regular, defaultThemeId: 'classic', kind: 'quote' });
+    expect(state).toMatchObject({ kind: 'quote', validUntil: '2026-11-13' });
+  });
+
+  it('builds a quotation with valid-until and without due date, TDS, advance or reverse charge', () => {
+    const { invoice } = editorToInvoice(
+      quoteState({ dueDate: '2026-10-29', tdsEnabled: true, advance: '1000', reverseCharge: true }),
+      regular,
+      NOW,
+    );
+    expect(invoice).toMatchObject({ kind: 'quote', validUntil: '2026-11-13', reverseCharge: false });
+    expect(invoice.dueDate).toBeUndefined();
+    expect(invoice.tds).toBeUndefined();
+    expect(invoice.advanceReceived).toBeUndefined();
+  });
+
+  it('keeps valid-until off other documents', () => {
+    expect(editorToInvoice(complete({ validUntil: '2026-11-13' }), regular, NOW).invoice.validUntil).toBeUndefined();
+  });
+
+  it('round-trips a saved quotation', () => {
+    const { invoice } = editorToInvoice(quoteState(), regular, NOW);
+    expect(invoiceToEditor(invoice)).toMatchObject({ kind: 'quote', validUntil: '2026-11-13' });
+  });
+
+  it('validates valid-until and ignores TDS and advance typed before the switch', () => {
+    expect(validateEditor(quoteState(), regular, NOW)).toEqual([]);
+    expect(validateEditor(quoteState({ validUntil: '' }), regular, NOW).map((i) => i.path)).toEqual(['validUntil']);
+    expect(validateEditor(quoteState({ validUntil: '2026-10-13' }), regular, NOW).map((i) => i.path)).toEqual(['validUntil']);
+    expect(validateEditor(quoteState({ advance: '99999999', tdsEnabled: true, tdsPercent: '500' }), regular, NOW)).toEqual([]);
+  });
+
+  it('checks the financial year of prefixed numbers too', () => {
+    const issue = validateEditor(quoteState({ number: 'QT/2025-26/0007' }), regular, NOW).find((found) => found.path === 'number');
+    expect(issue?.message).toBe('This number belongs to financial year 2025-26 but the date is in 2026-27');
+  });
+
+  it('duplicates a quotation with a fresh validity and no conversion links', () => {
+    const source = makeInvoice({ kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', convertedToId: 'x', convertedFromId: 'y' });
+    const copy = duplicateInvoice(source, { id: 'n', number: 'QT/2026-27/0002', issueDate: '2026-12-20' });
+    expect(copy.validUntil).toBe('2027-01-19');
+    expect('convertedToId' in copy).toBe(false);
+    expect('convertedFromId' in copy).toBe(false);
+  });
+});
+
+describe('a draft made by converting a quotation', () => {
+  it('keeps its link back through editing and saving', () => {
+    const draft = makeInvoice({ status: 'draft', convertedFromId: 'q1' });
+    const state = invoiceToEditor(draft);
+    expect(state.convertedFromId).toBe('q1');
+    expect(editorToInvoice(state, regular, NOW).invoice.convertedFromId).toBe('q1');
+    expect(editorToInvoice(complete(), regular, NOW).invoice.convertedFromId).toBeUndefined();
   });
 });
