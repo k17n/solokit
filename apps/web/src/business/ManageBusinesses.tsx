@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { Workspace } from '@solokit/storage';
 import { createContractStorage } from '@solokit/tool-contract';
 import { createBackup, createInvoiceStorage, recordBackup } from '@solokit/tool-invoice';
 import { Badge, Button, Notice, TextField } from '@solokit/ui';
 import { downloadBlob } from '../invoice/downloads';
 import { useWorkspaces } from '../workspace/WorkspaceProvider';
+import { useGuardedSwitch } from '../workspace/useGuardedSwitch';
 import styles from './ManageBusinesses.module.css';
 
 interface Counts {
@@ -37,7 +38,8 @@ export interface ManageBusinessesProps {
 
 /** The list of Businesses with rename, archive and delete. Delete asks twice: a warning that names what goes, then the name typed in. */
 export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesProps) {
-  const { ready, workspaces, current, manager, switchTo, rename, archive, unarchive, remove } = useWorkspaces();
+  const { ready, workspaces, current, manager, rename, archive, unarchive, remove } = useWorkspaces();
+  const switchTo = useGuardedSwitch();
   const headingId = useId();
   const listRef = useRef<HTMLUListElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -53,6 +55,35 @@ export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesPro
   const [problem, setProblem] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'failed'>('idle');
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  /** Numbers the requests for "what is in this business", so an answer that arrives late is ignored. */
+  const countRequest = useRef(0);
+  /** The business whose store was opened only to count what is in it. */
+  const probed = useRef<string | null>(null);
+  const currentId = useRef<string | null>(null);
+  currentId.current = current?.id ?? null;
+
+  /** Lets go of the connection opened for counting, unless that business is the one on screen (its store is in use). */
+  const releaseProbe = useCallback(
+    (id: string) => {
+      if (id === currentId.current) return;
+      if (probed.current === id) probed.current = null;
+      void manager?.release(id).catch(() => undefined);
+    },
+    [manager],
+  );
+
+  useEffect(
+    () => () => {
+      countRequest.current++;
+      if (probed.current) releaseProbe(probed.current);
+    },
+    [releaseProbe],
+  );
+
+  function stopCounting(id: string) {
+    countRequest.current++;
+    releaseProbe(id);
+  }
 
   useEffect(() => {
     if (!focusTarget) return;
@@ -82,6 +113,9 @@ export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesPro
   }
 
   async function startDelete(workspace: Workspace) {
+    const request = ++countRequest.current;
+    if (probed.current && probed.current !== workspace.id) releaseProbe(probed.current);
+    probed.current = workspace.id;
     setDeleting(workspace.id);
     setTyped('');
     setCounts(null);
@@ -93,9 +127,15 @@ export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesPro
       if (!store) return;
       const invoice = createInvoiceStorage(store);
       const [invoices, agreements, clients] = await Promise.all([invoice.invoices.list(), createContractStorage(store).list(), invoice.clients.list()]);
+      // The person has moved on (kept it, picked another business, left the page): this answer is stale.
+      if (request !== countRequest.current) {
+        if (probed.current !== workspace.id) releaseProbe(workspace.id);
+        return;
+      }
       setCounts({ invoices: invoices.length, agreements: agreements.length, clients: clients.length });
     } catch (error) {
       console.error('Could not count what is in the business', error);
+      if (request !== countRequest.current && probed.current !== workspace.id) releaseProbe(workspace.id);
     }
   }
 
@@ -197,7 +237,7 @@ export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesPro
                     Rename<span className="sr-only"> {workspace.name}</span>
                   </button>
                   {!isCurrent && !archived ? (
-                    <button type="button" className={styles.action} disabled={busy} onClick={() => void run(() => switchTo(workspace.id))}>
+                    <button type="button" className={styles.action} disabled={busy} onClick={() => void run(async () => void (await switchTo(workspace.id)))}>
                       Switch to<span className="sr-only"> {workspace.name}</span>
                     </button>
                   ) : null}
@@ -275,6 +315,8 @@ export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesPro
                       onClick={() =>
                         void run(async () => {
                           const wasCurrent = isCurrent;
+                          countRequest.current++;
+                          probed.current = null;
                           await remove(workspace.id);
                           setDeleting(null);
                           setDone(`Deleted "${workspace.name}" from this device.${wasCurrent ? ' Now showing another business.' : ''}`);
@@ -288,6 +330,7 @@ export function ManageBusinesses({ now = () => new Date() }: ManageBusinessesPro
                       variant="secondary"
                       onClick={() => {
                         setDeleting(null);
+                        stopCounting(workspace.id);
                         setFocusTarget({ id: workspace.id, action: 'delete' });
                       }}
                     >

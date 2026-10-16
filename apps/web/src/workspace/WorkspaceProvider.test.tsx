@@ -165,7 +165,8 @@ describe('WorkspaceProvider', () => {
         <Probe />
       </WorkspaceProvider>,
     );
-    expect(await screen.findByText(/store ready/)).toBeInTheDocument();
+    // The data lives in memory only, so the tools must show their red 'not saving' notice.
+    expect(await screen.findByText('store ready / temporary / My business')).toBeInTheDocument();
     expect(latest.registryPersistent).toBe(false);
   });
 

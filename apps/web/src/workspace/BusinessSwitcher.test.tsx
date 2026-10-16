@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { makeManager } from '../business/testWorkspaces';
 import { useStore } from '../store/StoreProvider';
 import { BusinessSwitcher } from './BusinessSwitcher';
@@ -152,8 +152,12 @@ describe('WorkspacesProvider with a header above the tool', () => {
         <BusinessSwitcher />
       </WorkspacesProvider>
     );
+    const list = vi.spyOn(manager, 'list');
+    const current = vi.spyOn(manager, 'current');
     const { rerender } = render(view(false));
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Effects have run by now: a disabled provider asked for nothing.
+    expect(list).not.toHaveBeenCalled();
+    expect(current).not.toHaveBeenCalled();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     rerender(view(true));
     expect(await screen.findByRole('button', { name: 'Business My business' })).toBeInTheDocument();

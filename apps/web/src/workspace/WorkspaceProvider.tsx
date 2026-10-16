@@ -2,7 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createWorkspaceManager, type DataStore, type Workspace, type WorkspaceManager } from '@solokit/storage';
+import { Button, Notice } from '@solokit/ui';
 import { StoreProvider, useStore, type StoreState } from '../store/StoreProvider';
+import { UnsavedGuardProvider } from './unsavedGuard';
 
 export interface WorkspacesState {
   /** True once the list of Businesses has been read. Until then `workspaces` is empty and `current` is null. */
@@ -16,8 +18,9 @@ export interface WorkspacesState {
   /** Shows another Business. The tool on screen is replaced, so anything unsaved in it is gone. */
   switchTo(id: string): Promise<void>;
   /** Creates a Business. By default it becomes the current one. */
-  create(name: string, options?: { switchTo?: boolean }): Promise<Workspace>;
-  rename(id: string, name: string): Promise<void>;
+  create(name: string, options?: { switchTo?: boolean; nameInSync?: boolean }): Promise<Workspace>;
+  /** Renames a Business. `keepInSync` says the rename only follows the profile name, so the name keeps following it. */
+  rename(id: string, name: string, options?: { keepInSync?: boolean }): Promise<void>;
   archive(id: string): Promise<void>;
   unarchive(id: string): Promise<void>;
   /** Deletes a Business and all its data for good. Refuses the last one. The UI must ask twice. */
@@ -51,6 +54,10 @@ interface Loaded {
   workspaces: Workspace[];
   current: Workspace;
   store: DataStore;
+  /** Changes whenever the store behind the Business is a different one, so everything inside is rebuilt. */
+  storeKey: string;
+  /** False when the stores keep their data in memory only. */
+  storePersistent: boolean;
   registryPersistent: boolean;
 }
 
@@ -58,6 +65,7 @@ interface Loaded {
 interface StoreSource {
   loaded: Loaded | null;
   failed: boolean;
+  retry(): void;
 }
 
 const WorkspacesContext = createContext<WorkspacesState | null>(null);
@@ -83,8 +91,12 @@ export interface WorkspacesProviderProps {
 export function WorkspacesProvider({ children, manager: provided, enabled = true }: WorkspacesProviderProps) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
+  const loadRef = useRef<() => Promise<void>>(async () => {});
   const managerRef = useRef<WorkspaceManager | null>(provided ?? null);
   const latest = useRef(0);
+  /** Which build of the store each store instance got, so a different instance for the same Business also rebuilds the tool. */
+  const storeKeys = useRef(new WeakMap<DataStore, number>());
+  const storeCount = useRef(0);
 
   const refresh = useCallback(async () => {
     const manager = managerRef.current;
@@ -93,7 +105,15 @@ export function WorkspacesProvider({ children, manager: provided, enabled = true
     const [workspaces, current] = await Promise.all([manager.list(), manager.current()]);
     const store = await manager.openStore(current.id);
     // A newer refresh has started; its answer is the one to keep.
-    if (ticket === latest.current) setLoaded({ workspaces, current, store, registryPersistent: manager.persistent });
+    if (ticket !== latest.current) return;
+    let build = storeKeys.current.get(store);
+    if (build === undefined) {
+      build = ++storeCount.current;
+      storeKeys.current.set(store, build);
+    }
+    setLoaded({ workspaces, current, store, storeKey: `${current.id}:${build}`, storePersistent: manager.storesPersistent, registryPersistent: manager.persistent });
+    // The list is readable again: an earlier failure is over.
+    setFailed(false);
   }, []);
 
   useEffect(() => {
@@ -105,6 +125,7 @@ export function WorkspacesProvider({ children, manager: provided, enabled = true
         console.warn('SoloKit could not read its list of businesses.', error);
         if (!cancelled) setFailed(true);
       });
+    loadRef.current = load;
     void load();
     const unsubscribe = manager.subscribe(() => void load());
     return () => {
@@ -113,6 +134,11 @@ export function WorkspacesProvider({ children, manager: provided, enabled = true
       latest.current++;
     };
   }, [enabled, refresh]);
+
+  const retry = useCallback(() => {
+    setFailed(false);
+    void loadRef.current();
+  }, []);
 
   useEffect(
     () => () => {
@@ -140,13 +166,13 @@ export function WorkspacesProvider({ children, manager: provided, enabled = true
         await refresh();
       },
       async create(name, options = {}) {
-        const created = await manager.create(name);
+        const created = await manager.create(name, options.nameInSync === true ? { nameInSync: true } : {});
         if (options.switchTo !== false) await manager.setCurrent(created.id);
         await refresh();
         return created;
       },
-      async rename(id, name) {
-        await manager.rename(id, name);
+      async rename(id, name, options) {
+        await manager.rename(id, name, options);
         await refresh();
       },
       async archive(id) {
@@ -164,11 +190,13 @@ export function WorkspacesProvider({ children, manager: provided, enabled = true
     };
   }, [loaded, refresh]);
 
-  const source = useMemo<StoreSource>(() => ({ loaded, failed }), [loaded, failed]);
+  const source = useMemo<StoreSource>(() => ({ loaded, failed, retry }), [loaded, failed, retry]);
 
   return (
     <WorkspacesContext.Provider value={value}>
-      <StoreSourceContext.Provider value={source}>{children}</StoreSourceContext.Provider>
+      <StoreSourceContext.Provider value={source}>
+        <UnsavedGuardProvider>{children}</UnsavedGuardProvider>
+      </StoreSourceContext.Provider>
     </WorkspacesContext.Provider>
   );
 }
@@ -188,11 +216,26 @@ export function WorkspaceStore({ children, reload }: WorkspaceStoreProps) {
   const loaded = source?.loaded ?? null;
   const storeFactory = useMemo(() => (loaded ? () => loaded.store : undefined), [loaded]);
   if (!source) return <WorkspaceProvider {...(reload ? { reload } : {})}>{children}</WorkspaceProvider>;
+  // The Business could not be worked out. Never fall back to some default database: that would show, and write to,
+  // data that may belong to another Business. Say so and let the person try again.
+  if (!loaded && source.failed) {
+    return (
+      <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '1rem' }}>
+        <Notice tone="danger" title="Your businesses could not be opened">
+          Your browser could not read the list of businesses saved on this device, so nothing is shown and nothing is saved. Try again. If it keeps happening, reload the page.
+        </Notice>
+        <div>
+          <Button onClick={source.retry}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
   return (
-    // A failure to read the list at all: fall back to the tool's own temporary store rather than a blank page.
+    // Keyed by the Business and its store: whenever either changes, the tool is built again from scratch.
     <StoreProvider
-      key={source.failed ? 'failed' : (loaded?.current.id ?? 'pending')}
-      pending={!loaded && !source.failed}
+      key={loaded?.storeKey ?? 'pending'}
+      pending={!loaded}
+      persistent={loaded?.storePersistent ?? true}
       {...(storeFactory ? { factory: storeFactory } : {})}
       {...(reload ? { reload } : {})}
     >

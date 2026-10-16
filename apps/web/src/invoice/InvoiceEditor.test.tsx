@@ -107,7 +107,8 @@ describe('InvoiceEditor: opening', () => {
   });
 
   it('renumbers when the issue date moves into a new financial year, until the number is typed by hand', async () => {
-    await setup();
+    const { storage } = await setup();
+    const nextNumber = vi.spyOn(storage.invoices, 'nextNumber');
     const date = screen.getByLabelText('Issue date');
     await userEvent.clear(date);
     await userEvent.type(date, '2027-04-02');
@@ -115,37 +116,36 @@ describe('InvoiceEditor: opening', () => {
     await userEvent.clear(screen.getByLabelText('Invoice number'));
     await userEvent.type(screen.getByLabelText('Invoice number'), 'MINE-1');
     await userEvent.clear(date);
+    const askedBefore = nextNumber.mock.calls.length;
     await userEvent.type(date, '2026-05-01');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-    });
+    // A number typed by hand is not worked out again: the editor does not even ask for one.
+    expect(nextNumber.mock.calls.length).toBe(askedBefore);
     expect(screen.getByLabelText('Invoice number')).toHaveValue('MINE-1');
   });
 
   it('does not renumber when the date moves within the same financial year', async () => {
     const { storage } = await setup();
     await storage.invoices.save(makeInvoice({ id: 'late', number: '2026-27/0002' }));
+    const nextNumber = vi.spyOn(storage.invoices, 'nextNumber');
     const date = screen.getByLabelText('Issue date');
     await userEvent.clear(date);
     await userEvent.type(date, '2026-11-20');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-    });
+    // Same financial year: the editor does not ask for a new number at all.
+    expect(nextNumber).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
   });
 
   it('keeps the number of a saved new draft when its date moves into another financial year', async () => {
-    await setup();
+    const { storage } = await setup();
     await fillClient();
     await fillFirstItem();
     await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
     await screen.findByText('Draft saved');
+    const nextNumber = vi.spyOn(storage.invoices, 'nextNumber');
     const date = screen.getByLabelText('Issue date');
     await userEvent.clear(date);
     await userEvent.type(date, '2027-04-02');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-    });
+    expect(nextNumber).not.toHaveBeenCalled();
     expect(screen.getByLabelText('Invoice number')).toHaveValue('2026-27/0001');
   });
 
@@ -535,18 +535,18 @@ describe('InvoiceEditor: quotations and number series', () => {
   });
 
   it('keeps a hand-typed number that already fits the new type', async () => {
-    await setup();
+    const { storage } = await setup();
+    const nextNumber = vi.spyOn(storage.invoices, 'nextNumber');
     await changeType('Quotation');
     await waitFor(() => expect(screen.getByLabelText('Quotation number')).toHaveValue('QT/2026-27/0001'));
     await userEvent.clear(screen.getByLabelText('Quotation number'));
     await userEvent.type(screen.getByLabelText('Quotation number'), 'QT/2026-27/0099');
     await changeType('Proforma invoice');
     await waitFor(() => expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0001'));
+    const askedBefore = nextNumber.mock.calls.length;
     await userEvent.clear(screen.getByLabelText('Proforma number'));
     await userEvent.type(screen.getByLabelText('Proforma number'), 'PF/2026-27/0050');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-    });
+    expect(nextNumber.mock.calls.length).toBe(askedBefore);
     expect(screen.getByLabelText('Proforma number')).toHaveValue('PF/2026-27/0050');
     expect(screen.queryByText(/was replaced/i)).not.toBeInTheDocument();
   });

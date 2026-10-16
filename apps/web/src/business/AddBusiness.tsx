@@ -50,7 +50,8 @@ export function AddBusiness({ onCreated, onCancel }: AddBusinessProps) {
     setNameError(null);
     setProblem(null);
     try {
-      const created = await create(name);
+      // The setup screen suggests this name for the business's details, and the business then follows the name they end up with.
+      const created = await create(name, { nameInSync: true });
       onCreated(created);
     } catch (error) {
       console.error('Could not create the business', error);

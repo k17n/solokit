@@ -161,7 +161,7 @@ describe('BusinessPage', () => {
     renderPage(manager);
     await userEvent.type(await screen.findByLabelText(/Business name/), 'Studio Two');
     await userEvent.click(screen.getByRole('button', { name: 'Create business' }));
-    expect(await screen.findByRole('heading', { name: 'Set up Studio Two' }, { timeout: 25_000 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Set up Studio Two' })).toBeInTheDocument();
     expect(screen.getByLabelText('Business or personal name')).toHaveValue('Studio Two');
     expect(latest.current?.name).toBe('Studio Two');
   });
@@ -176,5 +176,43 @@ describe('BusinessPage', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(await screen.findByRole('heading', { name: 'Add a business' })).toBeInTheDocument();
+  });
+
+  it('a business added with a custom name keeps following the profile name while it is in step, until it is renamed on purpose', async () => {
+    const { manager } = makeManager();
+    await seed(manager, 'default');
+    window.location.hash = '#add';
+    renderPage(manager);
+    await userEvent.type(await screen.findByLabelText(/Business name/), 'Studio Two');
+    await userEvent.click(screen.getByRole('button', { name: 'Create business' }));
+    await screen.findByRole('heading', { name: 'Set up Studio Two' });
+    expect(latest.current?.nameInSync).toBe(true);
+
+    // First save of the setup step: the profile name differs from the suggestion.
+    await userEvent.click(screen.getByRole('radio', { name: /Not registered for GST/ }));
+    await userEvent.clear(screen.getByLabelText('Business or personal name'));
+    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Studio Two Design');
+    await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
+    await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
+    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await waitFor(() => expect(latest.current?.name).toBe('Studio Two Design'));
+
+    // A later edit of the profile name is followed too.
+    await userEvent.clear(await screen.findByLabelText('Business or personal name'));
+    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Studio Two Design LLP');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(latest.current?.name).toBe('Studio Two Design LLP'));
+    expect(latest.current?.nameInSync).toBe(true);
+
+    // Renaming it on purpose ends the following.
+    await act(async () => {
+      await latest.rename(latest.current!.id, 'Front desk');
+    });
+    expect(latest.current?.nameInSync).toBe(false);
+    await userEvent.clear(await screen.findByLabelText('Business or personal name'));
+    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Something else');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText(/^Saved./);
+    expect(latest.current?.name).toBe('Front desk');
   });
 });

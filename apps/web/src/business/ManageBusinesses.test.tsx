@@ -1,6 +1,7 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DataStore } from '@solokit/storage';
 import { createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeInvoice } from '@solokit/tool-invoice/testing';
 import * as downloads from '../invoice/downloads';
@@ -130,5 +131,53 @@ describe('ManageBusinesses', () => {
     expect(screen.queryByRole('group', { name: /for good/ })).not.toBeInTheDocument();
     expect(within(row('Studio Two')).getByRole('button', { name: 'Delete Studio Two' })).toHaveFocus();
     expect(latest.workspaces).toHaveLength(2);
+  });
+
+  it('ignores a slow count that arrives after the person moved on, and lets go of the connection it opened', async () => {
+    const manager = await setup();
+    await act(async () => {
+      await latest.create('Studio Three', { switchTo: false });
+    });
+    const two = createInvoiceStorage(await manager.openStore('w1'));
+    await two.invoices.save(makeInvoice({ id: 'a', status: 'issued' }));
+    const three = createInvoiceStorage(await manager.openStore('w2'));
+    await three.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0002', status: 'issued' }));
+    await three.invoices.save(makeInvoice({ id: 'c', number: '2026-27/0003', status: 'issued' }));
+    await manager.release('w1');
+    await manager.release('w2');
+
+    let openGate: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+    const real = manager.openStore.bind(manager);
+    vi.spyOn(manager, 'openStore').mockImplementation(async (id) => {
+      const store = await real(id);
+      if (id !== 'w1') return store;
+      return { ...store, list: async (collection) => (await gate, store.list(collection)) } as DataStore;
+    });
+    const release = vi.spyOn(manager, 'release');
+    const releasedTwo = () => release.mock.calls.filter(([id]) => id === 'w1').length;
+
+    await userEvent.click(within(row('Studio Two')).getByRole('button', { name: 'Delete Studio Two' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(releasedTwo()).toBe(1);
+    await userEvent.click(within(row('Studio Three')).getByRole('button', { name: 'Delete Studio Three' }));
+    expect(await screen.findByText(/2 invoice or quotes/)).toBeInTheDocument();
+
+    // The first, slow answer arrives now. It describes another business and must not replace what is shown.
+    openGate();
+    await waitFor(() => expect(releasedTwo()).toBe(2));
+    expect(screen.getByText(/2 invoice or quotes/)).toBeInTheDocument();
+    expect(screen.queryByText(/1 invoice or quote,/)).not.toBeInTheDocument();
+  });
+
+  it('lets go of the connection opened for counting when the page is left', async () => {
+    const manager = await setup();
+    const release = vi.spyOn(manager, 'release');
+    await userEvent.click(within(row('Studio Two')).getByRole('button', { name: 'Delete Studio Two' }));
+    await screen.findByText(/0 invoice or quotes/);
+    cleanup();
+    expect(release).toHaveBeenCalledWith('w1');
   });
 });

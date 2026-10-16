@@ -276,7 +276,7 @@ describe('BackupScreen: restoring an older backup', () => {
     const download = vi.spyOn(downloads, 'downloadBlob').mockImplementation(() => {});
     const { storage } = await deviceWithMore();
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
-    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the current data first' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the data on this device first' }));
     await waitFor(() => expect(download).toHaveBeenCalledOnce());
     const ids = (JSON.parse(await textOf(download.mock.calls[0]![0])).collections.invoices as { id: string }[]).map((invoice) => invoice.id).sort();
     expect(ids).toEqual(['b', 'c', 'one']);
@@ -292,8 +292,8 @@ describe('BackupScreen: restoring an older backup', () => {
     });
     const { storage } = await deviceWithMore();
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(await olderFile()));
-    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the current data first' }));
-    expect(await screen.findByText(/current data could not be created/i)).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'Download a backup of the data on this device first' }));
+    expect(await screen.findByText(/backup of the data on this device could not be created/i)).toBeInTheDocument();
     expect((await storage.settings.get()).lastBackupAt).toBeUndefined();
   });
 });

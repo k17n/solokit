@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
@@ -22,9 +22,13 @@ async function setup(profile: BusinessProfile = makeSeller({ name: 'Asha Rao', b
 
 describe('BrandThemeCard', () => {
   it('renders nothing while there are no brand colours', async () => {
-    const { view } = await setup(makeSeller());
+    const { view, storage } = await setup(makeSeller());
+    const settings = vi.spyOn(storage.settings, 'get');
     const { container } = render(view(makeSeller()));
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Wait for the card to have read the themes and settings, so that "nothing" is its answer and not its loading state.
+    await waitFor(() => expect(settings).toHaveBeenCalled());
+    await settings.mock.results[0]!.value;
+    await act(async () => {});
     expect(container).toBeEmptyDOMElement();
   });
 

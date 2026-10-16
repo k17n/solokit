@@ -15,8 +15,11 @@ import {
   type BackupSummary,
   type DeviceComparison,
 } from '@solokit/tool-invoice';
+import type { BusinessProfile } from '@solokit/profile';
 import { Button, Notice } from '@solokit/ui';
 import { useOptionalWorkspaces, useStorage } from '../workspace/WorkspaceProvider';
+import { useGuardedSwitch } from '../workspace/useGuardedSwitch';
+import { followsProfileName } from './useProfileSaver';
 import { downloadBlob } from '../invoice/downloads';
 import { readText } from './files';
 import styles from './BackupScreen.module.css';
@@ -80,6 +83,9 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
   /** Both restore choices need the list of Businesses; without it (and on the first-run screen) the backup replaces what is here. */
   const canRestoreAsNew = !restoreOnly && workspaces?.manager != null && workspace !== null;
   const businessLabel = workspace ? `"${workspace.name}"` : 'this device';
+  /** Where the data being talked about lives, in words: the Business when there is one. */
+  const dataIn = workspace ? `the data in "${workspace.name}"` : 'the data on this device';
+  const switchTo = useGuardedSwitch();
   const storage = useMemo(() => createInvoiceStorage(store), [store]);
   const contractStorage = useMemo(() => createContractStorage(store), [store]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
@@ -90,7 +96,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
   const [fileError, setFileError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [restored, setRestored] = useState<BackupSummary | null>(null);
+  const [restored, setRestored] = useState<{ summary: BackupSummary; where: string } | null>(null);
   const [safetyCopy, setSafetyCopy] = useState<'idle' | 'done' | 'failed'>('idle');
   const [asNew, setAsNew] = useState<{ id: string; name: string } | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -213,17 +219,36 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
     }
   }
 
+  /** The Business's name follows its profile's name, as when the profile is saved from a form. Returns the name to show. */
+  async function syncNameWithRestoredProfile(before: BusinessProfile | null): Promise<string> {
+    if (!workspace || !workspaces) return workspace?.name ?? '';
+    try {
+      const profile = await storage.profile.get();
+      const name = profile?.name.trim() ?? '';
+      if (name !== '' && name !== workspace.name && followsProfileName(workspace, before)) {
+        await workspaces.rename(workspace.id, name, { keepInSync: true });
+        return name;
+      }
+    } catch (error) {
+      console.warn('Could not rename the business to match the restored profile', error);
+    }
+    return workspace.name;
+  }
+
   async function confirmRestore() {
     if (!pending) return;
     setBusy(true);
     setRestoreError(null);
     try {
+      // What the profile said before, for the rule that decides whether the Business's name follows the restored one.
+      const before = await storage.profile.get().catch(() => undefined);
       await restoreBackup(store, pending.text);
       const summary = pending.summary;
       setPending(null);
       if (fileInput.current) fileInput.current.value = '';
       await refresh();
-      setRestored(summary);
+      const where = await syncNameWithRestoredProfile(before ?? null);
+      setRestored({ summary, where });
       onRestored(summary);
     } catch (error) {
       console.error('Could not restore the backup', error);
@@ -282,7 +307,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
         <p>
           {canRestoreAsNew
             ? `You can restore a backup as a new business, which leaves ${businessLabel} and every other business as they are, or replace ${businessLabel} with it. Nothing changes until you confirm.`
-            : 'Restoring replaces everything on this device with the contents of the backup file. Nothing changes until you confirm.'}
+            : `Restoring replaces ${workspace ? dataIn : 'everything on this device'} with the contents of the backup file. Nothing changes until you confirm.`}
         </p>
         <div className={styles.fileRow}>
           <label htmlFor={`${summaryId}-file`}>Backup file</label>
@@ -318,15 +343,20 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
             <LossWarning comparison={pending.comparison} />
             <div>
               <Button variant="secondary" disabled={busy} onClick={() => void downloadSafetyCopy()}>
-                Download a backup of the current data first
+                Download a backup of {dataIn} first
               </Button>
             </div>
-            {safetyCopy === 'done' ? <Notice tone="info">A backup of the data now on this device was downloaded.</Notice> : null}
-            {safetyCopy === 'failed' ? <Notice tone="danger">The backup of the current data could not be created. Try again.</Notice> : null}
+            {safetyCopy === 'done' ? <Notice tone="info">A backup of {dataIn} was downloaded.</Notice> : null}
+            {safetyCopy === 'failed' ? <Notice tone="danger">The backup of {dataIn} could not be created. Try again.</Notice> : null}
             {!pending.summary.hasProfile ? (
               <Notice tone="warning">This backup has no business profile, so you will be asked to set it up again.</Notice>
             ) : null}
             {restoreError ? <Notice tone="danger">{restoreError}</Notice> : null}
+            {canRestoreAsNew && !workspaces?.registryPersistent ? (
+              <Notice tone="warning" title="A new business would not be kept">
+                Your browser is not saving the list of businesses, so a business restored as new will vanish when you reload or close this page. Replace {dataIn} instead, or download what you need first.
+              </Notice>
+            ) : null}
             <div className={styles.actions}>
               {canRestoreAsNew && hasData(current) ? (
                 <Button disabled={busy} onClick={() => void confirmRestoreAsNew()}>
@@ -334,7 +364,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
                 </Button>
               ) : null}
               <Button variant={canRestoreAsNew && hasData(current) ? 'secondary' : 'primary'} disabled={busy} onClick={() => void confirmRestore()}>
-                {canRestoreAsNew ? `Yes, replace ${businessLabel}` : 'Yes, replace my data'}
+                {canRestoreAsNew ? `Yes, replace ${businessLabel}` : workspace ? `Yes, replace ${dataIn}` : 'Yes, replace my data'}
               </Button>
               {canRestoreAsNew && !hasData(current) ? (
                 <Button variant="secondary" disabled={busy} onClick={() => void confirmRestoreAsNew()}>
@@ -364,8 +394,9 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
               <p>
                 &ldquo;{asNew.name}&rdquo; now holds the backup. {businessLabel} was not changed.
               </p>
+              {!workspaces?.registryPersistent ? <p>Your browser is not saving the list of businesses, so &ldquo;{asNew.name}&rdquo; will be gone when you reload or close this page.</p> : null}
               <p>
-                <Button variant="secondary" onClick={() => void workspaces?.switchTo(asNew.id)}>
+                <Button variant="secondary" onClick={() => void switchTo(asNew.id)}>
                   Switch to {asNew.name}
                 </Button>
               </p>
@@ -376,8 +407,8 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
         {restored ? (
           <div ref={restoredRef} tabIndex={-1}>
             <Notice tone="info">
-              Backup restored. Everything on this device now matches the file.
-              {restored.hasProfile ? '' : ' The backup had no business profile, so complete setup to continue.'}
+              Backup restored. {restored.where ? `Everything in "${restored.where}" now matches the file.` : 'Everything on this device now matches the file.'}
+              {restored.summary.hasProfile ? '' : ' The backup had no business profile, so complete setup to continue.'}
             </Notice>
           </div>
         ) : null}

@@ -20,6 +20,7 @@ import { todayIso } from '../invoice/editorModel';
 import { newId } from '../invoice/ids';
 import { requestPersistentStorage } from '../invoice/persist';
 import { useUnloadGuard } from '../components/useUnloadGuard';
+import { useUnsavedGuard } from '../workspace/unsavedGuard';
 import styles from './ContractEditor.module.css';
 import { ClausesSection } from './ClausesSection';
 import { ExportBar } from './ExportBar';
@@ -171,6 +172,9 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
   }, [confirming]);
 
   useUnloadGuard(dirty);
+  // Switching to another business replaces this editor, so it asks first, and can save the draft on the way out.
+  const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
+  useUnsavedGuard('editor', dirty, () => saveDraftRef.current());
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -230,6 +234,8 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
       setBusy(false);
     }
   }
+
+  saveDraftRef.current = saveDraft;
 
   function startFinalise() {
     setAttempted(true);

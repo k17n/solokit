@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import { useWorkspaces } from './WorkspaceProvider';
+import { useGuardedSwitch } from './useGuardedSwitch';
 import styles from './BusinessSwitcher.module.css';
 
 /**
@@ -11,7 +12,8 @@ import styles from './BusinessSwitcher.module.css';
  * says "Now working in <name>" whenever the current Business changes, however that came about.
  */
 export function BusinessSwitcher() {
-  const { ready, workspaces, current, switchTo } = useWorkspaces();
+  const { ready, workspaces, current } = useWorkspaces();
+  const switchTo = useGuardedSwitch();
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -75,6 +77,7 @@ export function BusinessSwitcher() {
     }
     setProblem(null);
     try {
+      // False: there was unsaved work and the person chose to stay where they are.
       await switchTo(id);
       close(true);
     } catch (error) {

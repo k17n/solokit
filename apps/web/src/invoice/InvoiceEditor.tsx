@@ -14,6 +14,7 @@ import { newId } from './ids';
 import { LineItemsEditor } from './LineItemsEditor';
 import { PdfPreview } from './PdfPreview';
 import { issuesByField } from '../business/profileFormState';
+import { useUnsavedGuard } from '../workspace/unsavedGuard';
 import { TotalsPanel } from './TotalsPanel';
 import { defaultPdfRenderer, usePdfPreview, type PdfRenderer } from './usePdfPreview';
 import styles from './InvoiceEditor.module.css';
@@ -58,6 +59,8 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   const isNew = invoiceId === undefined;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [state, setState] = useState<EditorState | null>(null);
+  /** The form as it was loaded or last saved, to tell whether there is anything unsaved. */
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [attempt, setAttempt] = useState<'none' | 'save' | 'issue'>('none');
   const [serverIssues, setServerIssues] = useState<Issue[]>([]);
   const [savedMessage, setSavedMessage] = useState(false);
@@ -89,15 +92,17 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
           return;
         }
         // A theme that has since been deleted would leave the select empty; use the default instead.
-        setState({ ...invoiceToEditor(existing), themeId: knownTheme(existing.themeId, settings.defaultThemeId, customThemes) });
+        const loadedState = { ...invoiceToEditor(existing), themeId: knownTheme(existing.themeId, settings.defaultThemeId, customThemes) };
+        setState(loadedState);
+        setSavedSignature(JSON.stringify(loadedState));
       } else {
         const today = todayIso(now());
         const number = await storage.invoices.nextNumber(today, initialKind);
         if (cancelled) return;
         numberSeriesRef.current = `${initialKind}|${fiscalYearOf(today)}`;
-        setState(
-          newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: knownTheme(settings.defaultThemeId, DEFAULT_THEME_ID, customThemes), kind: initialKind }),
-        );
+        const started = newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: knownTheme(settings.defaultThemeId, DEFAULT_THEME_ID, customThemes), kind: initialKind });
+        setState(started);
+        setSavedSignature(JSON.stringify(started));
       }
       setLoaded({ kind: 'ready', clients, customThemes });
     })().catch((error: unknown) => {
@@ -160,6 +165,11 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
     setState((current) => (current ? { ...current, ...patch } : current));
   }, []);
 
+  const dirty = useMemo(() => state !== null && savedSignature !== null && JSON.stringify(state) !== savedSignature, [state, savedSignature]);
+  const saveDraftRef = useRef<() => Promise<boolean>>(async () => false);
+  // Switching to another business replaces this editor, so it asks first, and can save the draft on the way out.
+  useUnsavedGuard('editor', dirty, () => saveDraftRef.current());
+
   const customThemes = loaded?.kind === 'ready' ? loaded.customThemes : [];
   const themes = useMemo(() => [...PRESET_THEMES, ...customThemes], [customThemes]);
 
@@ -208,14 +218,15 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
     if (state && state.saveClient && !isBlankClient(state.client)) await storage.clients.save(formToClient(state.client, invoice.client.id));
   }
 
-  async function handleSave(issue: boolean) {
-    if (!state || !built || busy || numberPending) return;
+  /** Returns whether the document was saved (or issued). */
+  async function handleSave(issue: boolean): Promise<boolean> {
+    if (!state || !built || busy || numberPending) return false;
     setAttempt((previous) => (issue || previous === 'issue' ? 'issue' : 'save'));
     setSavedMessage(false);
     setServerIssues([]);
     if (issue ? issues.length > 0 : built.parseIssues.length > 0) {
       focusFirstProblem();
-      return;
+      return false;
     }
     setBusy(true);
     try {
@@ -224,12 +235,15 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
         await persistClient(issued);
         const saved = await storage.invoices.save(issued);
         onIssued(saved.id);
-        return;
+        return true;
       }
       const saved = await storage.invoices.save(built.invoice);
       await persistClient(saved);
       setState((current) => (current ? { ...current, createdAt: saved.createdAt, numberEdited: true } : current));
+      // What was saved is what the form held when Save was pressed; anything typed since then is still unsaved.
+      setSavedSignature(JSON.stringify({ ...state, createdAt: saved.createdAt, numberEdited: true }));
       setSavedMessage(true);
+      return true;
     } catch (error) {
       if (error instanceof InvoiceNumberTakenError) {
         setServerIssues([{ path: 'number', message: NUMBER_TAKEN }]);
@@ -240,10 +254,12 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
         console.error('Could not save the invoice', error);
         setServerIssues([{ path: 'save', message: 'The invoice could not be saved. Please try again.' }]);
       }
+      return false;
     } finally {
       setBusy(false);
     }
   }
+  saveDraftRef.current = () => handleSave(false);
 
   // The summary belongs to a failed Issue attempt; a draft save shows its problems on the fields only.
   const shownIssues = (attempt === 'issue' ? [...issues, ...serverIssues].filter((issue) => issue.path !== 'save') : []).map((issue) =>
