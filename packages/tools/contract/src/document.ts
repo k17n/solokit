@@ -1,4 +1,4 @@
-import { clauseTitle, createContext, isClauseIncluded, itemsFor, paragraphsFor, renderTemplate, type Context, type ReferenceMap } from './engine';
+import { assertComplete, clauseTitle, createContext, isClauseIncluded, itemsFor, paragraphsFor, renderTemplate, type Context, type ReferenceMap } from './engine';
 import { formatRupees, formatRupeesWithWords } from './format';
 import { formatDate } from './dates';
 import { LIBRARY } from './library';
@@ -148,6 +148,7 @@ function buildServicesSchedule(ctx: Context): DocSchedule {
  */
 export function buildContractDocument(contract: Contract, library: ContractLibraryShape = LIBRARY): ContractDocument {
   const ctx = createContext(contract, library);
+  assertComplete(ctx);
   const planned = library.clauses
     .filter((clause) => isClauseIncluded(clause, contract))
     .map((clause, index) => ({

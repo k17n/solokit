@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { StorageError, createMemoryStore } from '@solokit/storage';
 import { MAX_BACKUP_BYTES, compareWithDevice, createBackup, inspectBackup, isBackupDue, recordBackup, restoreBackup } from './backup';
+import { createContractStorage } from '@solokit/tool-contract';
+import { makeContract } from '@solokit/tool-contract/testing';
 import { createInvoiceStorage } from './repositories';
 import { makeClient, makeInvoice, makeSeller } from './testing';
 
@@ -313,5 +315,56 @@ describe('compareWithDevice', () => {
     const snapshot = JSON.parse((await createBackup(device, NOW)).json);
     snapshot.exportedAt = '2026-10-20T00:00:00.000Z';
     expect(await compareWithDevice(device, JSON.stringify(snapshot))).toEqual({ missing: [], missingIssued: 0, reusableNumbers: [], fileIsOlder: false });
+  });
+});
+
+describe('agreements in backups', () => {
+  it('backs up agreements with everything else and restores them on another device', async () => {
+    const source = createMemoryStore();
+    await createInvoiceStorage(source, { now: () => NOW }).invoices.save(makeInvoice({ id: 'inv' }));
+    const contracts = createContractStorage(source, { now: () => NOW });
+    await contracts.save(makeContract('services'));
+    await contracts.save(makeContract('nda-mutual'));
+    await contracts.finalise('contract-nda-mutual');
+    const { json } = await createBackup(source, NOW);
+
+    expect(inspectBackup(json)).toMatchObject({ invoices: 1, contracts: 2 });
+    const target = createMemoryStore();
+    await restoreBackup(target, json);
+    const restored = createContractStorage(target);
+    expect((await restored.list()).map((contract) => contract.id).sort()).toEqual(['contract-nda-mutual', 'contract-services']);
+    const final = await restored.get('contract-nda-mutual');
+    expect(final?.status).toBe('final');
+    expect(final?.finalDocument?.heading).toBe('Mutual Non-Disclosure Agreement');
+    expect(await restored.get('contract-services')).toEqual(await contracts.get('contract-services'));
+  });
+
+  it('restores a backup made before agreements existed, clearing any agreements on the device', async () => {
+    const source = createMemoryStore();
+    await createInvoiceStorage(source, { now: () => NOW }).invoices.save(makeInvoice({ id: 'inv' }));
+    const parsed = JSON.parse((await createBackup(source, NOW)).json) as { collections: Record<string, unknown> };
+    delete parsed.collections['contracts'];
+    const old = JSON.stringify(parsed);
+    expect(inspectBackup(old).contracts).toBe(0);
+
+    const target = createMemoryStore();
+    await createContractStorage(target).save(makeContract('services'));
+    await restoreBackup(target, old);
+    expect(await createContractStorage(target).list()).toEqual([]);
+    expect((await createInvoiceStorage(target).invoices.list()).map((invoice) => invoice.id)).toEqual(['inv']);
+  });
+
+  it('refuses a backup with a damaged agreement, changing nothing', async () => {
+    const source = createMemoryStore();
+    await createContractStorage(source, { now: () => NOW }).save(makeContract('services'));
+    const parsed = JSON.parse((await createBackup(source, NOW)).json) as { collections: { contracts: Record<string, unknown>[] } };
+    delete parsed.collections.contracts[0]!['parties'];
+    const damaged = JSON.stringify(parsed);
+
+    const target = createMemoryStore();
+    await createInvoiceStorage(target, { now: () => NOW }).invoices.save(makeInvoice({ id: 'keep' }));
+    expect(() => inspectBackup(damaged)).toThrow(StorageError);
+    await expect(restoreBackup(target, damaged)).rejects.toBeInstanceOf(StorageError);
+    expect((await createInvoiceStorage(target).invoices.list()).map((invoice) => invoice.id)).toEqual(['keep']);
   });
 });

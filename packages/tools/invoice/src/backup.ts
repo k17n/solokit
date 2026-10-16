@@ -1,3 +1,4 @@
+import { checkContractRecords } from '@solokit/tool-contract';
 import { StorageError, parseSnapshot, type DataStore, type Snapshot } from '@solokit/storage';
 import { createInvoiceStorage } from './repositories';
 import { numberSeriesOf } from './series';
@@ -40,6 +41,8 @@ export interface BackupSummary {
   exportedAt: string;
   invoices: number;
   clients: number;
+  /** Agreements (NDAs and services agreements). */
+  contracts: number;
   themes: number;
   hasProfile: boolean;
   profileName?: string;
@@ -133,6 +136,7 @@ function checkRecords(snapshot: Snapshot): void {
     const client = record as unknown as Record<string, unknown>;
     if (typeof client['name'] !== 'string' || !isRecord(client['address'])) throw new StorageError('The backup has a client that is incomplete, so it was not restored');
   }
+  checkContractRecords(snapshot.collections.contracts);
   for (const record of snapshot.collections.themes) {
     const theme = record as unknown as Record<string, unknown>;
     if (!isUsableTheme(theme) || isPresetThemeId(record.id)) {
@@ -150,6 +154,7 @@ export function inspectBackup(text: string): BackupSummary {
     exportedAt: snapshot.exportedAt,
     invoices: snapshot.collections.invoices.length,
     clients: snapshot.collections.clients.length,
+    contracts: snapshot.collections.contracts.length,
     themes: snapshot.collections.themes.length,
     hasProfile: profile !== undefined,
     ...(typeof profile?.name === 'string' ? { profileName: profile.name } : {}),

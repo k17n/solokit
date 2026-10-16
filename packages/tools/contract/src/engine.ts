@@ -164,3 +164,20 @@ function resolveToken(token: string, ctx: Context, refs: ReferenceMap): string {
 export function renderTemplate(text: string, ctx: Context, refs: ReferenceMap): string {
   return text.replace(TOKEN, (_whole, token: string) => resolveToken(token, ctx, refs));
 }
+
+/**
+ * Throws if any option that applies has no choice, or any required variable that applies has no value, even if
+ * no template happens to use it. This stops a document being built with a whole section silently left out.
+ */
+export function assertComplete(ctx: Context): void {
+  for (const def of ctx.library.options) {
+    if (optionVisible(def, ctx) && ctx.choices[def.id] === undefined) {
+      throw new ContractRenderError(`No choice made for "${def.label}". Choose one before building the document.`, 'missing-variable', def.id);
+    }
+  }
+  for (const def of ctx.library.variables) {
+    if (!variableVisible(def, ctx) || def.required === false) continue;
+    const value = ctx.values[def.id];
+    if (value === undefined || isBlank(value)) missing(def.id);
+  }
+}

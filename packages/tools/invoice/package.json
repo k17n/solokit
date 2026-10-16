@@ -14,7 +14,8 @@
   "dependencies": {
     "@solokit/core": "workspace:*",
     "@solokit/storage": "workspace:*",
-    "@solokit/tax-engines": "workspace:*"
+    "@solokit/tax-engines": "workspace:*",
+    "@solokit/tool-contract": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
