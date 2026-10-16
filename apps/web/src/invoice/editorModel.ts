@@ -342,6 +342,7 @@ export function duplicateInvoice(source: InvoiceRecord, input: DuplicateInput): 
   const copy = structuredClone(source);
   delete copy.dueDate;
   delete copy.advanceReceived;
+  delete copy.themeSnapshot;
   return {
     ...copy,
     id: input.id,

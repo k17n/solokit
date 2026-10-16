@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
-import { createInvoiceStorage, type InvoiceStorage, type SellerProfile } from '@solokit/tool-invoice';
+import { createInvoiceStorage, type InvoiceStorage, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { InvoiceEditor } from './InvoiceEditor';
 import type { PdfRenderer } from './usePdfPreview';
@@ -24,6 +24,9 @@ async function setup(
     abroadClient?: boolean;
     withInvoices?: ReturnType<typeof makeInvoice>[];
     wrap?: (storage: InvoiceStorage) => InvoiceStorage;
+    themes?: InvoiceTheme[];
+    defaultThemeId?: string;
+    renderPdf?: PdfRenderer;
   } = {},
 ) {
   const real: InvoiceStorage = createInvoiceStorage(createMemoryStore(), { now: NOW });
@@ -37,10 +40,12 @@ async function setup(
     );
   }
   for (const invoice of options.withInvoices ?? []) await storage.invoices.save(invoice);
+  for (const theme of options.themes ?? []) await storage.themes.save(theme);
+  if (options.defaultThemeId) await storage.settings.update({ defaultThemeId: options.defaultThemeId });
   const onBack = vi.fn();
   const onIssued = vi.fn();
   render(
-    <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} onBack={onBack} onIssued={onIssued} renderPdf={fakeRender} now={NOW} />,
+    <InvoiceEditor storage={storage} profile={profile} invoiceId={options.invoiceId} onBack={onBack} onIssued={onIssued} renderPdf={options.renderPdf ?? fakeRender} now={NOW} />,
   );
   await screen.findByRole('heading', { name: options.invoiceId ? 'Edit draft' : 'New invoice' });
   return { storage, onBack, onIssued, profile };
@@ -429,5 +434,50 @@ describe('InvoiceEditor: editing a draft', () => {
     render(<InvoiceEditor storage={storage} profile={makeSeller()} invoiceId="i1" onBack={() => {}} onIssued={() => {}} renderPdf={fakeRender} now={NOW} />);
     expect(await screen.findByText('This invoice cannot be edited')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Back to invoices' })).toBeInTheDocument();
+  });
+});
+
+describe('InvoiceEditor: themes', () => {
+  const mine: InvoiceTheme = { id: 'mine', name: 'Rust', layout: 'modern', accent: '#7C2D12', text: '#14213D', background: '#FFFFFF', fontId: 'poppins' };
+
+  it('starts a new invoice with the default theme from the settings', async () => {
+    const { storage } = await setup({ defaultThemeId: 'bold' });
+    expect(screen.getByLabelText('Invoice theme')).toHaveValue('bold');
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(async () => expect((await storage.invoices.list())[0]?.themeId).toBe('bold'));
+  });
+
+  it('offers my themes, saves the choice on the invoice and previews with it', async () => {
+    const renderPdf = vi.fn(fakeRender);
+    const { storage } = await setup({ themes: [mine], renderPdf });
+    await userEvent.selectOptions(screen.getByLabelText('Invoice theme'), 'mine');
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Show preview' }));
+    await waitFor(() => expect(renderPdf).toHaveBeenCalledWith(expect.objectContaining({ theme: expect.objectContaining({ id: 'mine', accent: '#7C2D12' }) })), { timeout: 4000 });
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(async () => expect((await storage.invoices.list())[0]?.themeId).toBe('mine'));
+  }, 20000);
+
+  it('keeps a copy of the theme on the invoice when it is issued', async () => {
+    const { storage } = await setup({ themes: [mine] });
+    await userEvent.selectOptions(screen.getByLabelText('Invoice theme'), 'mine');
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
+    await waitFor(async () => expect((await storage.invoices.list())[0]?.status).toBe('issued'));
+    expect((await storage.invoices.list())[0]?.themeSnapshot).toEqual(mine);
+  }, 20000);
+
+  it('falls back to Classic when the default theme no longer exists', async () => {
+    await setup({ defaultThemeId: 'deleted-one' });
+    expect(screen.getByLabelText('Invoice theme')).toHaveValue('classic');
+  });
+
+  it('shows the default theme for a draft whose theme was deleted', async () => {
+    await setup({ invoiceId: 'd', defaultThemeId: 'modern', withInvoices: [makeInvoice({ id: 'd', status: 'draft', themeId: 'gone' })] });
+    expect(screen.getByLabelText('Invoice theme')).toHaveValue('modern');
   });
 });

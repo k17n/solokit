@@ -107,6 +107,9 @@ describe('InvoiceApp with a saved profile', () => {
     const notice = await screen.findByText('Your browser is not saving data');
     expect(notice).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('normal browser window');
+    // First run has no Backup & restore tab yet, so the warning must not send people there.
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/Backup & restore tab/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/restore from a backup/);
   });
 
   it('does not warn when storage works', async () => {
@@ -269,5 +272,109 @@ describe('InvoiceApp: invoices', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
     expect(await screen.findByRole('button', { name: 'Duplicate as new draft' })).toBeInTheDocument();
     expect(screen.getByText('Issued')).toBeInTheDocument();
+  });
+});
+
+describe('InvoiceApp: themes and backup tabs', () => {
+  beforeEach(() => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:app'), revokeObjectURL: vi.fn() });
+  });
+
+  it('opens the Themes tab', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Themes' }));
+    expect(screen.getByRole('button', { name: 'Themes' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('list', { name: 'Themes' })).toBeInTheDocument();
+  });
+
+  it('opens the Backup & restore tab, also in a browser that is not saving data', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Backup & restore' }));
+    expect(screen.getByRole('button', { name: 'Backup & restore' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('button', { name: 'Download backup' })).toBeInTheDocument();
+  });
+
+  it('shows the reminder on the invoice list and its button opens the Backup tab', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    await createInvoiceStorage(store).invoices.save(makeInvoice({ id: 'x' }));
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Back up now' }));
+    expect(await screen.findByRole('button', { name: 'Download backup' })).toBeInTheDocument();
+  });
+
+  it('shows the restored profile after a restore without reloading', async () => {
+    const other = createMemoryStore();
+    await createInvoiceStorage(other).profile.save(makeSeller({ name: 'Restored Co' }));
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(other);
+
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Backup & restore' }));
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    await screen.findByText(/Backup restored/);
+    await userEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(screen.getByLabelText('Business or personal name')).toHaveValue('Restored Co');
+  });
+});
+
+describe('InvoiceApp: restoring on a new device', () => {
+  it('offers to restore a backup instead of setting up, and opens the tool with the restored data', async () => {
+    const other = createMemoryStore();
+    const source = createInvoiceStorage(other);
+    await source.profile.save(makeSeller({ name: 'Moved Co' }));
+    await source.invoices.save(makeInvoice({ id: 'moved', number: '2026-27/0042' }));
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(other);
+
+    renderApp();
+    await screen.findByRole('heading', { name: 'Set up your business' });
+    await userEvent.click(screen.getByRole('button', { name: /restore a backup/i }));
+    expect(screen.queryByRole('button', { name: 'Download backup' })).not.toBeInTheDocument();
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    expect(await screen.findByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
+    expect(await screen.findByText('2026-27/0042')).toBeInTheDocument();
+  });
+
+  it('shows a Backup restored message with focus on it after a first-run restore', async () => {
+    const other = createMemoryStore();
+    await createInvoiceStorage(other).profile.save(makeSeller({ name: 'Moved Co' }));
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(other);
+
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    const message = await screen.findByText('Backup restored');
+    await waitFor(() => expect(document.activeElement).toContainElement(message));
+    expect(message.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('asks the user to complete setup when the restored backup has no profile', async () => {
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(createMemoryStore());
+
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    expect(await screen.findByText(/no business profile. Complete setup/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
+  });
+
+  it('goes back to setup', async () => {
+    renderApp();
+    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to setup' }));
+    expect(screen.getByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
   });
 });

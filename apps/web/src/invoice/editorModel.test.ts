@@ -354,6 +354,7 @@ describe('duplicateInvoice', () => {
       notes: 'Thanks',
       createdAt: '2026-01-01T00:00:00.000Z',
     });
+    source.themeSnapshot = { id: 'classic', name: 'Classic', layout: 'classic', accent: '#0B1B3A', text: '#1A1A1A', background: '#FFFFFF', fontId: 'source-serif-4' };
     const copy = duplicateInvoice(source, { id: 'new', number: '2026-27/0002', issueDate: '2026-11-02', now: new Date('2026-11-02T09:00:00.000Z') });
     expect(copy).toMatchObject({
       id: 'new',
@@ -369,6 +370,7 @@ describe('duplicateInvoice', () => {
     });
     expect('dueDate' in copy).toBe(false);
     expect('advanceReceived' in copy).toBe(false);
+    expect('themeSnapshot' in copy).toBe(false);
     expect(copy.lines).toEqual(source.lines);
     expect(copy.lines).not.toBe(source.lines);
     expect(copy.client).not.toBe(source.client);

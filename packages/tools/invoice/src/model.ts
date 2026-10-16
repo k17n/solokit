@@ -3,6 +3,7 @@ import type { StoredRecord } from '@solokit/storage';
 import type { Discount, SellerGstStatus } from '@solokit/tax-engines';
 import type { CurrencyCode } from './currencies';
 import type { BillingUnit } from './units';
+import type { InvoiceTheme } from './themes';
 
 export const SELLER_ID = 'me';
 export const SETTINGS_ID = 'invoice';
@@ -99,6 +100,8 @@ export interface InvoiceRecord extends StoredRecord {
   notes?: string;
   terms?: string;
   themeId: string;
+  /** The theme as it was when the invoice was issued, so later theme edits or deletion never change an issued PDF. */
+  themeSnapshot?: InvoiceTheme;
   createdAt: string;
   updatedAt: string;
 }

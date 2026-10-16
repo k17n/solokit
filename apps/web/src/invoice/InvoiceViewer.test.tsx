@@ -13,12 +13,12 @@ beforeEach(() => {
 
 const fakeRender: PdfRenderer = async () => new Blob(['pdf'], { type: 'application/pdf' });
 
-async function setup(invoice: ReturnType<typeof makeInvoice> | null, id = 'i1') {
+async function setup(invoice: ReturnType<typeof makeInvoice> | null, id = 'i1', renderPdf: PdfRenderer = fakeRender) {
   const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore(), { now: () => new Date(2026, 9, 14, 10, 0) });
   await storage.profile.save(makeSeller());
   if (invoice) await storage.invoices.save(invoice);
   const handlers = { onBack: vi.fn(), onEdit: vi.fn() };
-  render(<InvoiceViewer storage={storage} invoiceId={id} {...handlers} renderPdf={fakeRender} now={() => new Date(2026, 9, 14, 10, 0)} />);
+  render(<InvoiceViewer storage={storage} invoiceId={id} {...handlers} renderPdf={renderPdf} now={() => new Date(2026, 9, 14, 10, 0)} />);
   return { storage, ...handlers };
 }
 
@@ -32,6 +32,17 @@ describe('InvoiceViewer', () => {
     expect(screen.getByRole('link', { name: 'Download PDF' })).toHaveAttribute('download', 'Tax-Invoice-2026-27-0001.pdf');
     expect(screen.getByRole('button', { name: 'Duplicate as new draft' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel invoice' })).toBeInTheDocument();
+  });
+
+  it('prints with the theme the invoice was issued with, even if that theme was changed since', async () => {
+    const renderPdf = vi.fn(fakeRender);
+    const issuedWith = { id: 'mine', name: 'Mine', layout: 'modern' as const, accent: '#047857', text: '#14213D', background: '#FFFFFF', fontId: 'inter' as const };
+    const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+    await storage.themes.save({ ...issuedWith, accent: '#7C2D12' });
+    await storage.invoices.save(makeInvoice({ id: 'i1', themeId: 'mine', themeSnapshot: issuedWith }));
+    render(<InvoiceViewer storage={storage} invoiceId="i1" onBack={vi.fn()} onEdit={vi.fn()} renderPdf={renderPdf} now={() => new Date(2026, 9, 14, 10, 0)} />);
+    await waitFor(() => expect(renderPdf).toHaveBeenCalled(), { timeout: 4000 });
+    expect(renderPdf).toHaveBeenCalledWith(expect.objectContaining({ theme: expect.objectContaining({ accent: '#047857' }) }));
   });
 
   it('still opens an invoice that cannot be laid out', async () => {
