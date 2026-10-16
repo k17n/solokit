@@ -26,3 +26,4 @@ export * from './stamp-duty';
 export * from './draft';
 export * from './repositories';
 export * from './backup';
+export * from './text';

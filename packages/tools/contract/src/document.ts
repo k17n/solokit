@@ -2,6 +2,7 @@ import { assertComplete, clauseTitle, createContext, isClauseIncluded, itemsFor,
 import { formatRupees, formatRupeesWithWords } from './format';
 import { formatDate } from './dates';
 import { LIBRARY } from './library';
+import { cleanDeep } from './text';
 import type { ContractLibraryShape } from './library-types';
 import { KIND_HEADINGS, ROLE_LABELS, type Contract, type Party } from './model';
 
@@ -180,7 +181,7 @@ export function buildContractDocument(contract: Contract, library: ContractLibra
   const parties = contract.parties.map((party, index) => describeParty(party, index, contract.parties.length));
   const schedules = contract.kind === 'services' ? [buildServicesSchedule(ctx)] : [];
 
-  return {
+  const built: ContractDocument = {
     contractId: contract.id,
     kind: contract.kind,
     heading: KIND_HEADINGS[contract.kind],
@@ -199,6 +200,8 @@ export function buildContractDocument(contract: Contract, library: ContractLibra
     notice: TEMPLATE_NOTICE,
     libraryVersion: library.version,
   };
+  // Text pasted from Word or a PDF can carry control characters that no Word file or PDF can hold.
+  return cleanDeep(built);
 }
 
 /**
@@ -206,7 +209,7 @@ export function buildContractDocument(contract: Contract, library: ContractLibra
  * signed document never changes if the template library is updated later; a draft is built from the current library.
  */
 export function resolveContractDocument(contract: Contract, library: ContractLibraryShape = LIBRARY): ContractDocument {
-  if (contract.status === 'final' && contract.finalDocument) return contract.finalDocument;
+  if (contract.status === 'final' && contract.finalDocument) return cleanDeep(contract.finalDocument);
   return buildContractDocument(contract, library);
 }
 

@@ -1,6 +1,7 @@
 import type { DataStore } from '@solokit/storage';
 import { buildContractDocument } from './document';
-import { LIBRARY_VERSION } from './library';
+import { buildReviewSummary } from './review';
+import { LIBRARY, LIBRARY_VERSION } from './library';
 import type { Contract } from './model';
 import { validateContract, type Issue } from './validation';
 
@@ -67,7 +68,7 @@ export function createContractStorage(store: DataStore, options: ContractStorage
       const previous = await get(contract.id);
       if (previous?.status === 'final') throw new ContractLockedError();
       if (contract.status === 'final') throw new ContractLockedError('Use finalise to make an agreement final, so it is checked first.');
-      const { finalDocument: _dropped, ...rest } = contract;
+      const { finalDocument: _dropped, finalSummary: _droppedSummary, ...rest } = contract;
       return write({ ...rest, libraryVersion: contract.libraryVersion || LIBRARY_VERSION }, previous);
     },
     remove: (id) => store.remove('contracts', id),
@@ -75,7 +76,7 @@ export function createContractStorage(store: DataStore, options: ContractStorage
       const source = await get(id);
       if (!source) throw new Error('Agreement not found');
       const stamp = now().toISOString();
-      const { finalDocument: _frozen, ...rest } = structuredClone(source);
+      const { finalDocument: _frozen, finalSummary: _frozenSummary, ...rest } = structuredClone(source);
       const copy: Contract = {
         ...rest,
         id: input.id,
@@ -97,13 +98,15 @@ export function createContractStorage(store: DataStore, options: ContractStorage
         throw new ContractInvalidError(`This agreement is not complete yet (${issues.length} ${issues.length === 1 ? 'problem' : 'problems'} to fix)`, issues);
       }
       const finalDocument = buildContractDocument(existing);
-      return write({ ...existing, status: 'final', finalDocument, libraryVersion: LIBRARY_VERSION }, existing);
+      // The review summary is frozen with the wording, so a later template update cannot change what the Review pack says about it.
+      const finalSummary = buildReviewSummary(existing, LIBRARY, finalDocument);
+      return write({ ...existing, status: 'final', finalDocument, finalSummary, libraryVersion: LIBRARY_VERSION }, existing);
     },
     async reopen(id) {
       const existing = await get(id);
       if (!existing) throw new Error('Agreement not found');
       if (existing.status !== 'final') return existing;
-      const { finalDocument: _frozen, ...rest } = existing;
+      const { finalDocument: _frozen, finalSummary: _frozenSummary, ...rest } = existing;
       return write({ ...rest, status: 'draft' }, existing);
     },
   };

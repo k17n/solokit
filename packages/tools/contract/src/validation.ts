@@ -5,6 +5,7 @@ import { LIBRARY } from './library';
 import type { ContractLibraryShape, VariableDef } from './library-types';
 import { CONTRACT_KINDS, PARTY_ROLES, type Contract, type Party } from './model';
 import { isKnownState } from './stamp-duty';
+import { hasControlCharacters, unprintableCharacters, unprintableMessage } from './text';
 
 export interface Issue {
   path: string;
@@ -35,6 +36,49 @@ function validateParty(party: Party | undefined, index: number, issues: Issue[])
     if (!result.valid) issues.push({ path: at('gstin'), message: result.reason });
   }
   if (!blank(party.cin) && !CIN.test(party.cin!.trim().toUpperCase())) issues.push({ path: at('cin'), message: 'CIN must be 21 characters, for example U12345MH2020PTC123456' });
+}
+
+/** Every piece of text the user typed, with the path of its field. */
+export function userTexts(contract: Contract): { path: string; text: string }[] {
+  const texts: { path: string; text: string }[] = [{ path: 'title', text: contract.title ?? '' }];
+  contract.parties.forEach((party, index) => {
+    const at = (field: string) => `parties.${index}.${field}`;
+    const address = party.address;
+    texts.push(
+      { path: at('name'), text: party.name ?? '' },
+      { path: at('email'), text: party.email ?? '' },
+      { path: at('signatoryName'), text: party.signatoryName ?? '' },
+      { path: at('signatoryTitle'), text: party.signatoryTitle ?? '' },
+      { path: at('pan'), text: party.pan ?? '' },
+      { path: at('gstin'), text: party.gstin ?? '' },
+      { path: at('cin'), text: party.cin ?? '' },
+      { path: at('address.line1'), text: address?.line1 ?? '' },
+      { path: at('address.line2'), text: address?.line2 ?? '' },
+      { path: at('address.city'), text: address?.city ?? '' },
+      { path: at('address.state'), text: address?.state ?? '' },
+      { path: at('address.postalCode'), text: address?.postalCode ?? '' },
+      { path: at('address.country'), text: address?.country ?? '' },
+    );
+  });
+  texts.push({ path: 'jurisdiction.city', text: contract.jurisdiction?.city ?? '' }, { path: 'placeOfSigning', text: contract.placeOfSigning ?? '' });
+  for (const [id, value] of Object.entries(contract.variables ?? {})) if (typeof value === 'string') texts.push({ path: `variables.${id}`, text: value });
+  (contract.milestones ?? []).forEach((milestone, index) => {
+    texts.push({ path: `milestones.${index}.title`, text: milestone.title ?? '' }, { path: `milestones.${index}.due`, text: milestone.due ?? '' });
+  });
+  return texts;
+}
+
+/**
+ * Things worth knowing that do not stop the agreement being finalised or downloaded: text with characters the PDF
+ * fonts cannot print. The Word version keeps them.
+ */
+export function contractWarnings(contract: Contract): Issue[] {
+  const warnings: Issue[] = [];
+  for (const { path, text } of userTexts(contract)) {
+    const characters = unprintableCharacters(text);
+    if (characters.length > 0) warnings.push({ path, message: unprintableMessage(characters) });
+  }
+  return warnings;
 }
 
 function decimalsOk(value: number): boolean {
@@ -110,6 +154,10 @@ export function validateContract(contract: Contract, library: ContractLibrarySha
     if (!blank(first.name) && first.name.trim().toLowerCase() === second.name.trim().toLowerCase()) {
       issues.push({ path: 'parties.1.name', message: 'The two parties need different names' });
     }
+  }
+
+  for (const { path, text } of userTexts(contract)) {
+    if (hasControlCharacters(text)) issues.push({ path, message: 'This contains a hidden control character (often from pasting) that cannot be saved in a document. Retype or paste it as plain text.' });
   }
 
   if (!isRealIsoDate(contract.effectiveDate)) issues.push({ path: 'effectiveDate', message: 'Enter a real effective date' });

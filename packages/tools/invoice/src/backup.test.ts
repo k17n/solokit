@@ -314,7 +314,58 @@ describe('compareWithDevice', () => {
     await createInvoiceStorage(device, { now: () => new Date('2026-10-01T00:00:00.000Z') }).invoices.save(makeInvoice({ id: 'a' }));
     const snapshot = JSON.parse((await createBackup(device, NOW)).json);
     snapshot.exportedAt = '2026-10-20T00:00:00.000Z';
-    expect(await compareWithDevice(device, JSON.stringify(snapshot))).toEqual({ missing: [], missingIssued: 0, reusableNumbers: [], fileIsOlder: false });
+    expect(await compareWithDevice(device, JSON.stringify(snapshot))).toEqual({ missing: [], missingIssued: 0, reusableNumbers: [], missingContracts: [], missingFinalContracts: 0, fileIsOlder: false });
+  });
+});
+
+describe('compareWithDevice and agreements', () => {
+  const T1 = new Date('2026-10-10T00:00:00.000Z');
+  const fileOf = async (build: (store: ReturnType<typeof createMemoryStore>) => Promise<void>, exportedAt?: string) => {
+    const source = createMemoryStore();
+    await build(source);
+    const parsed = JSON.parse((await createBackup(source, NOW)).json) as { exportedAt: string };
+    if (exportedAt) parsed.exportedAt = exportedAt;
+    return JSON.stringify(parsed);
+  };
+
+  it('lists agreements on the device that the file does not have, final ones first', async () => {
+    const device = createMemoryStore();
+    const contracts = createContractStorage(device, { now: () => T1 });
+    await contracts.save(makeContract('services', { id: 'a-draft', title: 'Draft for Acme' }));
+    await contracts.save(makeContract('nda-mutual', { id: 'z-final', title: 'NDA with Zed' }));
+    await contracts.finalise('z-final');
+    await contracts.save(makeContract('nda-one-way', { id: 'kept', title: 'Kept' }));
+    const file = await fileOf(async (source) => {
+      await createContractStorage(source, { now: () => T1 }).save(makeContract('nda-one-way', { id: 'kept', title: 'Kept' }));
+    }, '2026-10-20T00:00:00.000Z');
+
+    const result = await compareWithDevice(device, file);
+    expect(result.missingContracts).toEqual([
+      { id: 'z-final', title: 'NDA with Zed', status: 'final' },
+      { id: 'a-draft', title: 'Draft for Acme', status: 'draft' },
+    ]);
+    expect(result.missingFinalContracts).toBe(1);
+    expect(result.fileIsOlder).toBe(false);
+  });
+
+  it('counts a change to an agreement as a newer change on the device', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => new Date('2026-10-12T00:00:00.000Z') }).save(makeContract('services', { id: 's1' }));
+    const file = await fileOf(async (source) => {
+      await createContractStorage(source, { now: () => T1 }).save(makeContract('services', { id: 's1' }));
+    }, '2026-10-11T00:00:00.000Z');
+    const result = await compareWithDevice(device, file);
+    expect(result.missingContracts).toEqual([]);
+    expect(result.fileIsOlder).toBe(true);
+  });
+
+  it('says nothing when the file holds every agreement and is newer', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => T1 }).save(makeContract('services', { id: 's1' }));
+    const file = await fileOf(async () => {}, '2026-10-20T00:00:00.000Z');
+    const withIt = JSON.parse(file) as { collections: { contracts: unknown[] } };
+    withIt.collections.contracts = JSON.parse((await createBackup(device, NOW)).json).collections.contracts;
+    expect(await compareWithDevice(device, JSON.stringify(withIt))).toMatchObject({ missingContracts: [], missingFinalContracts: 0, fileIsOlder: false });
   });
 });
 
@@ -339,7 +390,7 @@ describe('agreements in backups', () => {
     expect(await restored.get('contract-services')).toEqual(await contracts.get('contract-services'));
   });
 
-  it('restores a backup made before agreements existed, clearing any agreements on the device', async () => {
+  it('restores a backup made before agreements existed, clearing any agreements on the device only after saying which would be lost', async () => {
     const source = createMemoryStore();
     await createInvoiceStorage(source, { now: () => NOW }).invoices.save(makeInvoice({ id: 'inv' }));
     const parsed = JSON.parse((await createBackup(source, NOW)).json) as { collections: Record<string, unknown> };
@@ -349,6 +400,10 @@ describe('agreements in backups', () => {
 
     const target = createMemoryStore();
     await createContractStorage(target).save(makeContract('services'));
+    expect(await compareWithDevice(target, old)).toMatchObject({
+      missingContracts: [{ id: 'contract-services', title: 'Sample services', status: 'draft' }],
+      missingFinalContracts: 0,
+    });
     await restoreBackup(target, old);
     expect(await createContractStorage(target).list()).toEqual([]);
     expect((await createInvoiceStorage(target).invoices.list()).map((invoice) => invoice.id)).toEqual(['inv']);

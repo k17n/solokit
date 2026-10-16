@@ -1,5 +1,6 @@
 import type { StoredRecord } from '@solokit/storage';
 import type { ContractDocument } from './document';
+import type { ReviewSummary } from './review';
 
 export const CONTRACT_KINDS = ['nda-mutual', 'nda-one-way', 'services'] as const;
 export type ContractKind = (typeof CONTRACT_KINDS)[number];
@@ -105,6 +106,8 @@ export interface Contract extends StoredRecord {
   version: number;
   /** The exact wording at the moment the contract was finalised. Present only while the status is final. */
   finalDocument?: ContractDocument;
+  /** The review summary written at the same moment, so the Review pack of a final agreement matches its frozen wording even after the template changes. */
+  finalSummary?: ReviewSummary;
   /** The clause library this was written against, so a review can say which wording was used. */
   libraryVersion: string;
 }

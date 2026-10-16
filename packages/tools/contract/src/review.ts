@@ -1,11 +1,12 @@
 import { addMonths, addYears, formatDate, isRealIsoDate } from './dates';
-import { resolveContractDocument, type ContractDocument } from './document';
+import { documentText, resolveContractDocument, type ContractDocument } from './document';
 import { clauseTitle, createContext, evalCondition, isClauseIncluded, optionVisible, partyTerms, renderTemplate, variableDefault, variableVisible } from './engine';
 import { formatCount, formatRupees, formatValue } from './format';
 import { LIBRARY } from './library';
 import type { ContractLibraryShape } from './library-types';
 import { KIND_HEADINGS, KIND_LABELS, ROLE_LABELS, type Contract } from './model';
 import { stampDutyNote, type StampDutyNote } from './stamp-duty';
+import { cleanDeep, unprintableCharacters, unprintableMessage } from './text';
 
 export interface ReviewChoice {
   label: string;
@@ -62,7 +63,12 @@ export interface ReviewSummary {
   questions: ReviewQuestion[];
   notes: { title: string; body: string }[];
   stampDuty: StampDutyNote;
+  /** The template wording version the agreement's text was written under. */
   libraryVersion: string;
+  /** Things that do not stop the agreement but are worth knowing, such as characters the PDF fonts cannot print. */
+  warnings: string[];
+  /** Present when the explanations below come from a newer template than the one the agreement's wording was frozen under. */
+  frozenNote?: string;
 }
 
 export interface ReviewPack {
@@ -184,16 +190,21 @@ export function buildReviewSummary(contract: Contract, library: ContractLibraryS
       ...(question.clauseId ? clauseNumber(question.clauseId) : {}),
     }));
 
+  // A final agreement keeps the wording it was signed with. If the template has moved on since, say so rather than
+  // pretend the explanations below describe that wording.
+  const frozenElsewhere = doc.libraryVersion !== '' && doc.libraryVersion !== library.version;
   const clauses: ReviewClause[] = doc.clauses.map((docClause) => {
     const source = library.clauses.find((clause) => clause.id === docClause.id && clause.kinds.includes(contract.kind));
+    const missing = 'No explanation is available for this clause: it is not in the current template.';
     return {
       number: docClause.number,
       title: docClause.title,
-      explanation: source?.explanation ?? '',
-      rationale: source?.rationale ?? '',
-      risk: source?.risk ?? '',
+      explanation: source?.explanation ?? missing,
+      rationale: source?.rationale ?? missing,
+      risk: source?.risk ?? missing,
     };
   });
+  const unprintable = unprintableCharacters(documentText(doc));
 
   return {
     contractTitle: contract.title.trim() || KIND_LABELS[contract.kind],
@@ -212,14 +223,22 @@ export function buildReviewSummary(contract: Contract, library: ContractLibraryS
     questions,
     notes: library.notes.filter((note) => note.kinds.includes(contract.kind)).map((note) => ({ title: note.title, body: note.body })),
     stampDuty: stampDutyNote(contract.jurisdiction.state),
-    libraryVersion: library.version,
+    libraryVersion: doc.libraryVersion || library.version,
+    warnings: unprintable.length > 0 ? [unprintableMessage(unprintable)] : [],
+    ...(frozenElsewhere
+      ? {
+          frozenNote: `The wording of this agreement was frozen under template version ${doc.libraryVersion}. The choices, explanations and questions below come from the current template version ${library.version} and may not match that wording exactly. Read the agreement text itself.`,
+        }
+      : {}),
   };
 }
 
 /** The agreement together with its review summary: what the Review pack export prints. */
 export function buildReviewPack(contract: Contract, library: ContractLibraryShape = LIBRARY): ReviewPack {
   const document = resolveContractDocument(contract, library);
-  return { document, summary: buildReviewSummary(contract, library, document) };
+  // A final agreement carries the summary written when it was finalised, so it matches its frozen wording exactly.
+  if (contract.status === 'final' && contract.finalDocument && contract.finalSummary) return { document, summary: cleanDeep(contract.finalSummary) };
+  return { document, summary: cleanDeep(buildReviewSummary(contract, library, document)) };
 }
 
 /** All the text of a review summary in reading order, for searching and tests. */
@@ -232,5 +251,7 @@ export function reviewText(summary: ReviewSummary): string {
   for (const assumption of summary.assumptions) lines.push(assumption);
   for (const note of summary.notes) lines.push(note.title, note.body);
   lines.push(summary.stampDuty.text);
+  if (summary.frozenNote) lines.push(summary.frozenNote);
+  lines.push(...summary.warnings);
   return lines.join('\n');
 }
