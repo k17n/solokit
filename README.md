@@ -9,6 +9,7 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - Done: invoice themes (six presets, your own colours and font, default and per-invoice choice) and the backup and restore screens (unencrypted JSON file, reminder after 30 days, restore on a fresh device).
 - Done: quotations and proforma invoices inside the invoice tool, each with its own number series (tax invoices keep theirs), a validity date on quotations, and Convert to invoice. A quotation is an estimate, not a tax invoice, and carries no tax-invoice wording.
 - Done: contract and NDA generator at /tools/contract/. Mutual and one-way NDAs and a freelance services agreement, a numbered editor (parties, key terms, optional clauses, jurisdiction and stamp duty note, review), PDF, editable Word and a Review pack for a lawyer, final/reopen, backups that carry agreements. Your details come from the invoice tool's business profile and saved clients; with none saved, the editor links to the invoice tool and you type them. A template, not legal advice.
+- Done (data layer, no screens yet): Business workspaces. Each Business has its own database, the existing data becomes the first Business, the business profile is shared by every tool, and brand colours can be suggested from a logo. The screens for switching and managing Businesses come next (see `docs/superpowers/plans/2026-10-17-workspaces.md`).
 - Next: more tools and countries.
 
 ## Layout
@@ -18,7 +19,8 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - `packages/tax-engines` `TaxEngine` interface, country list, India GST engine
 - `packages/ui` design tokens and shared components (header, footer, buttons, form fields, radio cards, notices)
 - `packages/registry` the list of tools; drives the home page, tool routes and footer
-- `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters
+- `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters, and the Business (workspace) registry
+- `packages/profile` the Business profile shared by all tools: model, validation, saved record, what each tool needs from it, and brand colour extraction from a logo
 - `packages/tools/invoice` the invoice tool's domain logic: data model, validation, document builder, themes, saved data, backup
 - `packages/tools/invoice-pdf` renders invoices to PDF in the browser (six layouts, bundled fonts, UPI QR); fonts are built with `pnpm --filter @solokit/web fonts`
 - `packages/tools/contract` the contract tool's domain logic: clause library as data, model, validation, document and review-pack builders, saved data, stamp-duty pointers

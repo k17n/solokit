@@ -15,6 +15,7 @@ import {
   type DeviceComparison,
 } from '@solokit/tool-invoice';
 import { Button, Notice } from '@solokit/ui';
+import { useStorage } from '../workspace/WorkspaceProvider';
 import { downloadBlob } from './downloads';
 import styles from './BackupScreen.module.css';
 
@@ -75,6 +76,8 @@ function listNumbers(numbers: string[]): string {
 }
 
 export function BackupScreen({ store, onRestored, restoreOnly = false, now = realNow }: BackupScreenProps) {
+  const { workspace } = useStorage();
+  const header = workspace ? { workspaceName: workspace.name } : {};
   const storage = useMemo(() => createInvoiceStorage(store), [store]);
   const contractStorage = useMemo(() => createContractStorage(store), [store]);
   const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
@@ -131,7 +134,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
     try {
       // The backup time is recorded as the file is made, so this runs only now, on the click.
       const stamp = now();
-      const backup = await createBackup(store, stamp);
+      const backup = await createBackup(store, stamp, header);
       downloadBlob(new Blob([backup.json], { type: 'application/json' }), backup.filename);
       // Only a file that was really handed over counts as a backup.
       await recordBackup(store, stamp);
@@ -149,7 +152,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
     setSafetyCopy('idle');
     try {
       const stamp = now();
-      const backup = await createBackup(store, stamp);
+      const backup = await createBackup(store, stamp, header);
       downloadBlob(new Blob([backup.json], { type: 'application/json' }), backup.filename);
       await recordBackup(store, stamp);
       await refresh();

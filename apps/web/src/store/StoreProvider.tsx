@@ -23,6 +23,8 @@ export interface StoreProviderProps {
   factory?: () => DataStore;
   /** What the Reload button does. Default: reload the page. */
   reload?: () => void;
+  /** Read once, when the provider mounts. True: nothing is opened and `ready` stays false (the Business is still being chosen). */
+  pending?: boolean;
 }
 
 /** Tells the provider when a request fails because the database was upgraded by a newer SoloKit, then passes the failure on. */
@@ -61,11 +63,13 @@ export function OutdatedNotice({ reload }: { reload: () => void }) {
 
 const reloadPage = () => window.location.reload();
 
-export function StoreProvider({ children, factory = createIndexedDbStore, reload = reloadPage }: StoreProviderProps) {
+export function StoreProvider({ children, factory = createIndexedDbStore, reload = reloadPage, pending = false }: StoreProviderProps) {
   const [state, setState] = useState<StoreState>(INITIAL);
   const factoryRef = useRef(factory);
+  const pendingRef = useRef(pending);
 
   useEffect(() => {
+    if (pendingRef.current) return;
     let cancelled = false;
     const markOutdated = () => {
       if (!cancelled) setState((current) => (current.outdated ? current : { ...current, outdated: true }));
