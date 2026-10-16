@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import type { SellerGstStatus } from '@solokit/tax-engines';
-import type { SellerProfile } from '@solokit/tool-invoice';
+import type { BusinessProfile } from '@solokit/profile';
 import { Button, RadioCards } from '@solokit/ui';
 import { GST_STATUS_OPTIONS, ProfileForm } from './ProfileForm';
 import { emptyProfileForm } from './profileFormState';
 
 export interface OnboardingProps {
-  onDone: (profile: SellerProfile) => Promise<void> | void;
+  onDone: (profile: BusinessProfile) => Promise<void> | void;
   processLogo?: (file: File) => Promise<string>;
 }
 

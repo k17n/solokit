@@ -3,7 +3,8 @@ import { getStateByCode, type GstLineResult, type SupplyMode } from '@solokit/ta
 import { formatAmount, type CurrencyCode } from './currencies';
 import { buildDeclarations, formatTdsRate } from './declarations';
 import { calculateInvoiceGst } from './gst-input';
-import type { Address, Client, InvoiceKind, InvoiceRecord, InvoiceStatus, SellerProfile } from './model';
+import type { Address, BusinessProfile } from '@solokit/profile';
+import type { Client, InvoiceKind, InvoiceRecord, InvoiceStatus } from './model';
 import { buildUpiPayload } from './upi';
 import { formatQuantity } from './units';
 
@@ -89,7 +90,7 @@ function addressLines(address: Address): string[] {
   return lines;
 }
 
-function party(source: SellerProfile | Client): DocParty {
+function party(source: BusinessProfile | Client): DocParty {
   const result: DocParty = { name: source.name, lines: addressLines(source.address) };
   if (source.gstin) result.gstin = source.gstin;
   if (source.pan) result.pan = source.pan;

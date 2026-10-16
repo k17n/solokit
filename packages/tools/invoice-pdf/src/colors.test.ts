@@ -1,4 +1,4 @@
-import { contrastRatio } from '@solokit/tool-invoice';
+import { contrastRatio } from '@solokit/profile';
 import { describe, expect, it } from 'vitest';
 import { mixHex, readableOn } from './colors';
 

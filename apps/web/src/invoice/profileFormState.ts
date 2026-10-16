@@ -1,5 +1,5 @@
 import { INDIAN_STATES, validateGstin, type SellerGstStatus } from '@solokit/tax-engines';
-import { normaliseSeller, validateSeller, type Issue, type SellerProfile } from '@solokit/tool-invoice';
+import { normaliseProfile, validateProfile, type Issue, type BusinessProfile } from '@solokit/profile';
 
 export interface ProfileFormState {
   name: string;
@@ -59,7 +59,7 @@ export function emptyProfileForm(gstStatus: SellerGstStatus): ProfileFormState {
   };
 }
 
-export function profileToForm(profile: SellerProfile): ProfileFormState {
+export function profileToForm(profile: BusinessProfile): ProfileFormState {
   return {
     name: profile.name,
     gstStatus: profile.gstStatus,
@@ -95,10 +95,10 @@ function hasBankDetails(form: ProfileFormState): boolean {
   return BANK_FIELDS.some((field) => form[field].trim() !== '');
 }
 
-/** Turns what was typed into a normalised SellerProfile. Run `validateProfileForm` first. */
-export function formToProfile(form: ProfileFormState): SellerProfile {
+/** Turns what was typed into a normalised BusinessProfile. Run `validateProfileForm` first. */
+export function formToProfile(form: ProfileFormState): BusinessProfile {
   const taxRegistered = form.gstStatus !== 'unregistered';
-  const profile: SellerProfile = {
+  const profile: BusinessProfile = {
     id: 'me',
     name: form.name,
     gstStatus: form.gstStatus,
@@ -133,11 +133,11 @@ export function formToProfile(form: ProfileFormState): SellerProfile {
       branch: form.branch,
     };
   }
-  return normaliseSeller(profile);
+  return normaliseProfile(profile);
 }
 
 export function validateProfileForm(form: ProfileFormState): Issue[] {
-  const issues = validateSeller(formToProfile(form));
+  const issues = validateProfile(formToProfile(form));
   const seen = new Set(issues.map((issue) => issue.path));
   if (hasBankDetails(form)) {
     const required: [string, string, string][] = [

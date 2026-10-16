@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { InvoiceKind, SellerProfile } from '@solokit/tool-invoice';
+import type { InvoiceKind } from '@solokit/tool-invoice';
+import type { BusinessProfile } from '@solokit/profile';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from './BackupScreen';
 import { InvoiceEditor } from './InvoiceEditor';
@@ -27,7 +28,7 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
 
 export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
   const { storage, store, ready, persistent } = useInvoiceStorage();
-  const [profile, setProfile] = useState<SellerProfile | null | undefined>(undefined);
+  const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
   const [view, setView] = useState<View>({ name: 'list' });
   const [savedNotice, setSavedNotice] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
@@ -72,7 +73,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   }, [ready, persistent, profile]);
 
   const saveProfile = useCallback(
-    async (next: SellerProfile) => {
+    async (next: BusinessProfile) => {
       if (!storage) return;
       await storage.profile.save(next);
       setRestoredNotice(null);

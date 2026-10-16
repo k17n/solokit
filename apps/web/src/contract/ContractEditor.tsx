@@ -12,7 +12,8 @@ import {
   type ContractKind,
   type ContractStorage,
 } from '@solokit/tool-contract';
-import type { Client, InvoiceSettings, InvoiceStorage, InvoiceTheme, SellerProfile } from '@solokit/tool-invoice';
+import type { Client, InvoiceSettings, InvoiceStorage, InvoiceTheme } from '@solokit/tool-invoice';
+import type { BusinessProfile } from '@solokit/profile';
 import { Button, Notice, TextField } from '@solokit/ui';
 import { downloadBlob } from '../invoice/downloads';
 import { todayIso } from '../invoice/editorModel';
@@ -56,11 +57,11 @@ export interface ContractEditorProps {
 const realNow = () => new Date();
 
 type Loaded =
-  | { kind: 'ready'; profile: SellerProfile | undefined; clients: Client[]; settings: InvoiceSettings; customThemes: InvoiceTheme[] }
+  | { kind: 'ready'; profile: BusinessProfile | undefined; clients: Client[]; settings: InvoiceSettings; customThemes: InvoiceTheme[] }
   | { kind: 'cannot-edit' }
   | { kind: 'failed' };
 
-function choicesFrom(profile: SellerProfile | undefined, clients: Client[]): PartyChoice[] {
+function choicesFrom(profile: BusinessProfile | undefined, clients: Client[]): PartyChoice[] {
   const choices: PartyChoice[] = [];
   if (profile) choices.push({ id: 'profile', label: `My business profile (${profile.name})`, source: { name: profile.name, address: profile.address, email: profile.email, pan: profile.pan, gstin: profile.gstin } });
   for (const client of clients) {

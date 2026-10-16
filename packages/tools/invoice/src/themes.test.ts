@@ -1,9 +1,9 @@
+import { contrastRatio } from '@solokit/profile';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_THEME_ID,
   FONT_OPTIONS,
   PRESET_THEMES,
-  contrastRatio,
   createCustomTheme,
   isPresetThemeId,
   resolveTheme,

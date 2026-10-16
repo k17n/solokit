@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
+    "@solokit/profile": "workspace:*",
     "@solokit/tool-invoice": "workspace:*",
     "qrcode": "^1.5.4",
     "react": "^19.3.0"

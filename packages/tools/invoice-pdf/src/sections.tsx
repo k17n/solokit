@@ -1,5 +1,6 @@
 import { Image, Text, View } from '@react-pdf/renderer';
-import { contrastRatio, type InvoiceDocument, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type InvoiceDocument, type InvoiceTheme } from '@solokit/tool-invoice';
+import { contrastRatio } from '@solokit/profile';
 import { mixHex, readableOn } from './colors';
 import type { LayoutSpec } from './layouts';
 

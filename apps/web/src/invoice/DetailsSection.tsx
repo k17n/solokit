@@ -1,6 +1,7 @@
 'use client';
 
-import { SUPPORTED_CURRENCIES, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
+import { SUPPORTED_CURRENCIES, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import { CheckboxField, Notice, SelectField, TextAreaField, TextField } from '@solokit/ui';
 import { taxApplies, type EditorState } from './editorModel';
 import { selectableStates } from './profileFormState';
@@ -8,7 +9,7 @@ import { selectableStates } from './profileFormState';
 export interface DetailsSectionProps {
   state: EditorState;
   onChange: (patch: Partial<EditorState>) => void;
-  profile: SellerProfile;
+  profile: BusinessProfile;
   themes: InvoiceTheme[];
   /** Messages keyed like `issueDate`. */
   errors: Record<string, string>;

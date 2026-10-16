@@ -1,5 +1,5 @@
+import { contrastRatio, isHexColour, type Issue } from '@solokit/profile';
 import type { StoredRecord } from '@solokit/storage';
-import type { Issue } from './validation';
 
 export type FontId = 'inter' | 'poppins' | 'source-serif-4' | 'inconsolata' | 'geist-mono';
 
@@ -45,28 +45,7 @@ export function isPresetThemeId(id: string): boolean {
   return PRESET_THEMES.some((theme) => theme.id === id);
 }
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
 const BAND_LAYOUTS: readonly ThemeLayout[] = ['modern', 'bold', 'consultant'];
-
-function channel(value: number): number {
-  const c = value / 255;
-  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-}
-
-function luminance(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-}
-
-/** WCAG contrast ratio between two #RRGGBB colours (1 to 21). */
-export function contrastRatio(foreground: string, background: string): number {
-  const a = luminance(foreground);
-  const b = luminance(background);
-  const [light, dark] = a > b ? [a, b] : [b, a];
-  return (light + 0.05) / (dark + 0.05);
-}
 
 export function validateTheme(theme: InvoiceTheme): Issue[] {
   const issues: Issue[] = [];
@@ -76,7 +55,7 @@ export function validateTheme(theme: InvoiceTheme): Issue[] {
     ['background', theme.background],
   ] as const;
   for (const [path, value] of colours) {
-    if (!HEX.test(value)) issues.push({ path, message: 'Use a colour like #0B1B3A' });
+    if (!isHexColour(value)) issues.push({ path, message: 'Use a colour like #0B1B3A' });
   }
   if (issues.length > 0) return issues;
 

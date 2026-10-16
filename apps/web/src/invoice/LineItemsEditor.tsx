@@ -1,15 +1,8 @@
 'use client';
 
 import { useId } from 'react';
-import {
-  BILLING_UNITS,
-  BILLING_UNIT_LABELS,
-  COMMON_SERVICE_CODES,
-  SUPPORTED_CURRENCIES,
-  formatAmount,
-  type CurrencyCode,
-  type SellerProfile,
-} from '@solokit/tool-invoice';
+import { BILLING_UNITS, BILLING_UNIT_LABELS, COMMON_SERVICE_CODES, SUPPORTED_CURRENCIES, formatAmount, type CurrencyCode } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import {
   CURRENT_GST_SLABS,
   GST_SLAB_REFORM_DATE,
@@ -28,7 +21,7 @@ export interface LineItemsEditorProps {
   taxApplies: boolean;
   currency: CurrencyCode;
   issueDate: string;
-  profile: SellerProfile;
+  profile: BusinessProfile;
   /** Messages keyed like `lines[0].rate`. */
   errors: Record<string, string>;
 }

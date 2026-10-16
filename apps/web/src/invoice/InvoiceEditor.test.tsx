@@ -2,7 +2,8 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
-import { createInvoiceStorage, type InvoiceStorage, type InvoiceTheme, type SellerProfile } from '@solokit/tool-invoice';
+import { createInvoiceStorage, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { InvoiceEditor } from './InvoiceEditor';
 import { documentName } from './kinds';
@@ -19,7 +20,7 @@ const NOW = () => new Date(2026, 9, 14, 10, 0);
 
 async function setup(
   options: {
-    profile?: SellerProfile;
+    profile?: BusinessProfile;
     invoiceId?: string;
     clients?: boolean;
     abroadClient?: boolean;

@@ -1,4 +1,5 @@
-import { PRESET_THEMES, contrastRatio, type InvoiceTheme } from '@solokit/tool-invoice';
+import { PRESET_THEMES, type InvoiceTheme } from '@solokit/tool-invoice';
+import { contrastRatio } from '@solokit/profile';
 import { describe, expect, it } from 'vitest';
 import { mixHex } from './colors';
 import { paletteFor } from './sections';

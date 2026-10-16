@@ -1,8 +1,8 @@
 import type { SupplyMode } from '@solokit/tax-engines';
-import type { SellerProfile } from './model';
+import type { BusinessProfile } from '@solokit/profile';
 
 export interface DeclarationInput {
-  seller: SellerProfile;
+  seller: BusinessProfile;
   mode: SupplyMode;
   exemptSupply: boolean;
   reverseCharge: boolean;

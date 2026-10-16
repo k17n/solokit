@@ -1,55 +1,12 @@
 import type { Minor } from '@solokit/core';
 import type { StoredRecord } from '@solokit/storage';
-import type { Discount, SellerGstStatus } from '@solokit/tax-engines';
+import type { Address, BusinessProfile } from '@solokit/profile';
+import type { Discount } from '@solokit/tax-engines';
 import type { CurrencyCode } from './currencies';
 import type { BillingUnit } from './units';
 import type { InvoiceTheme } from './themes';
 
-export const SELLER_ID = 'me';
 export const SETTINGS_ID = 'invoice';
-
-export interface Address {
-  line1: string;
-  line2?: string;
-  city: string;
-  postalCode?: string;
-  /** GST state code for Indian addresses (for example "27"). */
-  stateCode?: string;
-  country: string;
-}
-
-export interface BankDetails {
-  accountName: string;
-  accountNumber: string;
-  ifsc: string;
-  bankName: string;
-  branch?: string;
-}
-
-/** The person or business issuing invoices. Saved once and reused. */
-export interface SellerProfile extends StoredRecord {
-  id: typeof SELLER_ID;
-  name: string;
-  gstStatus: SellerGstStatus;
-  gstin?: string;
-  pan?: string;
-  udyam?: string;
-  address: Address;
-  email?: string;
-  phone?: string;
-  website?: string;
-  /** Logo as a data URL, so it travels inside the JSON backup. */
-  logoDataUrl?: string;
-  bank?: BankDetails;
-  upiId?: string;
-  lutNumber?: string;
-  /** Prefix for invoice numbers, for example "INV/". */
-  invoicePrefix?: string;
-  defaultNotes?: string;
-  defaultTerms?: string;
-  /** Unregistered sellers: print "Not registered under GST". Defaults to true. */
-  unregisteredNote?: boolean;
-}
 
 export interface Client extends StoredRecord {
   name: string;
@@ -92,7 +49,7 @@ export interface InvoiceRecord extends StoredRecord {
   /** Quotes only: the last day the quoted prices hold. */
   validUntil?: string;
   /** Snapshots taken when the invoice was saved, so later profile edits never change old invoices. */
-  seller: SellerProfile;
+  seller: BusinessProfile;
   client: Client;
   currency: CurrencyCode;
   isExport: boolean;

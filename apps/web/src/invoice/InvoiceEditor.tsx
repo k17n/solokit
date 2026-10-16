@@ -1,25 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  InvoiceNotValidError,
-  InvoiceNumberTakenError,
-  DEFAULT_THEME_ID,
-  KIND_LABEL,
-  PRESET_THEMES,
-  buildInvoiceDocument,
-  issueInvoice,
-  resolveTheme,
-  numberFitsKind,
-  type Client,
-  type InvoiceDocument,
-  type InvoiceKind,
-  type InvoiceRecord,
-  type InvoiceStorage,
-  type InvoiceTheme,
-  type Issue,
-  type SellerProfile,
-} from '@solokit/tool-invoice';
+import { InvoiceNotValidError, InvoiceNumberTakenError, DEFAULT_THEME_ID, KIND_LABEL, PRESET_THEMES, buildInvoiceDocument, issueInvoice, resolveTheme, numberFitsKind, type Client, type InvoiceDocument, type InvoiceKind, type InvoiceRecord, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type Issue, type BusinessProfile } from '@solokit/profile';
 import { Button, Notice } from '@solokit/ui';
 import { ClientSection } from './ClientSection';
 import { clientToForm, emptyClientForm, formToClient, isBlankClient } from './clientFormState';
@@ -37,7 +20,7 @@ import styles from './InvoiceEditor.module.css';
 
 export interface InvoiceEditorProps {
   storage: InvoiceStorage;
-  profile: SellerProfile;
+  profile: BusinessProfile;
   /** An existing draft to edit. A new invoice is started when this is absent. */
   invoiceId?: string | undefined;
   /** The type of a new document. Defaults to a tax invoice. */

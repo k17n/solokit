@@ -3,7 +3,7 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { formatMoney } from '@solokit/core';
 import { IN_RULES_AS_OF, REGISTRATION_THRESHOLDS, type SellerGstStatus } from '@solokit/tax-engines';
-import type { SellerProfile } from '@solokit/tool-invoice';
+import type { BusinessProfile } from '@solokit/profile';
 import {
   Button,
   CheckboxField,
@@ -44,7 +44,7 @@ const rupees = (paise: number) => formatMoney(paise).replace(/\.00$/, '');
 export interface ProfileFormProps {
   initial: ProfileFormState;
   submitLabel: string;
-  onSave: (profile: SellerProfile) => Promise<void> | void;
+  onSave: (profile: BusinessProfile) => Promise<void> | void;
   processLogo?: (file: File) => Promise<string>;
 }
 

@@ -1,18 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DEFAULT_THEME_ID,
-  FONT_OPTIONS,
-  PRESET_THEMES,
-  createCustomTheme,
-  isPresetThemeId,
-  validateTheme,
-  type FontId,
-  type InvoiceStorage,
-  type InvoiceTheme,
-  type SellerProfile,
-} from '@solokit/tool-invoice';
+import { DEFAULT_THEME_ID, FONT_OPTIONS, PRESET_THEMES, createCustomTheme, isPresetThemeId, validateTheme, type FontId, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
+import { type BusinessProfile } from '@solokit/profile';
 import { Badge, Button, Notice, SelectField, TextField } from '@solokit/ui';
 import { todayIso } from './editorModel';
 import { newId } from './ids';
@@ -23,7 +13,7 @@ import styles from './ThemesScreen.module.css';
 
 export interface ThemesScreenProps {
   storage: InvoiceStorage;
-  profile: SellerProfile;
+  profile: BusinessProfile;
   renderPdf?: PdfRenderer;
   now?: () => Date;
 }

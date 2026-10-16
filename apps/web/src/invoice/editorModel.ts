@@ -1,16 +1,6 @@
 import { indianFiscalYear, lineAmount, percentOf, type Minor } from '@solokit/core';
-import {
-  createDraftInvoice,
-  isRealIsoDate,
-  validateInvoice,
-  type BillingUnit,
-  type CurrencyCode,
-  type InvoiceKind,
-  type InvoiceRecord,
-  type Issue,
-  type LineItem,
-  type SellerProfile,
-} from '@solokit/tool-invoice';
+import { createDraftInvoice, isRealIsoDate, validateInvoice, type BillingUnit, type CurrencyCode, type InvoiceKind, type InvoiceRecord, type LineItem } from '@solokit/tool-invoice';
+import { type Issue, type BusinessProfile } from '@solokit/profile';
 import { emptyClientForm, formToClient, validateClientForm, type ClientFormState } from './clientFormState';
 import { formatAmountInput, formatQuantityInput, parseAmountInput, parsePercentInput, parseQuantityInput } from './inputs';
 
@@ -84,11 +74,11 @@ export function todayIso(now: Date): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-export function taxApplies(state: Pick<EditorState, 'isExport' | 'exemptSupply'>, profile: SellerProfile): boolean {
+export function taxApplies(state: Pick<EditorState, 'isExport' | 'exemptSupply'>, profile: BusinessProfile): boolean {
   return profile.gstStatus === 'regular' && !state.isExport && !state.exemptSupply;
 }
 
-export function emptyLine(id: string, profile: SellerProfile): LineDraft {
+export function emptyLine(id: string, profile: BusinessProfile): LineDraft {
   return {
     id,
     description: '',
@@ -108,7 +98,7 @@ export interface NewEditorInput {
   lineId: string;
   number: string;
   today: string;
-  profile: SellerProfile;
+  profile: BusinessProfile;
   defaultThemeId: string;
   /** Defaults to a tax invoice. */
   kind?: InvoiceKind;
@@ -220,7 +210,7 @@ function clientFormFor(state: EditorState): ClientFormState {
   return state.isExport ? { ...state.client, stateCode: '' } : { ...state.client, country: 'India' };
 }
 
-export function editorToInvoice(state: EditorState, profile: SellerProfile, now: Date): BuildResult {
+export function editorToInvoice(state: EditorState, profile: BusinessProfile, now: Date): BuildResult {
   const parseIssues: Issue[] = [];
   const taxed = taxApplies(state, profile);
   const quote = state.kind === 'quote';
@@ -309,7 +299,7 @@ export function editorToInvoice(state: EditorState, profile: SellerProfile, now:
 }
 
 /** Every problem that must be fixed before the invoice can be issued, one per field. */
-export function validateEditor(state: EditorState, profile: SellerProfile, now: Date): Issue[] {
+export function validateEditor(state: EditorState, profile: BusinessProfile, now: Date): Issue[] {
   const { invoice, parseIssues } = editorToInvoice(state, profile, now);
   const issues: Issue[] = [];
   const seen = new Set<string>();
