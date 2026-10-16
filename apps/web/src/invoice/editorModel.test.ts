@@ -441,3 +441,13 @@ describe('quotations in the editor model', () => {
     expect('convertedFromId' in copy).toBe(false);
   });
 });
+
+describe('a draft made by converting a quotation', () => {
+  it('keeps its link back through editing and saving', () => {
+    const draft = makeInvoice({ status: 'draft', convertedFromId: 'q1' });
+    const state = invoiceToEditor(draft);
+    expect(state.convertedFromId).toBe('q1');
+    expect(editorToInvoice(state, regular, NOW).invoice.convertedFromId).toBe('q1');
+    expect(editorToInvoice(complete(), regular, NOW).invoice.convertedFromId).toBeUndefined();
+  });
+});

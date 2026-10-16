@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { SellerProfile } from '@solokit/tool-invoice';
+import type { InvoiceKind, SellerProfile } from '@solokit/tool-invoice';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from './BackupScreen';
 import { InvoiceEditor } from './InvoiceEditor';
@@ -16,11 +16,11 @@ import type { PdfRenderer } from './usePdfPreview';
 import { useInvoiceStorage } from './useInvoiceStorage';
 import styles from './InvoiceApp.module.css';
 
-type View = { name: 'list' } | { name: 'new' } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' } | { name: 'themes' } | { name: 'backup' };
+type View = { name: 'list' } | { name: 'new'; kind: InvoiceKind } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' } | { name: 'themes' } | { name: 'backup' };
 
 const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Invoices', target: { name: 'list' }, current: ['list', 'view'] },
-  { label: 'New invoice', target: { name: 'new' }, current: ['new', 'edit'] },
+  { label: 'New invoice', target: { name: 'new', kind: 'invoice' }, current: ['new', 'edit'] },
   { label: 'Themes', target: { name: 'themes' }, current: ['themes'] },
   { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
   { label: 'Profile', target: { name: 'profile' }, current: ['profile'] },
@@ -193,9 +193,9 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
         {view.name === 'list' ? (
           <InvoiceList
             storage={storage}
-            onNew={() => {
+            onNew={(kind = 'invoice') => {
               setNewCount((count) => count + 1);
-              setView({ name: 'new' });
+              setView({ name: 'new', kind });
             }}
             onEdit={(id) => setView({ name: 'edit', id })}
             onView={(id) => setView({ name: 'view', id })}
@@ -210,6 +210,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
             storage={storage}
             profile={profile}
             invoiceId={view.name === 'edit' ? view.id : undefined}
+            initialKind={view.name === 'new' ? view.kind : undefined}
             onBack={() => setView({ name: 'list' })}
             onIssued={(id) => setView({ name: 'view', id })}
             {...(renderPdf ? { renderPdf } : {})}
@@ -218,10 +219,12 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
         ) : null}
         {view.name === 'view' ? (
           <InvoiceViewer
+            key={view.id}
             storage={storage}
             invoiceId={view.id}
             onBack={() => setView({ name: 'list' })}
             onEdit={(id) => setView({ name: 'edit', id })}
+            onView={(id) => setView({ name: 'view', id })}
             {...(renderPdf ? { renderPdf } : {})}
             {...(now ? { now } : {})}
           />

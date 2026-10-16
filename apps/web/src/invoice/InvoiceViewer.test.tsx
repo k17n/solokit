@@ -102,3 +102,78 @@ describe('InvoiceViewer', () => {
     expect(await screen.findByText('That invoice was not found')).toBeInTheDocument();
   });
 });
+
+describe('InvoiceViewer: quotations and conversion', () => {
+  const quote = (overrides = {}) => makeInvoice({ id: 'q1', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13', ...overrides });
+
+  it('shows an issued quotation with its validity and a Convert to invoice button', async () => {
+    await setup(quote(), 'q1');
+    expect(await screen.findByRole('heading', { name: 'QT/2026-27/0001' })).toBeInTheDocument();
+    expect(screen.getByText('Quotation')).toBeInTheDocument();
+    expect(screen.getByText(/Valid until 13 Nov 2026/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Convert to invoice' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel quotation' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Download PDF' }, { timeout: 4000 })).toHaveAttribute('download', 'Quotation-QT-2026-27-0001.pdf');
+  });
+
+  it('converts to a new draft tax invoice and opens it, leaving the quotation issued and read-only', async () => {
+    const { storage, onEdit } = await setup(quote(), 'q1');
+    await storage.invoices.save(makeInvoice({ id: 'old', number: '2026-27/0004' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
+    await waitFor(() => expect(onEdit).toHaveBeenCalledOnce());
+    const draft = await storage.invoices.get(onEdit.mock.calls[0]![0]);
+    expect(draft).toMatchObject({ kind: 'invoice', status: 'draft', number: '2026-27/0005', convertedFromId: 'q1', issueDate: '2026-10-14' });
+    expect(await storage.invoices.get('q1')).toMatchObject({ status: 'issued', convertedToId: draft!.id, number: 'QT/2026-27/0001' });
+    expect(await storage.invoices.nextNumber('2026-10-14', 'quote')).toBe('QT/2026-27/0002');
+  });
+
+  it('offers the same conversion on an issued proforma', async () => {
+    await setup(makeInvoice({ id: 'p1', kind: 'proforma', number: 'PF/2026-27/0001' }), 'p1');
+    expect(await screen.findByRole('button', { name: 'Convert to invoice' })).toBeInTheDocument();
+    expect(screen.getByText('Proforma')).toBeInTheDocument();
+  });
+
+  it('shows an already converted quotation as converted, links to the draft and offers no second conversion', async () => {
+    const onEdit = vi.fn();
+    const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+    await storage.invoices.save(quote({ convertedToId: 'd1' }));
+    await storage.invoices.save(makeInvoice({ id: 'd1', number: '2026-27/0001', status: 'draft', convertedFromId: 'q1' }));
+    render(<InvoiceViewer storage={storage} invoiceId="q1" onBack={vi.fn()} onEdit={onEdit} renderPdf={fakeRender} />);
+    expect(await screen.findByText(/Converted to draft invoice 2026-27\/0001/)).toBeInTheDocument();
+    expect(screen.getByText('Converted', { exact: true })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Convert to invoice' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Open 2026-27/0001' }));
+    expect(onEdit).toHaveBeenCalledWith('d1');
+  });
+
+  it('does not offer it on a cancelled quotation or a plain invoice', async () => {
+    await setup(quote({ status: 'cancelled' }), 'q1');
+    await screen.findByRole('heading', { name: 'QT/2026-27/0001' });
+    expect(screen.queryByRole('button', { name: 'Convert to invoice' })).not.toBeInTheDocument();
+  });
+
+  it('does not offer it on an invoice', async () => {
+    await setup(makeInvoice({ id: 'i1' }));
+    await screen.findByRole('heading', { name: '2026-27/0001' });
+    expect(screen.queryByRole('button', { name: 'Convert to invoice' })).not.toBeInTheDocument();
+  });
+
+  it('says which quotation an invoice was made from and opens it', async () => {
+    const onView = vi.fn();
+    const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore());
+    await storage.invoices.save(quote({ convertedToId: 'i1' }));
+    await storage.invoices.save(makeInvoice({ id: 'i1', number: '2026-27/0001', convertedFromId: 'q1' }));
+    render(<InvoiceViewer storage={storage} invoiceId="i1" onBack={vi.fn()} onEdit={vi.fn()} onView={onView} renderPdf={fakeRender} />);
+    expect(await screen.findByText(/Made from quotation QT\/2026-27\/0001/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Open QT/2026-27/0001' }));
+    expect(onView).toHaveBeenCalledWith('q1');
+  });
+
+  it('shows a plain message when conversion fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { storage } = await setup(quote(), 'q1');
+    await storage.invoices.convert('q1', { id: 'other', issueDate: '2026-10-14' });
+    await userEvent.click(await screen.findByRole('button', { name: 'Convert to invoice' }));
+    expect(await screen.findByText('This document has already been converted to an invoice')).toBeInTheDocument();
+  });
+});

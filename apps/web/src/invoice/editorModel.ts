@@ -57,6 +57,8 @@ export interface EditorState {
   notes: string;
   terms: string;
   themeId: string;
+  /** The quotation or proforma this draft was converted from; kept so saving the draft does not drop the link. */
+  convertedFromId: string;
   createdAt: string;
 }
 
@@ -137,6 +139,7 @@ export function newEditorState(input: NewEditorInput): EditorState {
     notes: input.profile.defaultNotes ?? '',
     terms: input.profile.defaultTerms ?? '',
     themeId: input.defaultThemeId,
+    convertedFromId: '',
     createdAt: '',
   };
 }
@@ -201,6 +204,7 @@ export function invoiceToEditor(invoice: InvoiceRecord): EditorState {
     notes: invoice.notes ?? '',
     terms: invoice.terms ?? '',
     themeId: invoice.themeId,
+    convertedFromId: invoice.convertedFromId ?? '',
     createdAt: invoice.createdAt,
   };
 }
@@ -299,6 +303,7 @@ export function editorToInvoice(state: EditorState, profile: SellerProfile, now:
   const terms = state.terms.trim();
   if (terms !== '') invoice.terms = terms;
   else delete invoice.terms;
+  if (state.convertedFromId !== '') invoice.convertedFromId = state.convertedFromId;
   if (state.createdAt !== '') invoice.createdAt = state.createdAt;
   return { invoice, parseIssues };
 }
