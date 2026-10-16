@@ -38,6 +38,11 @@
   text-underline-offset: 8px;
 }
 
+.extra {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 /* two classes so these win over Button's own padding regardless of stylesheet order */
 .header .cta {
   min-height: 2.5rem;
@@ -46,8 +51,20 @@
 }
 
 @media (max-width: 40rem) {
+  .inner {
+    gap: 0.6rem;
+  }
+
   .nav {
     display: none;
+  }
+
+  .extra {
+    margin-left: auto;
+  }
+
+  .extra + .cta {
+    margin-left: 0;
   }
 
   .cta {

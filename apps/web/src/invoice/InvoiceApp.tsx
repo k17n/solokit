@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InvoiceKind } from '@solokit/tool-invoice';
-import type { BusinessProfile } from '@solokit/profile';
+import { missingFields, type BusinessProfile } from '@solokit/profile';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
 import { InvoiceEditor } from './InvoiceEditor';
@@ -12,6 +12,7 @@ import { Onboarding } from '../business/Onboarding';
 import { ThemesScreen } from './ThemesScreen';
 import { ProfileForm } from '../business/ProfileForm';
 import { profileToForm } from '../business/profileFormState';
+import { useProfileSaver } from '../business/useProfileSaver';
 import { requestPersistentStorage } from './persist';
 import type { PdfRenderer } from './usePdfPreview';
 import { useInvoiceStorage } from './useInvoiceStorage';
@@ -72,20 +73,14 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     }
   }, [ready, persistent, profile]);
 
+  const saveBusiness = useProfileSaver(storage);
   const saveProfile = useCallback(
     async (next: BusinessProfile) => {
-      if (!storage) return;
-      await storage.profile.save(next);
+      const saved = await saveBusiness(next, profile);
       setRestoredNotice(null);
-      try {
-        await storage.settings.update({ onboarded: true });
-      } catch (error) {
-        // The profile is saved; losing the flag must not keep the user on onboarding.
-        console.error('Could not record that setup is finished', error);
-      }
-      setProfile(next);
+      setProfile(saved);
     },
-    [storage],
+    [saveBusiness, profile],
   );
 
   if (loadFailed && profile === undefined) {
@@ -128,7 +123,9 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     </div>
   ) : null;
 
-  if (profile === null) {
+  // Nothing saved yet, or a profile that another tool started and the invoice tool still needs more of (the GST status, say).
+  const setupFields = profile === null ? [] : missingFields(profile, 'invoice');
+  if (profile === null || setupFields.length > 0) {
     return (
       <div className={styles.app}>
         {storageWarning}
@@ -153,12 +150,14 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
           </>
         ) : (
           <>
-            <Onboarding onDone={saveProfile} />
-            <div>
-              <Button variant="ghost" onClick={() => setRestoring(true)}>
-                Already use SoloKit? Restore a backup
-              </Button>
-            </div>
+            <Onboarding tool="invoice" profile={profile ?? undefined} onDone={saveProfile} />
+            {profile === null ? (
+              <div>
+                <Button variant="ghost" onClick={() => setRestoring(true)}>
+                  Already use SoloKit? Restore a backup
+                </Button>
+              </div>
+            ) : null}
           </>
         )}
       </div>

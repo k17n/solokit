@@ -1,9 +1,12 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { missingFields, type BusinessProfile } from '@solokit/profile';
 import type { ContractKind } from '@solokit/tool-contract';
 import { Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
+import { Onboarding } from '../business/Onboarding';
+import { useProfileSaver } from '../business/useProfileSaver';
 import { ContractEditor } from './ContractEditor';
 import { ContractList } from './ContractList';
 import { ContractViewer } from './ContractViewer';
@@ -32,8 +35,55 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
   /** Changes each time a tab is clicked in a dirty editor, which makes the editor ask what to do with its changes. */
   const [leaveRequest, setLeaveRequest] = useState(0);
   const onDirtyChange = useCallback((dirty: boolean) => setEditorDirty(dirty), []);
+  /** The Business's shared profile: undefined while it is being read, null when there is none. */
+  const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
+  /** The person chose to go on without filling in their details (or they could not be read). */
+  const [skipped, setSkipped] = useState(false);
+  const saveBusiness = useProfileSaver(invoice);
 
-  if (!ready || !contracts || !invoice) return <p>Opening your agreements…</p>;
+  useEffect(() => {
+    if (!invoice) return;
+    let cancelled = false;
+    invoice.profile.get().then(
+      (found) => {
+        if (!cancelled) setProfile(found ?? null);
+      },
+      (error: unknown) => {
+        // Asking for details again could overwrite ones that merely failed to load, so go on without asking.
+        console.error('Could not read the saved profile', error);
+        if (!cancelled) {
+          setProfile(null);
+          setSkipped(true);
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice, restoreCount]);
+
+  if (!ready || !contracts || !invoice || profile === undefined) return <p>Opening your agreements…</p>;
+
+  // First use of the tool: ask only for the details agreements need that this Business has not given yet.
+  if (!skipped && missingFields(profile ?? undefined, 'contract').length > 0) {
+    return (
+      <div className={styles.app}>
+        {!persistent ? (
+          <Notice tone="danger" title="Your browser is not saving data">
+            What you enter will be lost when you close this tab. Use a normal browser window so your work is kept.
+          </Notice>
+        ) : null}
+        <Onboarding
+          tool="contract"
+          profile={profile ?? undefined}
+          onSkip={() => setSkipped(true)}
+          onDone={async (next) => {
+            setProfile(await saveBusiness(next, profile));
+          }}
+        />
+      </div>
+    );
+  }
 
   /** Go to a tab, unless the editor holds unsaved changes: then the editor asks first, as it does for its own Back button. */
   function goTo(target: View) {

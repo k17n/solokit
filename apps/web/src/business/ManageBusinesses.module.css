@@ -1,0 +1,147 @@
+.section {
+  display: grid;
+  gap: 1rem;
+  scroll-margin-top: 5rem;
+}
+
+.heading {
+  font-size: 1.8rem;
+}
+
+.heading:focus {
+  outline: none;
+}
+
+.heading:focus-visible {
+  outline: 3px solid var(--edge);
+  outline-offset: 3px;
+}
+
+.lede {
+  max-width: 46rem;
+  color: var(--text-muted);
+}
+
+.list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.rowHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.name {
+  min-width: 0;
+  font-family: var(--ff-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.action {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.9rem;
+  font: 600 0.95rem/1.1 var(--ff-sans);
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+}
+
+.action:hover:not(:disabled) {
+  border-color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.inline {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+.confirm {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  background: var(--danger-bg);
+  border: 1.5px solid var(--danger);
+  border-radius: var(--radius-m);
+}
+
+.confirm:focus {
+  outline: none;
+}
+
+.confirm:focus-visible {
+  outline: 3px solid var(--edge);
+  outline-offset: 3px;
+}
+
+.confirmTitle {
+  font-family: var(--ff-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.confirmDelete {
+  min-height: 2.75rem;
+  max-width: 100%;
+  padding: 0.65rem 1.1rem;
+  font: 700 1rem/1.15 var(--ff-sans);
+  overflow-wrap: anywhere;
+  color: #fff;
+  background: #b42318;
+  border: 1.5px solid #7a1710;
+  border-radius: var(--radius-m);
+  cursor: pointer;
+}
+
+.confirmDelete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.done {
+  margin: 0;
+  font-weight: 600;
+  color: var(--accent-text);
+}

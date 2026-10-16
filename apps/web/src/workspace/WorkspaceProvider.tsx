@@ -47,16 +47,6 @@ const INITIAL: WorkspacesState = {
   refresh: async () => {},
 };
 
-const WorkspacesContext = createContext<WorkspacesState | null>(null);
-
-export interface WorkspaceProviderProps {
-  children: ReactNode;
-  /** Read once, when the provider mounts. Tests pass one over fake-indexeddb or memory; the default uses the browser's IndexedDB. */
-  manager?: WorkspaceManager;
-  /** Passed to the store provider: what the Reload button does after SoloKit was updated. */
-  reload?: () => void;
-}
-
 interface Loaded {
   workspaces: Workspace[];
   current: Workspace;
@@ -64,13 +54,33 @@ interface Loaded {
   registryPersistent: boolean;
 }
 
+/** What {@link WorkspaceStore} needs: the current Business's store, or the fact that the list could not be read. */
+interface StoreSource {
+  loaded: Loaded | null;
+  failed: boolean;
+}
+
+const WorkspacesContext = createContext<WorkspacesState | null>(null);
+const StoreSourceContext = createContext<StoreSource | null>(null);
+
+export interface WorkspacesProviderProps {
+  children: ReactNode;
+  /** Read once, when the provider mounts. Tests pass one over fake-indexeddb or memory; the default uses the browser's IndexedDB. */
+  manager?: WorkspaceManager;
+  /**
+   * False: nothing is read or created yet (the home page, which uses no Business). It starts loading the first time this
+   * becomes true and keeps what it loaded after that. Default true.
+   */
+  enabled?: boolean;
+}
+
 /**
- * Owns the list of Businesses and shows the tool over the current Business's store. It mounts the store provider keyed
- * by the Business, so switching Business replaces the whole tool and `useStore()` keeps working unchanged inside it.
- * Another tab's changes (a Business created, renamed, archived, deleted or switched) arrive through the manager and
- * refresh the list; if the current Business was deleted there, the tool moves to the next one.
+ * Owns the list of Businesses. It sits above the page (header and all), so the Business switcher can live in the site
+ * header; {@link WorkspaceStore} below it shows a tool over the current Business's store. Another tab's changes (a
+ * Business created, renamed, archived, deleted or switched) arrive through the manager and refresh the list; if the
+ * current Business was deleted there, the tool moves to the next one.
  */
-export function WorkspaceProvider({ children, manager: provided, reload }: WorkspaceProviderProps) {
+export function WorkspacesProvider({ children, manager: provided, enabled = true }: WorkspacesProviderProps) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const managerRef = useRef<WorkspaceManager | null>(provided ?? null);
@@ -87,6 +97,7 @@ export function WorkspaceProvider({ children, manager: provided, reload }: Works
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     const manager = (managerRef.current ??= createWorkspaceManager());
     let cancelled = false;
     const load = () =>
@@ -100,13 +111,19 @@ export function WorkspaceProvider({ children, manager: provided, reload }: Works
       cancelled = true;
       unsubscribe();
       latest.current++;
+    };
+  }, [enabled, refresh]);
+
+  useEffect(
+    () => () => {
       // A manager passed in belongs to the caller. Closing one made here releases its database connections.
-      if (!provided) {
-        void manager.close();
+      if (!provided && managerRef.current) {
+        void managerRef.current.close();
         managerRef.current = null;
       }
-    };
-  }, [provided, refresh]);
+    },
+    [provided],
+  );
 
   const value = useMemo<WorkspacesState>(() => {
     const manager = managerRef.current;
@@ -147,28 +164,66 @@ export function WorkspaceProvider({ children, manager: provided, reload }: Works
     };
   }, [loaded, refresh]);
 
-  const storeFactory = useMemo(() => (loaded ? () => loaded.store : undefined), [loaded]);
+  const source = useMemo<StoreSource>(() => ({ loaded, failed }), [loaded, failed]);
 
   return (
     <WorkspacesContext.Provider value={value}>
-      {/* A failure to read the list at all: fall back to the tool's own temporary store rather than a blank page. */}
-      <StoreProvider
-        key={failed ? 'failed' : (loaded?.current.id ?? 'pending')}
-        pending={!loaded && !failed}
-        {...(storeFactory ? { factory: storeFactory } : {})}
-        {...(reload ? { reload } : {})}
-      >
-        {children}
-      </StoreProvider>
+      <StoreSourceContext.Provider value={source}>{children}</StoreSourceContext.Provider>
     </WorkspacesContext.Provider>
   );
 }
 
-/** The list of Businesses and the actions on it. Must be used inside {@link WorkspaceProvider}. */
+export interface WorkspaceStoreProps {
+  children: ReactNode;
+  /** Passed to the store provider: what the Reload button does after SoloKit was updated. */
+  reload?: () => void;
+}
+
+/**
+ * Shows its children over the current Business's store, keyed by the Business: switching Business replaces everything
+ * inside, and `useStore()` keeps working unchanged. Outside a {@link WorkspacesProvider} it makes its own.
+ */
+export function WorkspaceStore({ children, reload }: WorkspaceStoreProps) {
+  const source = useContext(StoreSourceContext);
+  const loaded = source?.loaded ?? null;
+  const storeFactory = useMemo(() => (loaded ? () => loaded.store : undefined), [loaded]);
+  if (!source) return <WorkspaceProvider {...(reload ? { reload } : {})}>{children}</WorkspaceProvider>;
+  return (
+    // A failure to read the list at all: fall back to the tool's own temporary store rather than a blank page.
+    <StoreProvider
+      key={source.failed ? 'failed' : (loaded?.current.id ?? 'pending')}
+      pending={!loaded && !source.failed}
+      {...(storeFactory ? { factory: storeFactory } : {})}
+      {...(reload ? { reload } : {})}
+    >
+      {children}
+    </StoreProvider>
+  );
+}
+
+export interface WorkspaceProviderProps extends WorkspaceStoreProps {
+  manager?: WorkspaceManager;
+}
+
+/** The list of Businesses and a tool over the current one, in one piece. Pages that already sit under a {@link WorkspacesProvider} use {@link WorkspaceStore}. */
+export function WorkspaceProvider({ children, manager, reload }: WorkspaceProviderProps) {
+  return (
+    <WorkspacesProvider {...(manager ? { manager } : {})}>
+      <WorkspaceStore {...(reload ? { reload } : {})}>{children}</WorkspaceStore>
+    </WorkspacesProvider>
+  );
+}
+
+/** The list of Businesses and the actions on it. Must be used inside {@link WorkspacesProvider} or {@link WorkspaceProvider}. */
 export function useWorkspaces(): WorkspacesState {
   const value = useContext(WorkspacesContext);
   if (!value) throw new Error('useWorkspaces must be used inside a WorkspaceProvider');
   return value;
+}
+
+/** Like {@link useWorkspaces}, but null instead of an error outside a provider (screens that also run in tests without one). */
+export function useOptionalWorkspaces(): WorkspacesState | null {
+  return useContext(WorkspacesContext);
 }
 
 export interface StorageState extends StoreState {

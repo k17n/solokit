@@ -2,12 +2,16 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createMemoryStore } from '@solokit/storage';
+import { createInvoiceStorage } from '@solokit/tool-invoice';
+import { makeSeller } from '@solokit/tool-invoice/testing';
 import { StoreProvider } from '../store/StoreProvider';
 import { ContractApp } from './ContractApp';
 import { NOW, fakeExporter } from './testSetup';
 
 function renderApp() {
   const store = createMemoryStore();
+  // A Business that has already given its details, so the tool opens straight away.
+  void createInvoiceStorage(store).profile.save(makeSeller());
   render(
     <StoreProvider factory={() => store}>
       <ContractApp exporter={fakeExporter()} now={() => NOW} />

@@ -6,6 +6,7 @@ const config: NextConfig = {
   images: { unoptimized: true },
   transpilePackages: [
     '@solokit/core',
+    '@solokit/profile',
     '@solokit/registry',
     '@solokit/storage',
     '@solokit/tax-engines',

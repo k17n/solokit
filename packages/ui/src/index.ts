@@ -5,7 +5,7 @@ export { Button } from './Button';
 export { formatIsoDate } from './format';
 export { Logo, type LogoProps } from './Logo';
 export { SiteFooter, type FooterCountry, type FooterTool, type SiteFooterProps } from './SiteFooter';
-export { SiteHeader, type NavLink, type SiteHeaderProps } from './SiteHeader';
+export { SiteHeader, type NavLink, type SiteHeaderProps, type SiteHeaderSlots } from './SiteHeader';
 export { CheckboxField, type CheckboxFieldProps } from './CheckboxField';
 export { Field, type FieldControlProps, type FieldProps } from './Field';
 export { Notice, type NoticeProps } from './Notice';

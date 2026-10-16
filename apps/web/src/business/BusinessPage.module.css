@@ -1,0 +1,61 @@
+.page {
+  display: grid;
+  gap: 3rem;
+  min-width: 0;
+}
+
+.jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.jump a {
+  padding: 0.5rem 0.9rem;
+  font: 600 0.95rem/1 var(--ff-sans);
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.jump a:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.section {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  scroll-margin-top: 5rem;
+}
+
+.heading {
+  font-size: 1.8rem;
+}
+
+.heading:focus {
+  outline: none;
+}
+
+.heading:focus-visible {
+  outline: 3px solid var(--edge);
+  outline-offset: 3px;
+}
+
+.lede {
+  max-width: 46rem;
+  margin-top: 0.4rem;
+  color: var(--text-muted);
+}
+
+.saved {
+  margin: 0;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+.anchor {
+  scroll-margin-top: 5rem;
+}
