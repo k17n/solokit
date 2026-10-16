@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   buildInvoiceDocument,
+  KIND_LABEL,
   isBackupDue,
   resolveTheme,
+  seriesOf,
+  type InvoiceKind,
   type InvoiceRecord,
   type InvoiceStorage,
   type InvoiceTheme,
@@ -19,7 +22,8 @@ import styles from './InvoiceList.module.css';
 
 export interface InvoiceListProps {
   storage: InvoiceStorage;
-  onNew: () => void;
+  /** Starts a new document; the kind defaults to a tax invoice. */
+  onNew: (kind?: InvoiceKind) => void;
   onEdit: (id: string) => void;
   onView: (id: string) => void;
   /** Opens the backup screen from the reminder. */
@@ -33,6 +37,20 @@ const realNow = () => new Date();
 
 type Pending = { id: string; action: 'cancel' | 'delete' } | null;
 
+type Filter = 'all' | InvoiceKind;
+
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'invoice', label: 'Invoices' },
+  { value: 'quote', label: 'Quotes' },
+  { value: 'proforma', label: 'Proformas' },
+];
+
+const EMPTY_TEXT: Record<InvoiceKind, string> = { invoice: 'No invoices yet.', quote: 'No quotations yet.', proforma: 'No proforma invoices yet.' };
+
+/** The lower-case name of a document's kind, for sentences: "invoice", "proforma invoice", "quotation". */
+export const kindNoun = (kind: InvoiceKind | undefined): string => KIND_LABEL[kind ?? 'invoice'].toLowerCase();
+
 export function totalOf(invoice: InvoiceRecord): string {
   try {
     const rows = buildInvoiceDocument(invoice).totals;
@@ -40,6 +58,15 @@ export function totalOf(invoice: InvoiceRecord): string {
   } catch {
     return '–';
   }
+}
+
+export function KindBadge({ kind }: { kind: InvoiceKind | undefined }) {
+  return <Badge>{kind === 'quote' ? 'Quotation' : kind === 'proforma' ? 'Proforma' : 'Invoice'}</Badge>;
+}
+
+/** Shown beside the status of a quotation or proforma that has been turned into an invoice. */
+export function ConvertedBadge({ invoice }: { invoice: InvoiceRecord }) {
+  return invoice.convertedToId ? <Badge tone="success">Converted</Badge> : null;
 }
 
 export function StatusBadge({ status }: { status: InvoiceRecord['status'] }) {
@@ -55,6 +82,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [pending, setPending] = useState<Pending>(null);
+  const [filter, setFilter] = useState<Filter>('all');
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ id: string; text: string } | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -114,7 +142,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
     try {
       const stamp = now();
       const today = todayIso(stamp);
-      const copy = duplicateInvoice(invoice, { id: newId(), number: await storage.invoices.nextNumber(today), issueDate: today, now: stamp });
+      const copy = duplicateInvoice(invoice, { id: newId(), number: await storage.invoices.nextNumber(today, seriesOf(invoice)), issueDate: today, now: stamp });
       const saved = await storage.invoices.save(copy);
       onEdit(saved.id);
     } catch (error) {
@@ -158,16 +186,35 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
     return (
       <div style={{ display: 'grid', gap: '1rem', justifyItems: 'start' }}>
         <p>No invoices yet.</p>
-        <Button onClick={onNew}>Create your first invoice</Button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <Button onClick={() => onNew()}>Create your first invoice</Button>
+          <Button variant="secondary" onClick={() => onNew('quote')}>
+            Create a quotation
+          </Button>
+        </div>
       </div>
     );
   }
+
+  const shown = filter === 'all' ? invoices : invoices.filter((invoice) => seriesOf(invoice) === filter);
 
   return (
     <div>
       <div className={styles.header}>
         <h2 style={{ fontSize: '1.8rem' }}>Invoices</h2>
-        <Button onClick={onNew}>New invoice</Button>
+        <div className={styles.actions}>
+          <Button onClick={() => onNew()}>New invoice</Button>
+          <Button variant="secondary" onClick={() => onNew('quote')}>
+            New quotation
+          </Button>
+        </div>
+      </div>
+      <div className={styles.actions} role="group" aria-label="Show">
+        {FILTERS.map((option) => (
+          <Button key={option.value} variant={filter === option.value ? 'primary' : 'secondary'} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>
+            {option.label}
+          </Button>
+        ))}
       </div>
       {isBackupDue(lastBackupAt, now(), invoices.length > 0) ? (
         <div className={styles.reminder}>
@@ -184,14 +231,19 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
           </Notice>
         </div>
       ) : null}
+      {shown.length === 0 && filter !== 'all' ? <p role="status">{EMPTY_TEXT[filter]}</p> : null}
       <ul className={styles.list} aria-label="Invoices" role="list" ref={listRef}>
-        {invoices.map((invoice) => {
+        {shown.map((invoice) => {
           const isPending = pending?.id === invoice.id;
           return (
             <li key={invoice.id} className={styles.item}>
               <div className={styles.top}>
                 <span className={styles.number}>{invoice.number}</span>
-                <StatusBadge status={invoice.status} />
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  <KindBadge kind={invoice.kind} />
+                  <StatusBadge status={invoice.status} />
+                  <ConvertedBadge invoice={invoice} />
+                </span>
               </div>
               <div className={styles.meta}>
                 <span>{invoice.client.name}</span>
@@ -202,17 +254,17 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
                 <div className={styles.confirm}>
                   <p ref={confirmRef} tabIndex={-1}>
                     {pending.action === 'cancel'
-                      ? `Cancel invoice ${invoice.number}? Its number stays used.`
+                      ? `Cancel ${kindNoun(invoice.kind)} ${invoice.number}? Its number stays used.`
                       : `Delete draft ${invoice.number}? This cannot be undone.`}
                   </p>
                   <div className={styles.actions}>
                     <Button disabled={busy === invoice.id} onClick={() => void confirm(invoice, pending.action)}>
-                      {pending.action === 'cancel' ? 'Yes, cancel invoice' : 'Yes, delete draft'}
+                      {pending.action === 'cancel' ? `Yes, cancel ${kindNoun(invoice.kind)}` : 'Yes, delete draft'}
                     </Button>
                     <Button
                       variant="secondary"
                       onClick={() => {
-                        returnTo.current = `${pending.action === 'cancel' ? 'Cancel invoice' : 'Delete draft'} ${invoice.number}`;
+                        returnTo.current = `${pending.action === 'cancel' ? `Cancel ${kindNoun(invoice.kind)}` : 'Delete draft'} ${invoice.number}`;
                         setPending(null);
                       }}
                     >
@@ -232,8 +284,8 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
                     Duplicate
                   </Button>
                   {invoice.status === 'issued' ? (
-                    <Button variant="ghost" aria-label={`Cancel invoice ${invoice.number}`} onClick={() => setPending({ id: invoice.id, action: 'cancel' })}>
-                      Cancel invoice
+                    <Button variant="ghost" aria-label={`Cancel ${kindNoun(invoice.kind)} ${invoice.number}`} onClick={() => setPending({ id: invoice.id, action: 'cancel' })}>
+                      Cancel {kindNoun(invoice.kind)}
                     </Button>
                   ) : null}
                   {invoice.status === 'draft' ? (
