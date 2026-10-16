@@ -59,7 +59,7 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, renderPdf = 
     };
   }, [storage, invoiceId]);
 
-  const theme = useMemo(() => resolveTheme(invoice?.themeId ?? 'classic', customThemes), [invoice?.themeId, customThemes]);
+  const theme = useMemo(() => invoice?.themeSnapshot ?? resolveTheme(invoice?.themeId ?? 'classic', customThemes), [invoice?.themeSnapshot, invoice?.themeId, customThemes]);
   const preview = usePdfPreview({ invoice: invoice && invoice.status !== 'draft' ? invoice : null, theme, enabled: true, delayMs: 0, render: renderPdf });
 
   if (invoice === undefined) return <p>Opening the invoice…</p>;

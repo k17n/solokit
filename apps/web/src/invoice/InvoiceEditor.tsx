@@ -202,7 +202,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
     setBusy(true);
     try {
       if (issue) {
-        const issued = issueInvoice(built.invoice);
+        const issued = issueInvoice(built.invoice, customThemes);
         await persistClient(issued);
         const saved = await storage.invoices.save(issued);
         onIssued(saved.id);

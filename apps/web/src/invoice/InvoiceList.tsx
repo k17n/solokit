@@ -98,7 +98,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
     setBusy(invoice.id);
     setMessage(null);
     try {
-      const blob = await renderPdf({ invoice, theme: resolveTheme(invoice.themeId, customThemes) });
+      const blob = await renderPdf({ invoice, theme: invoice.themeSnapshot ?? resolveTheme(invoice.themeId, customThemes) });
       downloadBlob(blob, invoiceFileName(invoice));
     } catch (error) {
       console.error('Could not build the invoice PDF', error);

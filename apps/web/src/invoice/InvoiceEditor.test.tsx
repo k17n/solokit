@@ -461,6 +461,16 @@ describe('InvoiceEditor: themes', () => {
     await waitFor(async () => expect((await storage.invoices.list())[0]?.themeId).toBe('mine'));
   }, 20000);
 
+  it('keeps a copy of the theme on the invoice when it is issued', async () => {
+    const { storage } = await setup({ themes: [mine] });
+    await userEvent.selectOptions(screen.getByLabelText('Invoice theme'), 'mine');
+    await fillClient();
+    await fillFirstItem();
+    await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
+    await waitFor(async () => expect((await storage.invoices.list())[0]?.status).toBe('issued'));
+    expect((await storage.invoices.list())[0]?.themeSnapshot).toEqual(mine);
+  }, 20000);
+
   it('falls back to Classic when the default theme no longer exists', async () => {
     await setup({ defaultThemeId: 'deleted-one' });
     expect(screen.getByLabelText('Invoice theme')).toHaveValue('classic');
