@@ -1,6 +1,7 @@
 import { formatInvoiceNumber, indianFiscalYear, nextSequence } from '@solokit/core';
 import type { DataStore } from '@solokit/storage';
-import { SELLER_ID, SETTINGS_ID, type Client, type InvoiceRecord, type InvoiceSettings, type SellerProfile } from './model';
+import { SELLER_ID, SETTINGS_ID, type Client, type InvoiceKind, type InvoiceRecord, type InvoiceSettings, type SellerProfile } from './model';
+import { seriesOf, seriesPrefix } from './series';
 import { DEFAULT_THEME_ID, type InvoiceTheme } from './themes';
 
 export class InvoiceNumberTakenError extends Error {
@@ -45,7 +46,8 @@ export interface InvoiceStorage {
     save(invoice: InvoiceRecord): Promise<InvoiceRecord>;
     remove(id: string): Promise<void>;
     cancel(id: string): Promise<InvoiceRecord>;
-    nextNumber(issueDate: string): Promise<string>;
+    /** The next free number in the series of this kind (default: tax invoices). */
+    nextNumber(issueDate: string, kind?: InvoiceKind): Promise<string>;
   };
   themes: {
     list(): Promise<InvoiceTheme[]>;
@@ -81,7 +83,7 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
       }
     }
     const key = (number: string) => number.trim().toUpperCase();
-    if (all.some((other) => other.id !== invoice.id && key(other.number) === key(invoice.number))) {
+    if (all.some((other) => other.id !== invoice.id && seriesOf(other) === seriesOf(invoice) && key(other.number) === key(invoice.number))) {
       throw new InvoiceNumberTakenError(`Invoice number ${invoice.number} is already used by another invoice`);
     }
     const stamp = now().toISOString();
@@ -125,14 +127,14 @@ export function createInvoiceStorage(store: DataStore, options: InvoiceStorageOp
         if (existing.status === 'draft') throw new Error('Only issued invoices can be cancelled; delete a draft instead');
         return saveInvoice({ ...existing, status: 'cancelled' });
       },
-      async nextNumber(issueDate) {
+      async nextNumber(issueDate, kind = 'invoice') {
         const [existing, profile] = await Promise.all([listInvoices(), store.get<SellerProfile>('profile', SELLER_ID)]);
         const fiscalYear = indianFiscalYear(issueDate);
         const sequence = nextSequence(
-          existing.map((invoice) => invoice.number),
+          existing.filter((invoice) => seriesOf(invoice) === kind).map((invoice) => invoice.number),
           fiscalYear,
         );
-        return formatInvoiceNumber({ prefix: profile?.invoicePrefix ?? '', fiscalYear, sequence });
+        return formatInvoiceNumber({ prefix: seriesPrefix(kind, profile?.invoicePrefix ?? ''), fiscalYear, sequence });
       },
     },
 

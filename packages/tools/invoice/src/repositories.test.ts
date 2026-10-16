@@ -161,6 +161,45 @@ describe('invoice numbers', () => {
   });
 });
 
+describe('number series per document kind', () => {
+  it('numbers quotes and proformas in their own series', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0004' }));
+    expect(await storage.invoices.nextNumber('2026-10-14', 'quote')).toBe('QT/2026-27/0001');
+    expect(await storage.invoices.nextNumber('2026-10-14', 'proforma')).toBe('PF/2026-27/0001');
+    await storage.invoices.save(makeInvoice({ id: 'q', kind: 'quote', number: 'QT/2026-27/0001', validUntil: '2026-11-13' }));
+    await storage.invoices.save(makeInvoice({ id: 'p', kind: 'proforma', number: 'PF/2026-27/0001' }));
+    expect(await storage.invoices.nextNumber('2026-10-14', 'quote')).toBe('QT/2026-27/0002');
+    expect(await storage.invoices.nextNumber('2026-10-14', 'proforma')).toBe('PF/2026-27/0002');
+    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0005');
+    expect(await storage.invoices.nextNumber('2027-04-01', 'quote')).toBe('QT/2027-28/0001');
+  });
+
+  it('ignores the seller prefix for quotes and proformas, and fits the 16-character limit', async () => {
+    const storage = setup();
+    await storage.profile.save(makeSeller({ invoicePrefix: 'INV/' }));
+    expect(await storage.invoices.nextNumber('2026-10-14', 'quote')).toBe('QT/2026-27/0001');
+    expect(await storage.invoices.nextNumber('2026-10-14', 'quote')).toHaveLength(15);
+  });
+
+  it('counts a stored proforma that holds a tax-series number towards proformas only, and does not rewrite it', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0002' }));
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
+    expect(await storage.invoices.nextNumber('2026-10-14')).toBe('2026-27/0002');
+    expect((await storage.invoices.get('old'))?.number).toBe('2026-27/0002');
+    expect(await storage.invoices.nextNumber('2026-10-14', 'proforma')).toBe('PF/2026-27/0003');
+  });
+
+  it('checks for a duplicate number inside the series only', async () => {
+    const storage = setup();
+    await storage.invoices.save(makeInvoice({ id: 'old', kind: 'proforma', number: '2026-27/0001' }));
+    await storage.invoices.save(makeInvoice({ id: 'a', number: '2026-27/0001' }));
+    await expect(storage.invoices.save(makeInvoice({ id: 'b', number: '2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+    await expect(storage.invoices.save(makeInvoice({ id: 'c', kind: 'proforma', number: '2026-27/0001' }))).rejects.toBeInstanceOf(InvoiceNumberTakenError);
+  });
+});
+
 describe('themes', () => {
   it('saves, lists and removes custom themes', async () => {
     const storage = setup();

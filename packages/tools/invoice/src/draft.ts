@@ -1,5 +1,5 @@
 import { indianFiscalYear } from '@solokit/core';
-import type { Client, InvoiceRecord, SellerProfile } from './model';
+import type { Client, InvoiceKind, InvoiceRecord, SellerProfile } from './model';
 import { InvoiceLockedError } from './repositories';
 import { resolveTheme, type InvoiceTheme } from './themes';
 import { validateInvoice, type Issue } from './validation';
@@ -10,6 +10,8 @@ export interface DraftInput {
   issueDate: string;
   seller: SellerProfile;
   client: Client;
+  /** Defaults to a tax invoice. */
+  kind?: InvoiceKind;
   defaultThemeId?: string;
   now?: Date;
 }
@@ -23,7 +25,7 @@ export function createDraftInvoice(input: DraftInput): InvoiceRecord {
     id: input.id,
     number: input.number,
     fiscalYear: indianFiscalYear(input.issueDate),
-    kind: 'invoice',
+    kind: input.kind ?? 'invoice',
     status: 'draft',
     issueDate: input.issueDate,
     seller,

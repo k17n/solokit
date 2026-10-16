@@ -74,7 +74,11 @@ export interface LineItem {
   gstRate?: number;
 }
 
-export type InvoiceKind = 'invoice' | 'proforma';
+/**
+ * What kind of document this is. Each kind has its own number series. A quote is an estimate, never a tax invoice,
+ * and has a `validUntil` date instead of a due date.
+ */
+export type InvoiceKind = 'invoice' | 'proforma' | 'quote';
 export type InvoiceStatus = 'draft' | 'issued' | 'cancelled';
 
 export interface InvoiceRecord extends StoredRecord {
@@ -85,6 +89,8 @@ export interface InvoiceRecord extends StoredRecord {
   /** ISO dates, YYYY-MM-DD. */
   issueDate: string;
   dueDate?: string;
+  /** Quotes only: the last day the quoted prices hold. */
+  validUntil?: string;
   /** Snapshots taken when the invoice was saved, so later profile edits never change old invoices. */
   seller: SellerProfile;
   client: Client;
@@ -99,6 +105,10 @@ export interface InvoiceRecord extends StoredRecord {
   advanceReceived?: Minor;
   notes?: string;
   terms?: string;
+  /** Set on the invoice made from a quote or proforma: the id of the document it came from. */
+  convertedFromId?: string;
+  /** Set on a quote or proforma once it has been turned into an invoice: the id of that invoice. */
+  convertedToId?: string;
   themeId: string;
   /** The theme as it was when the invoice was issued, so later theme edits or deletion never change an issued PDF. */
   themeSnapshot?: InvoiceTheme;
