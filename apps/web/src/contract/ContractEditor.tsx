@@ -5,6 +5,7 @@ import {
   ContractInvalidError,
   KIND_LABELS,
   LIBRARY,
+  cleanDeep,
   contractWarnings,
   createContractDraft,
   type Contract,
@@ -147,7 +148,8 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
     setSaved(false);
     setSaveError(null);
     setExportError(null);
-    setContract(next);
+    // Pasted text can carry invisible control characters that no Word file can hold; they are replaced as they arrive.
+    setContract(cleanDeep(next));
   }, []);
 
   /** The agreement as it will be saved and printed: an empty name becomes a suggested one. */

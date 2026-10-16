@@ -121,6 +121,23 @@ test.describe('contracts in a real browser', () => {
     await expect(page.getByLabel('Disclosing Party: full name')).toHaveAttribute('aria-invalid', 'true');
   });
 
+  test('asks before a tab click throws away typing, and a very long purpose reaches the PDF in full', async ({ page }) => {
+    await createMutualNda(page);
+    const words = Array.from({ length: 640 }, (_, index) => `w${String(index + 1).padStart(4, '0')}`);
+    await page.getByLabel('Purpose of sharing the information').fill(words.join(' '));
+    await page.getByRole('button', { name: 'Backup & restore' }).click();
+    await expect(page.getByText('You have changes that are not saved.')).toBeVisible();
+    await page.getByRole('button', { name: 'Keep editing' }).click();
+    await expect(page.getByLabel('Purpose of sharing the information')).toHaveValue(words.join(' '));
+    const text = await pdfText(await downloadFrom(page, page.getByRole('button', { name: 'Download PDF' })));
+    const found = new Set(text.match(/\bw\d{4}\b/g) ?? []);
+    expect([...found].sort()).toEqual(words);
+    expect(squash(text)).toContain(squash('Prepared from a SoloKit template. A template is not legal advice.'));
+    await page.getByRole('button', { name: 'Backup & restore' }).click();
+    await page.getByRole('button', { name: 'Leave without saving' }).click();
+    await expect(page.getByRole('button', { name: 'Download backup' })).toBeVisible();
+  });
+
   test('a backup carries the agreements and a restore brings them back', async ({ page }) => {
     await createMutualNda(page);
     await page.getByRole('button', { name: 'Save draft' }).click();

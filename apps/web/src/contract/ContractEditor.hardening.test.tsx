@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContractKind } from '@solokit/tool-contract';
@@ -243,5 +243,17 @@ describe('ContractEditor: jurisdiction help', () => {
     await setup();
     const city = screen.getByLabelText('City whose courts apply');
     expect(city).toHaveAccessibleDescription(/connection to the parties or the work/);
+  });
+});
+
+describe('ContractEditor: pasted control characters', () => {
+  it('replaces a vertical tab or form feed as it arrives, so there is nothing to report or to break an export', async () => {
+    await setup({ kind: 'nda-mutual' });
+    const purpose = screen.getByLabelText(/Purpose of sharing the information/);
+    fireEvent.change(purpose, { target: { value: 'evaluating a\u000Bwebsite\u000Credesign\u0007' } });
+    expect(purpose).toHaveValue('evaluating a website redesign');
+    const name = party(2).getByLabelText('Second Party: full name');
+    fireEvent.change(name, { target: { value: 'North\u000Bwind' } });
+    expect(name).toHaveValue('North wind');
   });
 });
