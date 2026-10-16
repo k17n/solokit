@@ -1,10 +1,10 @@
 # Tool Ideas for Solopreneurs & Freelancers
 
-Status legend: 🟢 planned next · ⚪ backlog
+Status legend: ✅ done · 🟢 planned next · ⚪ backlog
 
 ## Money
 - 🟢 **Invoice generator** (India GST first; other countries coming soon)
-- ⚪ Quote / estimate generator (reuses invoice code, "convert to invoice")
+- ✅ Quote / estimate generator (built into the invoice tool, with "convert to invoice")
 - ⚪ Receipt generator
 - ⚪ Late fee / payment reminder email writer
 - ⚪ Hourly rate calculator (income, expenses, taxes, billable hours -> rate)
@@ -49,11 +49,10 @@ Status legend: 🟢 planned next · ⚪ backlog
 - ⚪ Cold email writer, proposal drafter, contract summarizer
 
 ## Suggested order after invoices
-1. Quote/estimate generator
-2. Hourly rate calculator
-3. Contract / NDA generator
-4. Time tracker feeding into invoices
-5. Email signature generator
+1. Hourly rate calculator
+2. Contract / NDA generator
+3. Time tracker feeding into invoices
+4. Email signature generator
 
 ## Architecture principle
 Build a shared layer early: business/client profile saved in localStorage plus a common PDF export, so every tool prefills from it. The cross-tool convenience is what makes a suite better than standalone sites.

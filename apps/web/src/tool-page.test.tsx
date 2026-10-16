@@ -21,8 +21,8 @@ describe('tool route', () => {
   });
 
   it('shows a coming-soon page for tools that are not built yet', async () => {
-    render(await ToolPage(params('quote')));
-    expect(screen.getByRole('heading', { level: 1, name: 'Quote generator' })).toBeInTheDocument();
+    render(await ToolPage(params('rate-calculator')));
+    expect(screen.getByRole('heading', { level: 1, name: 'Hourly rate calculator' })).toBeInTheDocument();
     expect(screen.getByText('Coming soon')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Browse all tools' })).toHaveAttribute('href', '/#tools');
   });
@@ -41,7 +41,7 @@ describe('tool route with a registered tool component', () => {
   });
 
   it('keeps the coming-soon notice for tools without a component', async () => {
-    render(await ToolPage(params('quote')));
+    render(await ToolPage(params('rate-calculator')));
     expect(screen.getByText('Coming soon')).toBeInTheDocument();
   });
 });
