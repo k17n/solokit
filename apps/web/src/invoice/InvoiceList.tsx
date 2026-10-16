@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   buildInvoiceDocument,
+  isBackupDue,
   resolveTheme,
   type InvoiceRecord,
   type InvoiceStorage,
@@ -21,6 +22,8 @@ export interface InvoiceListProps {
   onNew: () => void;
   onEdit: (id: string) => void;
   onView: (id: string) => void;
+  /** Opens the backup screen from the reminder. */
+  onOpenBackup?: () => void;
   renderPdf?: PdfRenderer;
   /** The current time. Tests pass a fixed one. */
   now?: () => Date;
@@ -45,9 +48,10 @@ export function StatusBadge({ status }: { status: InvoiceRecord['status'] }) {
   return <Badge>Draft</Badge>;
 }
 
-export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceListProps) {
+export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, renderPdf = defaultPdfRenderer, now = realNow }: InvoiceListProps) {
   const [invoices, setInvoices] = useState<InvoiceRecord[] | null>(null);
   const [customThemes, setCustomThemes] = useState<InvoiceTheme[]>([]);
+  const [lastBackupAt, setLastBackupAt] = useState<string | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [pending, setPending] = useState<Pending>(null);
@@ -72,8 +76,9 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
   }, [pending]);
 
   const reload = useCallback(async () => {
-    const [list, themes] = await Promise.all([storage.invoices.list(), storage.themes.list()]);
+    const [list, themes, settings] = await Promise.all([storage.invoices.list(), storage.themes.list(), storage.settings.get()]);
     setInvoices(list);
+    setLastBackupAt(settings.lastBackupAt);
     setCustomThemes(themes);
   }, [storage]);
 
@@ -164,6 +169,21 @@ export function InvoiceList({ storage, onNew, onEdit, onView, renderPdf = defaul
         <h2 style={{ fontSize: '1.8rem' }}>Invoices</h2>
         <Button onClick={onNew}>New invoice</Button>
       </div>
+      {isBackupDue(lastBackupAt, now(), invoices.length > 0) ? (
+        <div className={styles.reminder}>
+          <Notice tone="warning" title="Back up your invoices">
+            {lastBackupAt ? 'It has been a while since your last backup.' : 'You have not made a backup yet.'} Your invoices are stored only in this browser, so a backup file is your safety net.
+            {onOpenBackup ? (
+              <>
+                {' '}
+                <button type="button" className={styles.linkButton} onClick={onOpenBackup}>
+                  Back up now
+                </button>
+              </>
+            ) : null}
+          </Notice>
+        </div>
+      ) : null}
       <ul className={styles.list} aria-label="Invoices" role="list" ref={listRef}>
         {invoices.map((invoice) => {
           const isPending = pending?.id === invoice.id;

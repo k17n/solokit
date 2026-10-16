@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SellerProfile } from '@solokit/tool-invoice';
 import { Button, Notice } from '@solokit/ui';
+import { BackupScreen } from './BackupScreen';
 import { InvoiceEditor } from './InvoiceEditor';
 import { InvoiceList } from './InvoiceList';
 import { InvoiceViewer } from './InvoiceViewer';
 import { Onboarding } from './Onboarding';
+import { ThemesScreen } from './ThemesScreen';
 import { ProfileForm } from './ProfileForm';
 import { profileToForm } from './profileFormState';
 import { requestPersistentStorage } from './persist';
@@ -14,16 +16,18 @@ import type { PdfRenderer } from './usePdfPreview';
 import { useInvoiceStorage } from './useInvoiceStorage';
 import styles from './InvoiceApp.module.css';
 
-type View = { name: 'list' } | { name: 'new' } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' };
+type View = { name: 'list' } | { name: 'new' } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' } | { name: 'themes' } | { name: 'backup' };
 
 const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Invoices', target: { name: 'list' }, current: ['list', 'view'] },
   { label: 'New invoice', target: { name: 'new' }, current: ['new', 'edit'] },
+  { label: 'Themes', target: { name: 'themes' }, current: ['themes'] },
+  { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
   { label: 'Profile', target: { name: 'profile' }, current: ['profile'] },
 ];
 
 export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
-  const { storage, ready, persistent } = useInvoiceStorage();
+  const { storage, store, ready, persistent } = useInvoiceStorage();
   const [profile, setProfile] = useState<SellerProfile | null | undefined>(undefined);
   const [view, setView] = useState<View>({ name: 'list' });
   const [savedNotice, setSavedNotice] = useState(false);
@@ -100,7 +104,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
 
   const storageWarning = !persistent ? (
     <Notice tone="danger" title="Your browser is not saving data">
-      What you enter will be lost when you close this tab. Use a normal browser window so your work is kept.
+      What you enter will be lost when you close this tab. Use a normal browser window so your work is kept, or download a backup from the Backup & restore tab before you leave.
     </Notice>
   ) : null;
 
@@ -145,6 +149,7 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
             }}
             onEdit={(id) => setView({ name: 'edit', id })}
             onView={(id) => setView({ name: 'view', id })}
+            onOpenBackup={() => setView({ name: 'backup' })}
             {...(renderPdf ? { renderPdf } : {})}
             {...(now ? { now } : {})}
           />
@@ -170,6 +175,10 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
             {...(renderPdf ? { renderPdf } : {})}
             {...(now ? { now } : {})}
           />
+        ) : null}
+        {view.name === 'themes' ? <ThemesScreen storage={storage} profile={profile} {...(renderPdf ? { renderPdf } : {})} {...(now ? { now } : {})} /> : null}
+        {view.name === 'backup' && store ? (
+          <BackupScreen store={store} onRestored={() => setLoadAttempt((attempt) => attempt + 1)} {...(now ? { now } : {})} />
         ) : null}
         {view.name === 'profile' ? (
           <div style={{ display: 'grid', gap: '1rem' }}>

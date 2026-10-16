@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   InvoiceNotValidError,
   InvoiceNumberTakenError,
+  DEFAULT_THEME_ID,
   PRESET_THEMES,
   buildInvoiceDocument,
   issueInvoice,
@@ -48,6 +49,12 @@ type Loaded = { kind: 'ready'; clients: Client[]; customThemes: InvoiceTheme[] }
 
 const NUMBER_TAKEN = 'That invoice number is already used. Choose another.';
 
+/** The first id that is a preset or one of my themes; Classic if none is. */
+function knownTheme(id: string, fallback: string, custom: readonly InvoiceTheme[]): string {
+  const known = (candidate: string) => PRESET_THEMES.some((theme) => theme.id === candidate) || custom.some((theme) => theme.id === candidate);
+  return [id, fallback].find(known) ?? DEFAULT_THEME_ID;
+}
+
 function safeDocument(invoice: InvoiceRecord | null): InvoiceDocument | null {
   if (!invoice) return null;
   try {
@@ -88,14 +95,15 @@ export function InvoiceEditor({ storage, profile, invoiceId, onBack, onIssued, r
           setLoaded({ kind: 'cannot-edit' });
           return;
         }
-        setState(invoiceToEditor(existing));
+        // A theme that has since been deleted would leave the select empty; use the default instead.
+        setState({ ...invoiceToEditor(existing), themeId: knownTheme(existing.themeId, settings.defaultThemeId, customThemes) });
       } else {
         const today = todayIso(now());
         const number = await storage.invoices.nextNumber(today);
         if (cancelled) return;
         numberFyRef.current = fiscalYearOf(today);
         setState(
-          newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: settings.defaultThemeId }),
+          newEditorState({ invoiceId: newId(), clientId: newId(), lineId: newId(), number, today, profile, defaultThemeId: knownTheme(settings.defaultThemeId, DEFAULT_THEME_ID, customThemes) }),
         );
       }
       setLoaded({ kind: 'ready', clients, customThemes });

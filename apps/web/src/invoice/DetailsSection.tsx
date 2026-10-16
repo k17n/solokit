@@ -143,8 +143,9 @@ export function DetailsSection({ state, onChange, profile, themes, errors }: Det
         <TextAreaField label="Notes" value={state.notes} onChange={(event) => onChange({ notes: event.target.value })} />
         <TextAreaField label="Terms" value={state.terms} onChange={(event) => onChange({ terms: event.target.value })} />
         <SelectField
-          label="Invoice style"
+          label="Invoice theme"
           options={themes.map((theme) => ({ value: theme.id, label: theme.name }))}
+          hint="Make or change themes in the Themes tab."
           value={state.themeId}
           onChange={(event) => onChange({ themeId: event.target.value })}
         />

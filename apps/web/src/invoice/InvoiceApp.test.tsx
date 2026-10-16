@@ -107,6 +107,7 @@ describe('InvoiceApp with a saved profile', () => {
     const notice = await screen.findByText('Your browser is not saving data');
     expect(notice).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('normal browser window');
+    expect(screen.getByRole('alert')).toHaveTextContent('download a backup');
   });
 
   it('does not warn when storage works', async () => {
@@ -269,5 +270,55 @@ describe('InvoiceApp: invoices', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
     expect(await screen.findByRole('button', { name: 'Duplicate as new draft' })).toBeInTheDocument();
     expect(screen.getByText('Issued')).toBeInTheDocument();
+  });
+});
+
+describe('InvoiceApp: themes and backup tabs', () => {
+  beforeEach(() => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:app'), revokeObjectURL: vi.fn() });
+  });
+
+  it('opens the Themes tab', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Themes' }));
+    expect(screen.getByRole('button', { name: 'Themes' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('list', { name: 'Themes' })).toBeInTheDocument();
+  });
+
+  it('opens the Backup & restore tab, also in a browser that is not saving data', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Backup & restore' }));
+    expect(screen.getByRole('button', { name: 'Backup & restore' })).toHaveAttribute('aria-current', 'page');
+    expect(await screen.findByRole('button', { name: 'Download backup' })).toBeInTheDocument();
+  });
+
+  it('shows the reminder on the invoice list and its button opens the Backup tab', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    await createInvoiceStorage(store).invoices.save(makeInvoice({ id: 'x' }));
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Back up now' }));
+    expect(await screen.findByRole('button', { name: 'Download backup' })).toBeInTheDocument();
+  });
+
+  it('shows the restored profile after a restore without reloading', async () => {
+    const other = createMemoryStore();
+    await createInvoiceStorage(other).profile.save(makeSeller({ name: 'Restored Co' }));
+    const { createBackup } = await import('@solokit/tool-invoice');
+    const { json } = await createBackup(other);
+
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store);
+    await userEvent.click(await screen.findByRole('button', { name: 'Backup & restore' }));
+    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
+    await screen.findByText(/Backup restored/);
+    await userEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(screen.getByLabelText('Business or personal name')).toHaveValue('Restored Co');
   });
 });

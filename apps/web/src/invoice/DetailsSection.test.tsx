@@ -130,7 +130,7 @@ describe('DetailsSection: payment, notes and style', () => {
 
   it('lists the invoice styles and records the choice', async () => {
     render(<Harness />);
-    const select = screen.getByLabelText('Invoice style');
+    const select = screen.getByLabelText('Invoice theme');
     const names = within(select).getAllByRole('option').map((option) => option.textContent);
     expect(names).toEqual(expect.arrayContaining(['Classic', 'Modern', 'Minimal', 'Bold', 'Consultant', 'Formal']));
     await userEvent.selectOptions(select, 'modern');

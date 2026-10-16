@@ -15,7 +15,7 @@ async function setup(invoices: ReturnType<typeof makeInvoice>[] = [], renderPdf?
   const storage: InvoiceStorage = createInvoiceStorage(createMemoryStore(), { now: () => new Date(2026, 9, 14, 10, 0) });
   await storage.profile.save(makeSeller());
   for (const invoice of invoices) await storage.invoices.save(invoice);
-  const handlers = { onNew: vi.fn(), onEdit: vi.fn(), onView: vi.fn() };
+  const handlers = { onNew: vi.fn(), onEdit: vi.fn(), onView: vi.fn(), onOpenBackup: vi.fn() };
   render(<InvoiceList storage={storage} {...handlers} renderPdf={renderPdf ?? (async () => pdf)} now={() => new Date(2026, 9, 14, 10, 0)} />);
   return { storage, ...handlers };
 }
@@ -174,5 +174,41 @@ describe('InvoiceList: cancelling and deleting', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Yes, delete draft' }));
     await waitFor(async () => expect(await storage.invoices.get('d1')).toBeUndefined());
     expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+  });
+});
+
+describe('InvoiceList: backup reminder', () => {
+  it('reminds you to back up when invoices exist and no backup was ever made, and opens the backup screen', async () => {
+    const { onOpenBackup } = await setup([issued]);
+    expect(await screen.findByText('Back up your invoices')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back up now' }));
+    expect(onOpenBackup).toHaveBeenCalledOnce();
+  });
+
+  it('stays quiet after a recent backup', async () => {
+    const { storage } = await setup();
+    await storage.invoices.save(issued);
+    await storage.settings.update({ lastBackupAt: new Date(2026, 9, 10).toISOString() });
+    // A fresh render sees the saved time.
+    document.body.innerHTML = '';
+    const handlers = { onNew: vi.fn(), onEdit: vi.fn(), onView: vi.fn() };
+    render(<InvoiceList storage={storage} {...handlers} renderPdf={async () => pdf} now={() => new Date(2026, 9, 14, 10, 0)} />);
+    await screen.findByRole('list', { name: 'Invoices' });
+    expect(screen.queryByText('Back up your invoices')).not.toBeInTheDocument();
+  });
+
+  it('says the backup is old when the last one was over 30 days ago', async () => {
+    const { storage } = await setup();
+    await storage.invoices.save(issued);
+    await storage.settings.update({ lastBackupAt: new Date(2026, 7, 1).toISOString() });
+    document.body.innerHTML = '';
+    render(<InvoiceList storage={storage} onNew={vi.fn()} onEdit={vi.fn()} onView={vi.fn()} renderPdf={async () => pdf} now={() => new Date(2026, 9, 14, 10, 0)} />);
+    expect(await screen.findByText(/since your last backup/)).toBeInTheDocument();
+  });
+
+  it('does not nag when there are no invoices', async () => {
+    await setup();
+    await screen.findByText('No invoices yet.');
+    expect(screen.queryByText('Back up your invoices')).not.toBeInTheDocument();
   });
 });
