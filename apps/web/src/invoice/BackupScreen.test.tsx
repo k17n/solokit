@@ -2,6 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
+import { createContractStorage } from '@solokit/tool-contract';
+import { makeContract } from '@solokit/tool-contract/testing';
 import { createBackup, createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeClient, makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
 import { BackupScreen } from './BackupScreen';
@@ -211,6 +213,22 @@ describe('BackupScreen: restoring an older backup', () => {
     await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(JSON.stringify(snapshot)));
     const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
     expect(within(summary).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('counts agreements in the file and on the device, and keeps them in a backup', async () => {
+    const device = createMemoryStore();
+    await createContractStorage(device, { now: () => NOW }).save(makeContract('nda-mutual', { id: 'nda-1' }));
+    const { store } = await setup(device);
+    const source = createMemoryStore();
+    const contracts = createContractStorage(source, { now: () => NOW });
+    await contracts.save(makeContract('services', { id: 's1' }));
+    await contracts.save(makeContract('nda-one-way', { id: 's2' }));
+    const file = (await createBackup(source, NOW)).json;
+    await userEvent.upload(screen.getByLabelText('Backup file'), fileOf(file));
+    const summary = await screen.findByRole('region', { name: 'Restore this backup?' });
+    expect(within(summary).getByText(/The backup holds 0 invoices, 2 agreements/)).toBeInTheDocument();
+    expect(within(summary).getByText(/This device now holds 1 invoice, 1 agreement/)).toBeInTheDocument();
+    expect(JSON.parse((await createBackup(store, NOW)).json).collections.contracts).toHaveLength(1);
   });
 
   it('can download a backup of the current data from the confirm step', async () => {

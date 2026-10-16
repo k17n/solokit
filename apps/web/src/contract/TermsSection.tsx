@@ -179,7 +179,7 @@ export function TermsSection({ contract, typed, errors, onChange, onTyped }: Ter
   // A group needs attention when something in it has no template default to fall back on; the rest are tucked away.
   const needsInput = (group: FieldGroup) => group.clauseId === 'fees' || group.variables.some((def) => def.required !== false && variableDefault(def, contract) === undefined) || group.options.some((def) => def.default === undefined);
   const hasError = (group: FieldGroup) => group.options.some((def) => errors[`options.${def.id}`]) || group.variables.some((def) => errors[`variables.${def.id}`]) || (group.clauseId === 'fees' && Object.keys(errors).some((key) => key.startsWith('milestones')));
-  const essential = groups.filter((group) => needsInput(group) || hasError(group));
+  const essential = groups.filter(needsInput);
   const optional = groups.filter((group) => !essential.includes(group));
   const renderGroup = (group: FieldGroup) => (
     <fieldset key={group.clauseId} className={styles.group}>
