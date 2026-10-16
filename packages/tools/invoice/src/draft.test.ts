@@ -79,6 +79,17 @@ describe('issueInvoice', () => {
     expect(issued).not.toBe(draft);
   });
 
+  it('keeps a copy of the theme so later edits cannot change the issued invoice', () => {
+    const mine = { id: 't1', name: 'Mine', layout: 'modern' as const, accent: '#047857', text: '#14213D', background: '#FFFFFF', fontId: 'inter' as const };
+    const draft = { ...createDraftInvoice({ ...base, defaultThemeId: 't1' }), lines: [line] };
+    const issued = issueInvoice(draft, [mine]);
+    expect(issued.themeSnapshot).toEqual(mine);
+    mine.accent = '#000000';
+    expect(issued.themeSnapshot?.accent).toBe('#047857');
+    expect(issueInvoice({ ...draft, themeId: 'bold' }).themeSnapshot?.id).toBe('bold');
+    expect(issueInvoice({ ...draft, themeId: 'gone' }).themeSnapshot?.id).toBe('classic');
+  });
+
   it('only issues drafts', () => {
     expect(() => issueInvoice(makeInvoice())).toThrow(InvoiceLockedError);
     expect(() => issueInvoice(makeInvoice({ status: 'cancelled' }))).toThrow(InvoiceLockedError);

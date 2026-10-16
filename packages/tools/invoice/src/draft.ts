@@ -1,6 +1,7 @@
 import { indianFiscalYear } from '@solokit/core';
 import type { Client, InvoiceRecord, SellerProfile } from './model';
 import { InvoiceLockedError } from './repositories';
+import { resolveTheme, type InvoiceTheme } from './themes';
 import { validateInvoice, type Issue } from './validation';
 
 export interface DraftInput {
@@ -51,10 +52,14 @@ export class InvoiceNotValidError extends Error {
   }
 }
 
-/** Turns a valid draft into an issued invoice. Returns a copy; the input is untouched. */
-export function issueInvoice(invoice: InvoiceRecord): InvoiceRecord {
+/**
+ * Turns a valid draft into an issued invoice. Returns a copy; the input is untouched. The invoice keeps a copy
+ * of its theme (looked up among `customThemes`, or a preset), so editing or deleting the theme later never
+ * changes how this invoice prints.
+ */
+export function issueInvoice(invoice: InvoiceRecord, customThemes: readonly InvoiceTheme[] = []): InvoiceRecord {
   if (invoice.status !== 'draft') throw new InvoiceLockedError();
   const issues = validateInvoice(invoice);
   if (issues.length > 0) throw new InvoiceNotValidError(issues);
-  return { ...structuredClone(invoice), status: 'issued' };
+  return { ...structuredClone(invoice), status: 'issued', themeSnapshot: structuredClone(resolveTheme(invoice.themeId, customThemes)) };
 }
