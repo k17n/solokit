@@ -36,7 +36,10 @@ describe('unprintableCharacters', () => {
   });
   it('knows the allowlist edges', () => {
     expect(isPrintableInPdf(0x7f)).toBe(false);
-    expect(isPrintableInPdf(0x17f)).toBe(true);
+    expect(isPrintableInPdf(0x17e)).toBe(true);
     expect(isPrintableInPdf(0x180)).toBe(false);
+    // A letter some bundled font lacks is reported, since the theme's font can change.
+    expect(isPrintableInPdf(0x17f)).toBe(false);
+    expect(isPrintableInPdf(0xad)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { Document, Page, Text, View } from '@react-pdf/renderer';
-import type { ContractDocument, ReviewSummary } from '@solokit/tool-contract';
+import { TEMPLATE_NOTICE, cleanDeep, type ContractDocument, type ReviewSummary } from '@solokit/tool-contract';
 import { FONT_OPTIONS, type InvoiceTheme } from '@solokit/tool-invoice';
 import { paletteFor, type Palette } from '@solokit/tool-invoice-pdf';
 
@@ -16,7 +16,7 @@ export interface ContractPdfProps {
   /** When given, the review summary is printed after the agreement (the Review pack). */
   summary?: ReviewSummary;
   theme: InvoiceTheme;
-  /** Print "prepared from a SoloKit template, not legal advice" in the page footer. Default true. */
+  /** Print "prepared from a SoloKit template, not legal advice" in the page footer and as a short note before the signatures. Default true. */
   showTemplateNotice?: boolean;
 }
 
@@ -47,7 +47,7 @@ function ClauseHeading({ number, title, palette }: { number: string; title: stri
   );
 }
 
-function AgreementBody({ doc, palette }: { doc: ContractDocument; palette: Palette }) {
+function AgreementBody({ doc, palette, notice }: { doc: ContractDocument; palette: Palette; notice: string | undefined }) {
   return (
     <>
       <Text style={{ fontSize: 18, fontWeight: 700, color: palette.accentSmall, marginBottom: 6 }}>{doc.heading}</Text>
@@ -62,29 +62,28 @@ function AgreementBody({ doc, palette }: { doc: ContractDocument; palette: Palet
       <Text style={{ marginTop: 4 }}>{doc.closing}</Text>
 
       {doc.clauses.map((clause) => {
-        const [first, ...rest] = clause.paragraphs;
+        // Paragraphs may run over a page break: user text can be thousands of characters long, and a block that
+        // may not wrap is silently cut off when it is taller than a page.
         const paragraphRow = (paragraph: (typeof clause.paragraphs)[number]) => (
-          <View wrap={false} style={{ flexDirection: 'row' }}>
+          <View style={{ flexDirection: 'row' }}>
             <Text style={{ width: NUMBER_WIDTH, color: palette.muted }}>{paragraph.number}</Text>
             <Text style={{ flex: 1 }}>{paragraph.text}</Text>
           </View>
         );
         const items = (paragraph: (typeof clause.paragraphs)[number]) =>
           paragraph.items.map((item) => (
-            <View key={item.label} wrap={false} style={{ flexDirection: 'row', marginLeft: NUMBER_WIDTH }}>
+            <View key={item.label} style={{ flexDirection: 'row', marginLeft: NUMBER_WIDTH }}>
               <Text style={{ width: ITEM_INDENT, color: palette.muted }}>{item.label}</Text>
               <Text style={{ flex: 1 }}>{item.text}</Text>
             </View>
           ));
         return (
           <View key={clause.id}>
-            {/* The heading stays on the page with the first paragraph that follows it. */}
-            <View wrap={false}>
+            {/* The heading moves to the next page unless there is room for a few lines after it. Only the heading is kept whole. */}
+            <View wrap={false} minPresenceAhead={48}>
               <ClauseHeading number={clause.number} title={clause.title} palette={palette} />
-              {first ? <View style={{ marginBottom: first.items.length > 0 ? 0 : 3 }}>{paragraphRow(first)}</View> : null}
             </View>
-            {first ? <View style={{ marginBottom: 3 }}>{items(first)}</View> : null}
-            {rest.map((paragraph) => (
+            {clause.paragraphs.map((paragraph) => (
               <View key={paragraph.number} style={{ marginBottom: 3 }}>
                 {paragraphRow(paragraph)}
                 {items(paragraph)}
@@ -111,7 +110,9 @@ function AgreementBody({ doc, palette }: { doc: ContractDocument; palette: Palet
         </View>
       ))}
 
-      <View wrap={false} style={{ marginTop: 22 }}>
+      {notice ? <Text style={{ marginTop: 18, fontSize: SMALL, color: palette.muted }}>{notice}</Text> : null}
+
+      <View wrap={false} style={{ marginTop: 14 }}>
         <Text style={{ fontWeight: 700, marginBottom: 10 }}>{doc.signatureIntro}</Text>
         <View style={{ flexDirection: 'row', gap: 24 }}>
           {doc.signatures.map((signature) => (
@@ -153,7 +154,7 @@ function Heading({ children, palette }: { children: string; palette: Palette }) 
 
 function Row({ label, value, note, palette }: { label: string; value: string; note?: string; palette: Palette }) {
   return (
-    <View wrap={false} style={{ flexDirection: 'row', marginBottom: 3 }}>
+    <View style={{ flexDirection: 'row', marginBottom: 3 }}>
       <Text style={{ width: '38%', fontWeight: 700, paddingRight: 8 }}>{label}</Text>
       <View style={{ flex: 1 }}>
         <Text>{value}</Text>
@@ -174,6 +175,16 @@ function SummaryBody({ summary, palette }: { summary: ReviewSummary; palette: Pa
       <Text style={{ color: palette.muted }}>
         {summary.heading}: {summary.contractTitle}. Template wording version {summary.libraryVersion}.
       </Text>
+      {summary.frozenNote ? (
+        <View style={{ backgroundColor: palette.tint, borderLeftWidth: 3, borderLeftColor: palette.accent, borderLeftStyle: 'solid', padding: 8, marginTop: 6 }}>
+          <Text>{summary.frozenNote}</Text>
+        </View>
+      ) : null}
+      {summary.warnings.map((warning) => (
+        <View key={warning} style={{ backgroundColor: palette.tint, borderLeftWidth: 3, borderLeftColor: palette.accent, borderLeftStyle: 'solid', padding: 8, marginTop: 6 }}>
+          <Text>{warning}</Text>
+        </View>
+      ))}
 
       <Heading palette={palette}>The agreement at a glance</Heading>
       {summary.parties.map((party) => (
@@ -221,7 +232,7 @@ function SummaryBody({ summary, palette }: { summary: ReviewSummary; palette: Pa
 
       <Heading palette={palette}>Assumptions this document makes</Heading>
       {summary.assumptions.map((assumption, index) => (
-        <View key={index} wrap={false} style={{ flexDirection: 'row', marginBottom: 2 }}>
+        <View key={index} style={{ flexDirection: 'row', marginBottom: 2 }}>
           <Text style={{ width: 14 }}>-</Text>
           <Text style={{ flex: 1 }}>{assumption}</Text>
         </View>
@@ -247,7 +258,7 @@ function SummaryBody({ summary, palette }: { summary: ReviewSummary; palette: Pa
 
       <Heading palette={palette}>Questions for your lawyer</Heading>
       {summary.questions.map((question, index) => (
-        <View key={index} wrap={false} style={{ flexDirection: 'row', marginBottom: 4 }}>
+        <View key={index} style={{ flexDirection: 'row', marginBottom: 4 }}>
           <Text style={{ width: 22 }}>{index + 1}.</Text>
           <Text style={{ flex: 1 }}>
             <Text style={{ fontWeight: 700 }}>{question.topic}</Text>
@@ -262,7 +273,7 @@ function SummaryBody({ summary, palette }: { summary: ReviewSummary; palette: Pa
 
       <Heading palette={palette}>Notes</Heading>
       {summary.notes.map((note) => (
-        <View key={note.title} wrap={false} style={{ marginBottom: 5 }}>
+        <View key={note.title} style={{ marginBottom: 5 }}>
           <Text style={{ fontWeight: 700 }}>{note.title}</Text>
           <Text>{note.body}</Text>
         </View>
@@ -272,10 +283,14 @@ function SummaryBody({ summary, palette }: { summary: ReviewSummary; palette: Pa
 }
 
 /** The agreement, and with a summary the Review pack. Fonts must be registered first (see renderContractPdf). */
-export function ContractPdf({ document: doc, summary, theme, showTemplateNotice = true }: ContractPdfProps) {
+export function ContractPdf({ document: rawDoc, summary: rawSummary, theme, showTemplateNotice = true }: ContractPdfProps) {
+  // Control characters pasted into the text would make the file unreadable, so they are removed before anything is laid out.
+  const doc = cleanDeep(rawDoc);
+  const summary = rawSummary ? cleanDeep(rawSummary) : undefined;
   const palette = paletteFor(theme);
   const style = pageStyle(theme, palette);
   const notice = showTemplateNotice ? FOOTER_NOTICE : undefined;
+  const bodyNotice = showTemplateNotice ? doc.notice || TEMPLATE_NOTICE : undefined;
   return (
     <Document
       title={summary ? `${doc.heading} - Review pack` : doc.heading}
@@ -285,7 +300,7 @@ export function ContractPdf({ document: doc, summary, theme, showTemplateNotice 
     >
       <Page size="A4" style={style}>
         <View style={{ lineHeight: LINE_HEIGHT }}>
-          <AgreementBody doc={doc} palette={palette} />
+          <AgreementBody doc={doc} palette={palette} notice={bodyNotice} />
         </View>
         <Footer title={doc.heading} palette={palette} notice={notice} />
       </Page>

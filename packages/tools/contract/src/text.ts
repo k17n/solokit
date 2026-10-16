@@ -23,10 +23,19 @@ export function cleanDeep<T>(value: T): T {
 }
 
 /**
+ * Latin Extended-A letters that at least one bundled font lacks (checked against the font files by a test in the
+ * contract-export package). The theme's font can change, so a letter missing from any of them is reported.
+ */
+const NOT_IN_EVERY_FONT: ReadonlySet<number> = new Set([
+  0x108, 0x109, 0x114, 0x115, 0x11c, 0x11d, 0x124, 0x125, 0x126, 0x127, 0x12c, 0x12d, 0x132, 0x133, 0x134, 0x135, 0x138, 0x13f, 0x140, 0x149, 0x14a, 0x14b, 0x14e, 0x14f, 0x15c, 0x15d, 0x166, 0x167, 0x17f,
+]);
+
+/**
  * Whether a character can be printed by the PDF fonts SoloKit bundles (Latin and Latin Extended, plus common punctuation
  * and the currency signs). This is deliberately conservative: a character outside it is reported, never silently dropped.
  */
 export function isPrintableInPdf(codePoint: number): boolean {
+  if (codePoint === 0xad || NOT_IN_EVERY_FONT.has(codePoint)) return false;
   return (
     codePoint === 0x09 ||
     codePoint === 0x0a ||

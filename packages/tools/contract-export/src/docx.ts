@@ -17,7 +17,7 @@ import {
   WidthType,
   type ISectionOptions,
 } from 'docx';
-import { buildReviewPack, resolveContractDocument, type Contract, type ContractDocument, type ReviewSummary } from '@solokit/tool-contract';
+import { TEMPLATE_NOTICE, buildReviewPack, cleanDeep, resolveContractDocument, type Contract, type ContractDocument, type ReviewSummary } from '@solokit/tool-contract';
 import type { InvoiceTheme } from '@solokit/tool-invoice';
 
 type Child = ISectionOptions['children'][number];
@@ -29,7 +29,7 @@ const TEMPLATE_FOOTER = 'Prepared from a SoloKit template. Not legal advice.';
 export interface DocxOptions {
   /** Uses the theme's accent colour for headings. Default: a dark blue. */
   theme?: Pick<InvoiceTheme, 'accent' | 'text'>;
-  /** Print "Prepared from a SoloKit template. Not legal advice." in the footer. Default true. */
+  /** Print "Prepared from a SoloKit template. Not legal advice." in the footer, and the longer template notice before the signatures. Default true. */
   showTemplateNotice?: boolean;
 }
 
@@ -69,7 +69,7 @@ function numbering() {
 const para = (text: string, extra: ConstructorParameters<typeof Paragraph>[0] = {}) => new Paragraph({ children: [new TextRun(text)], ...(extra as object) });
 const labelled = (label: string, text: string) => new Paragraph({ children: [new TextRun({ text: `${label} `, bold: true }), new TextRun(text)] });
 
-function agreementChildren(doc: ContractDocument): Child[] {
+function agreementChildren(doc: ContractDocument, notice: string | undefined): Child[] {
   const children: Child[] = [
     new Paragraph({ text: doc.heading, heading: HeadingLevel.HEADING_1 }),
     para(doc.introduction),
@@ -94,7 +94,8 @@ function agreementChildren(doc: ContractDocument): Child[] {
     }
   }
 
-  children.push(new Paragraph({ children: [new TextRun({ text: doc.signatureIntro, bold: true })], spacing: { before: 400 }, keepNext: true }));
+  if (notice) children.push(new Paragraph({ children: [new TextRun({ text: notice, italics: true, size: 18, color: '666666' })], spacing: { before: 360 } }));
+  children.push(new Paragraph({ children: [new TextRun({ text: doc.signatureIntro, bold: true })], spacing: { before: 240 }, keepNext: true }));
   const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
   const noBorders = { top: none, bottom: none, left: none, right: none };
   const line = (label: string) => new Paragraph({ children: [new TextRun(`${label}: ______________________________`)], spacing: { before: 240 } });
@@ -135,6 +136,8 @@ function summaryChildren(summary: ReviewSummary): Child[] {
     new Paragraph({ text: 'Review summary', heading: HeadingLevel.HEADING_1 }),
     new Paragraph({ children: [new TextRun({ text: summary.notice, bold: true })], border: { left: { style: BorderStyle.SINGLE, size: 24, color: '999999', space: 6 } }, spacing: { after: 160 } }),
     para(`${summary.heading}: ${summary.contractTitle}. Template wording version ${summary.libraryVersion}.`),
+    ...(summary.frozenNote ? [labelled('Note:', summary.frozenNote)] : []),
+    ...summary.warnings.map((warning) => labelled('Note:', warning)),
     heading('The agreement at a glance'),
     ...summary.parties.map((party) => labelled(`${party.role}:`, party.name)),
     labelled('Effective date:', summary.effectiveDate),
@@ -169,7 +172,10 @@ function summaryChildren(summary: ReviewSummary): Child[] {
   return children;
 }
 
-function build(doc: ContractDocument, summary: ReviewSummary | undefined, options: DocxOptions): Document {
+function build(rawDoc: ContractDocument, rawSummary: ReviewSummary | undefined, options: DocxOptions): Document {
+  // A control character such as a vertical tab is not allowed in a Word file's XML, so none may get through.
+  const doc = cleanDeep(rawDoc);
+  const summary = rawSummary ? cleanDeep(rawSummary) : undefined;
   const accent = hex(options.theme?.accent, '1F3A5F');
   const text = hex(options.theme?.text, '1A1A1A');
   const notice = options.showTemplateNotice === false ? '' : ` ${TEMPLATE_FOOTER}`;
@@ -194,7 +200,7 @@ function build(doc: ContractDocument, summary: ReviewSummary | undefined, option
       {
         properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
         footers: { default: footer },
-        children: [...agreementChildren(doc), ...(summary ? summaryChildren(summary) : [])],
+        children: [...agreementChildren(doc, options.showTemplateNotice === false ? undefined : doc.notice || TEMPLATE_NOTICE), ...(summary ? summaryChildren(summary) : [])],
       },
     ],
   });
