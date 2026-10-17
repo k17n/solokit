@@ -200,6 +200,28 @@ describe('service worker behaviour', () => {
     expect(fetchStub).not.toHaveBeenCalled();
   });
 
+  it('never intercepts or caches the analytics beacon script or its reports', async () => {
+    const { handlers, fetchStub, store } = setup(network);
+    const beacon = 'https://static.cloudflareinsights.com';
+    const report = 'https://cloudflareinsights.com';
+    for (const r of [
+      req('/beacon.min.js', { origin: beacon }),
+      req('/cdn-cgi/rum', { origin: report, method: 'POST' }),
+      req('/cdn-cgi/rum?', { origin: report }),
+    ]) {
+      expect((await dispatchFetch(handlers, r)).intercepted).toBe(false);
+    }
+    expect(fetchStub).not.toHaveBeenCalled();
+    expect([...(store.get('solokit-test123')?.store.keys() ?? [])]).toEqual([]);
+  });
+
+  it('keeps the offline page working when the beacon is unreachable', async () => {
+    const { handlers } = setup(offline);
+    await runWaitUntil('install', handlers);
+    const page = await dispatchFetch(handlers, req('/', { mode: 'navigate' }));
+    expect(page.response!.body).toBe('precached:/');
+  });
+
   it('navigation uses the network when online and caches the copy', async () => {
     const { handlers, store } = setup(network);
     const { response } = await dispatchFetch(handlers, req('/privacy/', { mode: 'navigate' }));

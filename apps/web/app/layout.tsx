@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Geist, JetBrains_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { BRAND, SiteFooter, SiteHeader } from '@solokit/ui';
+import { Analytics } from '../src/analytics';
 import { ServiceWorkerRegister } from '../src/ServiceWorkerRegister';
 import { HEADER_PROPS, getFooterProps } from '../src/site';
 import { AppProviders } from '../src/workspace/AppProviders';
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <SiteFooter {...getFooterProps()} />
         </AppProviders>
         <ServiceWorkerRegister />
+        <Analytics />
       </body>
     </html>
   );
