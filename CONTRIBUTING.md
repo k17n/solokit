@@ -17,6 +17,7 @@ If you cannot agree, please do not send a contribution. The owner may ask you to
 
 - Open an issue to discuss larger changes first.
 - Money, tax and legal content needs extra care: GST rates and thresholds (`packages/tax-engines/src/in/rules.ts`), the SAC list, and contract clause text (`packages/tools/contract`) need a source for any change and an "as of" date, and are reviewed by the owner before merging.
+- Paid features are out of scope for this repo: no payments, accounts, servers or hosted services. Changes to `packages/platform` (the extension contract, see `docs/extension-points.md`) need prior agreement because they are versioned.
 - Do not add analytics, network calls or anything that sends user data off the device without prior agreement. SoloKit is local-first and its privacy page makes promises.
 
 ## Working on the code
