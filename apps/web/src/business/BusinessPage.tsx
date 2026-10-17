@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { missingFields, type BusinessProfile } from '@solokit/profile';
 import { Notice } from '@solokit/ui';
+import { ProSlot } from '../platform/ProSlot';
+import { useShowUpsell } from '../platform/PlatformProvider';
 import { useInvoiceStorage } from '../invoice/useInvoiceStorage';
 import { WorkspaceStore, useWorkspaces } from '../workspace/WorkspaceProvider';
 import { AddBusiness } from './AddBusiness';
@@ -78,7 +80,22 @@ export function BusinessPage({ now }: BusinessPageProps = {}) {
       <div id="businesses" className={styles.anchor}>
         <ManageBusinesses {...(now ? { now } : {})} />
       </div>
+      <PlansSection />
     </div>
+  );
+}
+
+/** Hidden unless the site config turns upsell on. Says only that paid plans are not available yet; a plugin may fill the slot. */
+function PlansSection() {
+  const showUpsell = useShowUpsell();
+  if (!showUpsell) return null;
+  return (
+    <section id="plans" className={styles.anchor} aria-labelledby="plans-heading">
+      <h2 id="plans-heading" className={styles.heading}>
+        Plans
+      </h2>
+      <ProSlot name="business.plans" />
+    </section>
   );
 }
 

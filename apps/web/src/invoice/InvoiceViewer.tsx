@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConversionError, resolveTheme, seriesOf, type InvoiceRecord, type InvoiceStorage, type InvoiceTheme } from '@solokit/tool-invoice';
 import { Button, Notice, formatIsoDate } from '@solokit/ui';
+import { ProSlot } from '../platform/ProSlot';
 import { duplicateInvoice, todayIso } from './editorModel';
 import { invoiceFileName } from './fileName';
 import { newId } from './ids';
@@ -234,6 +235,7 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
               Cancel {noun}
             </Button>
           ) : null}
+          <ProSlot name="invoice.viewer.actions" context={{ documentId: current.id, kind }} />
         </div>
       )}
       {error ? <Notice tone="danger">{error}</Notice> : null}

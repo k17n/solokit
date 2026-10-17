@@ -24,3 +24,9 @@ export function getFooterProps(): SiteFooterProps {
     rulesAsOf: IN_RULES_AS_OF,
   };
 }
+
+/**
+ * Shows an honest "Available in a paid plan (coming soon)" placeholder where a paid feature would be. Off: the free app
+ * says nothing about plans until there is something to sell.
+ */
+export const SHOW_UPSELL = false;

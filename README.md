@@ -33,12 +33,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before sending a pull request.
 - `packages/ui` design tokens and shared components (header, footer, buttons, form fields, radio cards, notices)
 - `packages/registry` the list of tools; drives the home page, tool routes and footer
 - `packages/storage` `DataStore` interface with IndexedDB and in-memory adapters, and the Business (workspace) registry
+- `packages/platform` the open-core contract: feature list, entitlements, sync/sharing/messaging/payments/signing interfaces and UI slots, all with free no-op defaults (see `docs/extension-points.md`; paid features live in a separate private repo)
 - `packages/profile` the Business profile shared by all tools: model, validation, saved record, what each tool needs from it, and brand colour extraction from a logo
 - `packages/tools/invoice` the invoice tool's domain logic: data model, validation, document builder, themes, saved data, backup
 - `packages/tools/invoice-pdf` renders invoices to PDF in the browser (six layouts, bundled fonts, UPI QR); fonts are built with `pnpm --filter @solokit/web fonts`
 - `packages/tools/contract` the contract tool's domain logic: clause library as data, model, validation, document and review-pack builders, saved data, stamp-duty pointers
 - `packages/tools/contract-export` renders agreements to PDF, Review pack PDF and editable DOCX in the browser (reuses the invoice fonts and themes)
 - `docs/legal-content-notes.md` every legal assumption and default in the contract templates, for a lawyer's review
+- `docs/extension-points.md` the contract between this repo and a future private paid repo
 - `docs/ideas.md` backlog of tool ideas
 - `docs/superpowers/specs` design specs
 - `docs/superpowers/plans` implementation plans

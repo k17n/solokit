@@ -5,6 +5,7 @@ import { type Contract, type ContractStorage } from '@solokit/tool-contract';
 import type { InvoiceSettings, InvoiceStorage, InvoiceTheme } from '@solokit/tool-invoice';
 import { Button, Notice, formatIsoDate } from '@solokit/ui';
 import { downloadBlob } from '../invoice/downloads';
+import { ProSlot } from '../platform/ProSlot';
 import { newId } from '../invoice/ids';
 import styles from './ContractEditor.module.css';
 import { displayTitle, partiesLine, StatusBadge } from './ContractList';
@@ -175,6 +176,7 @@ export function ContractViewer({ storage, invoice, contractId, onBack, onEdit, e
             <Button variant="ghost" disabled={busy} onClick={() => void duplicate()}>
               Duplicate as a new draft
             </Button>
+            <ProSlot name="contract.viewer.actions" context={{ documentId: current.id, kind: current.kind, final }} />
           </div>
         )}
         {error ? <Notice tone="danger">{error}</Notice> : null}
