@@ -3,7 +3,7 @@ import { PageShell } from '../../src/components/PageShell';
 
 export const metadata: Metadata = {
   title: 'Privacy',
-  description: 'SoloKit keeps your data on your device. Here is exactly what that means.',
+  description: 'SoloKit keeps your business data on your device and only counts visits, without cookies. Here is exactly what that means.',
 };
 
 export default function PrivacyPage() {
@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <PageShell
       eyebrow="How it works"
       title="Privacy"
-      lede="SoloKit is built so that your business data never needs to leave your device."
+      lede="Your business data stays on your device. The only thing the site measures is how many people visit, and it does that without cookies."
     >
       <h2>What stays on your device</h2>
       <p>
@@ -26,8 +26,20 @@ export default function PrivacyPage() {
 
       <h2>What we do not collect</h2>
       <p>
-        There are no accounts, no cookies and no analytics scripts on this site today. Fonts are served from this site
-        rather than from a third party, so visiting does not send your address to anyone else.
+        There are no accounts and no cookies. Nothing you type, none of your clients, invoices or agreements, and no backup
+        file is ever sent to us or to anyone else. Fonts are served from this site rather than from a third party.
+      </p>
+
+      <h2>Counting visits</h2>
+      <p>
+        To see how many people use each tool, the site counts visits with Cloudflare Web Analytics. It works without cookies
+        and does not store your IP address or build a profile of you. A visit records which page, the page you came from,
+        your country, and the type of device and browser, plus how fast the page loaded. It never reads anything on the
+        tool screens, so never anything you type.
+      </p>
+      <p>
+        If your browser sends Do Not Track or Global Privacy Control, the counting script is not loaded at all. It also is
+        not loaded when you use the installed app offline, and the site works the same without it.
       </p>
 
       <h2>Back up your data</h2>

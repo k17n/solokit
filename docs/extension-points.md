@@ -82,7 +82,7 @@ Paid components should not ship in the public bundle. The server returns the plu
 
 Browser code is not a secret. Anyone can edit `useEntitlement` in their own browser and make a locked button appear. That is fine: the button must not be the gate. Every paid action (sync, hosted link, email, payment link, signing) must be authorised by the server against the user's plan, and the server must never trust a client's claim about entitlements. Treat `Entitlements.has` as a way to decide what to draw, nothing more. Paid server code lives in the private repo for the same reason: in a public repo the paywall would only be a promise.
 
-Privacy: the privacy page currently says nothing leaves the device. Any adapter that sends data off the device needs the page updated, and sync must be end-to-end encrypted by the adapter.
+Privacy: the privacy page currently says your business data never leaves the device (the only measurement is cookie-free visit counting). Any adapter that sends data off the device needs the page updated, and sync must be end-to-end encrypted by the adapter.
 
 ## Versioning
 

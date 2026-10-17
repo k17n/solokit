@@ -1,6 +1,6 @@
 # SoloKit
 
-Free, local-first tools for freelancers, consultants and solopreneurs. Everything runs in the browser, works offline, and keeps your data on your device; the service worker precaches the whole site at build time so it is fully usable offline. India (GST) comes first; other countries are coming soon.
+Free, local-first tools for freelancers, consultants and solopreneurs. Everything runs in the browser, works offline, and keeps your data on your device. The only thing measured is visits, counted with Cloudflare Web Analytics: no cookies, no IP address stored, nothing you type, and skipped when Do Not Track or Global Privacy Control is on (see Analytics and hosting below). The service worker precaches the whole site at build time so it is fully usable offline. India (GST) comes first; other countries are coming soon.
 
 ## Status
 
@@ -11,6 +11,10 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - Done: contract and NDA generator at /tools/contract/. Mutual and one-way NDAs and a freelance services agreement, a numbered editor (parties, key terms, optional clauses, jurisdiction and stamp duty note, review), PDF, editable Word and a Review pack for a lawyer, final/reopen, backups that carry agreements. Your details come from the shared business profile and saved clients; a new Business is asked only for name, address and email, and you can skip that and type them. A template, not legal advice.
 - Done: Business workspaces at /business/. Each Business is a separate local database (the existing data became the first one); the site header has a switcher, and Your business holds the details every tool shares (name, address, tax ids, logo, payments, defaults), brand colours suggested from the logo with a one-click brand theme, backup and restore per Business (restore as a new Business is the default when the device has data), and rename, archive and delete (delete erases a Business from this device only, after typing its name). Each tool asks only for the profile fields it needs and does not have yet. See `docs/superpowers/plans/2026-10-17-workspaces.md`.
 - Next: more tools and countries.
+
+## Analytics and hosting
+
+The site is a static export (`apps/web/out`) meant for Cloudflare Pages; step by step in `docs/deploy-cloudflare-pages.md`. Visits are counted with Cloudflare Web Analytics, loaded by `apps/web/src/analytics/` only in a production build where `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` is set, and never when the browser sends Do Not Track or Global Privacy Control. Dev, tests and forks send nothing by default. It counts page, referrer, country and device type; it never reads anything on a tool screen. Set `NEXT_PUBLIC_SITE_URL` at build time for the sitemap and absolute links (default is a placeholder).
 
 ## Licence
 
