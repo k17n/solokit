@@ -9,5 +9,6 @@
     "e2e": "pnpm build && pnpm --filter @solokit/web e2e",
     "test": "pnpm -r --workspace-concurrency=2 test",
     "typecheck": "pnpm -r typecheck"
-  }
+  },
+  "license": "PolyForm-Strict-1.0.0"
 }

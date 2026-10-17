@@ -12,6 +12,19 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - Done: Business workspaces at /business/. Each Business is a separate local database (the existing data became the first one); the site header has a switcher, and Your business holds the details every tool shares (name, address, tax ids, logo, payments, defaults), brand colours suggested from the logo with a one-click brand theme, backup and restore per Business (restore as a new Business is the default when the device has data), and rename, archive and delete (delete erases a Business from this device only, after typing its name). Each tool asks only for the profile fields it needs and does not have yet. See `docs/superpowers/plans/2026-10-17-workspaces.md`.
 - Next: more tools and countries.
 
+## Licence
+
+SoloKit is **source-available**, not open source. The code is public so you can read it, learn from it and try it, under the [PolyForm Strict License 1.0.0](LICENSE).
+
+- Allowed: read the code, and run it for noncommercial purposes (personal use, study, hobby projects, charities, schools, public bodies).
+- Not allowed: distributing it, changing it or building new works from it, or using it commercially, without written permission from the copyright holder.
+- The names SoloKit and its logo are not licensed. Do not use them for other products or services.
+- Bundled fonts and third-party libraries keep their own licences (see `apps/web/public/fonts/invoice/THIRD_PARTY_LICENSES.txt`).
+
+This is not legal advice. To ask for permission, such as a commercial licence, open an issue or contact the owner.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before sending a pull request.
+
 ## Layout
 
 - `apps/web` the website (Next.js, static export, installable PWA)
