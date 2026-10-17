@@ -1,0 +1,62 @@
+.tile {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+.sm {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 4px;
+}
+
+.md {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 7px;
+}
+
+.lg {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9px;
+}
+
+.tile svg {
+  width: 72%;
+  height: 72%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sm svg {
+  stroke-width: 1.6;
+}
+
+.tile[data-hue='orange'] {
+  background: linear-gradient(160deg, #ffb35c, #f2661f);
+}
+
+.tile[data-hue='blue'] {
+  background: linear-gradient(160deg, #6ea8ff, #2f5bea);
+}
+
+.tile[data-hue='teal'] {
+  background: linear-gradient(160deg, #5be3c0, #10a389);
+}
+
+.tile[data-hue='purple'] {
+  background: linear-gradient(160deg, #b69bff, #6d4ce6);
+}
+
+.tile[data-hue='pink'] {
+  background: linear-gradient(160deg, #ff8fd3, #d63bb0);
+}

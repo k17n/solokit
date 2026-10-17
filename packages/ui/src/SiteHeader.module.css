@@ -1,56 +1,99 @@
+/* Old tokens are re-mapped here so the Business switcher (still on them) picks up the new look in the header. */
 .header {
+  --bg: var(--ds-bg);
+  --surface: var(--ds-surface);
+  --surface-2: var(--ds-active);
+  --text: var(--ds-text);
+  --text-muted: var(--ds-text-2);
+  --border: var(--ds-border-strong);
+  --edge: var(--ds-text);
+  --radius-m: 999px;
+  --radius-s: var(--ds-r-chip);
   position: sticky;
   top: 0;
   z-index: 50;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
+  font-family: var(--ds-ff);
+  background: color-mix(in srgb, var(--ds-bg) 78%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--ds-border);
 }
 
 .inner {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  min-height: 4rem;
+  gap: 1rem;
+  min-height: 3.75rem;
 }
 
+/* centred glass pill */
 .nav {
-  margin-left: auto;
+  margin-inline: auto;
 }
 
 .nav ul {
   display: flex;
-  gap: 1.75rem;
+  gap: 0.15rem;
   margin: 0;
-  padding: 0;
+  padding: 0.25rem;
   list-style: none;
+  background: var(--ds-chip-bg);
+  border: 1px solid var(--ds-border);
+  border-radius: 999px;
 }
 
 .nav a {
-  color: var(--text-muted);
+  display: block;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
   font-weight: 500;
+  line-height: 1.2;
+  color: var(--ds-text-2);
   text-decoration: none;
+  border-radius: 999px;
+  transition:
+    color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
 }
 
 .nav a:hover {
-  color: var(--text);
-  text-decoration: underline 2px solid var(--amber);
-  text-underline-offset: 8px;
+  color: var(--ds-text);
+  background: var(--ds-active);
 }
 
 .extra {
   flex: 0 1 auto;
   min-width: 0;
+  font-size: 0.8125rem;
 }
 
-/* two classes so these win over Button's own padding regardless of stylesheet order */
+/* two classes so these win over Button's own styles regardless of stylesheet order */
 .header .cta {
-  min-height: 2.5rem;
-  padding: 0.5rem 1.1rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 1rem;
+  font: 500 0.8125rem/1 var(--ds-ff);
   white-space: nowrap;
+  color: var(--ds-cta-fg);
+  background: var(--ds-cta-bg);
+  border: 1px solid var(--ds-cta-bg);
+  border-radius: 999px;
+  box-shadow: none;
+  transition:
+    opacity 0.15s var(--ds-ease),
+    transform 0.15s var(--ds-ease);
 }
 
-@media (max-width: 40rem) {
+.header .cta:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+
+.header .cta:active {
+  transform: none;
+}
+
+@media (max-width: 48rem) {
   .inner {
     gap: 0.6rem;
   }
@@ -59,15 +102,15 @@
     display: none;
   }
 
+  .header .cta {
+    margin-left: auto;
+  }
+
   .extra {
     margin-left: auto;
   }
 
-  .extra + .cta {
+  .header .extra + .cta {
     margin-left: 0;
-  }
-
-  .cta {
-    margin-left: auto;
   }
 }

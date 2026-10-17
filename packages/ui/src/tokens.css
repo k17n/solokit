@@ -59,6 +59,113 @@
   }
 }
 
+/*
+ * Design system v2 (rico product UI + Penguin showcase). Neutral greys carry hierarchy, colour is a tiny accent, and
+ * light and dark share every component: only these tokens swap. Pages move onto it one at a time; the home page,
+ * header and footer use it first. `[data-theme]` on <html> forces a mode, otherwise the system setting wins.
+ */
+:root {
+  --ds-canvas: #f4f4f5;
+  --ds-bg: #ffffff;
+  --ds-sidebar: #fafafa;
+  --ds-surface: #ffffff;
+  --ds-input: #f4f4f5;
+  --ds-active: #f0f0f0;
+  --ds-border: rgb(0 0 0 / 0.07);
+  --ds-border-strong: rgb(0 0 0 / 0.13);
+  --ds-text: #111111;
+  --ds-text-2: #6b6b6b;
+  --ds-text-3: #a1a1a1;
+  --ds-link: #2563eb;
+  --ds-cta-bg: #111111;
+  --ds-cta-fg: #ffffff;
+  --ds-chip-bg: #ffffff;
+  --ds-lime: #d4f225;
+  --ds-success: #3fb950;
+  --ds-success-text: #1a7f37;
+  --ds-success-bg: rgb(63 185 80 / 0.15);
+  --ds-blue: #3b5bff;
+  --ds-magenta: #d63bb0;
+  --ds-iridescent: linear-gradient(120deg, #6d5bff 0%, #3ba0ff 38%, #5be3a0 72%, #ffffff 100%);
+  --ds-shadow-frame: 0 1px 2px rgb(0 0 0 / 0.04), 0 24px 60px -32px rgb(0 0 0 / 0.18);
+  /* Penguin showcase canvas: pastel blobs in light, black with a blue bloom in dark */
+  --ds-show-bg: #fafafa;
+  --ds-blob-1: #ffd6c9;
+  --ds-blob-2: #ffc8dd;
+  --ds-blob-3: #fff1b8;
+  --ds-blob-4: #e3d9ff;
+  --ds-blob-opacity: 0.85;
+  --ds-dot: #6b6b6b;
+  --ds-ff: var(--font-sans, 'Geist'), 'Inter', system-ui, sans-serif;
+  --ds-ff-mono: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace;
+  --ds-r-chip: 6px;
+  --ds-r-card: 8px;
+  --ds-r-frame: 14px;
+  --ds-r-media: 18px;
+  --ds-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ds-canvas: #0a0a0a;
+    --ds-bg: #0a0a0a;
+    --ds-sidebar: #1a1a1a;
+    --ds-surface: #1e1e1e;
+    --ds-input: #262626;
+    --ds-active: #262626;
+    --ds-border: rgb(255 255 255 / 0.07);
+    --ds-border-strong: rgb(255 255 255 / 0.14);
+    --ds-text: #ededed;
+    --ds-text-2: #8a8a8a;
+    --ds-text-3: #5c5c5c;
+    --ds-link: #6b9bff;
+    --ds-cta-bg: #ffffff;
+    --ds-cta-fg: #111111;
+    --ds-chip-bg: rgb(255 255 255 / 0.06);
+    --ds-success-text: #3fb950;
+    --ds-shadow-frame: 0 0 0 1px rgb(255 255 255 / 0.04), 0 30px 80px -40px rgb(0 0 0 / 0.9);
+    --ds-show-bg: #000000;
+    --ds-blob-1: #3b5bff;
+    --ds-blob-2: #2a3fb8;
+    --ds-blob-3: #1b2a7a;
+    --ds-blob-4: #3b5bff;
+    --ds-blob-opacity: 0.32;
+    --ds-dot: #a8a06a;
+  }
+}
+
+:root[data-theme='dark'] {
+  --ds-canvas: #0a0a0a;
+  --ds-bg: #0a0a0a;
+  --ds-sidebar: #1a1a1a;
+  --ds-surface: #1e1e1e;
+  --ds-input: #262626;
+  --ds-active: #262626;
+  --ds-border: rgb(255 255 255 / 0.07);
+  --ds-border-strong: rgb(255 255 255 / 0.14);
+  --ds-text: #ededed;
+  --ds-text-2: #8a8a8a;
+  --ds-text-3: #5c5c5c;
+  --ds-link: #6b9bff;
+  --ds-cta-bg: #ffffff;
+  --ds-cta-fg: #111111;
+  --ds-chip-bg: rgb(255 255 255 / 0.06);
+  --ds-success-text: #3fb950;
+  --ds-shadow-frame: 0 0 0 1px rgb(255 255 255 / 0.04), 0 30px 80px -40px rgb(0 0 0 / 0.9);
+  --ds-show-bg: #000000;
+  --ds-blob-1: #3b5bff;
+  --ds-blob-2: #2a3fb8;
+  --ds-blob-3: #1b2a7a;
+  --ds-blob-4: #3b5bff;
+  --ds-blob-opacity: 0.32;
+  --ds-dot: #a8a06a;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
 *,
 *::before,
 *::after {

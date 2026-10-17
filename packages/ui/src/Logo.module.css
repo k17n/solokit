@@ -1,42 +1,47 @@
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--text);
+  gap: 0.55rem;
+  color: var(--ds-text);
   text-decoration: none;
 }
 
 .md {
-  font-size: 1.35rem;
+  font-size: 1.05rem;
 }
 
 .lg {
-  font-size: 2rem;
+  font-size: 1.6rem;
 }
 
 .mark {
-  width: 1.45em;
-  height: 1.45em;
+  width: 1.5em;
+  height: 1.5em;
+}
+
+/* the lime square is the brand accent; the receipt on it stays ink-dark in both modes */
+.tile {
+  fill: var(--ds-lime);
 }
 
 .paper {
-  fill: var(--text);
+  fill: #111111;
 }
 
 .lines {
   fill: none;
-  stroke: var(--bg);
-  stroke-width: 1.6;
+  stroke: var(--ds-lime);
+  stroke-width: 1.4;
   stroke-linecap: round;
 }
 
 .word {
-  font-family: var(--ff-display);
-  font-weight: 800;
+  font-family: var(--ds-ff);
+  font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1;
 }
 
 .kit {
-  color: var(--accent-text);
+  color: var(--ds-text-2);
 }

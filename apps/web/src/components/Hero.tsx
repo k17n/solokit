@@ -1,34 +1,46 @@
-import { Button } from '@solokit/ui';
 import { toolHref } from '@solokit/registry';
-import { ReceiptDemo } from './ReceiptDemo';
+import { AppFrame } from './AppFrame';
 import { TrustStrip } from './TrustStrip';
 import styles from './Hero.module.css';
 
 export function Hero() {
   return (
-    <section className={`container ${styles.hero}`}>
-      <div className={styles.grid}>
-        <div>
-          <p className={styles.eyebrow}>
-            <span className={styles.dot} aria-hidden="true" />
-            Free tools, built in India
-          </p>
-          <h1 className={styles.title}>
-            Paperwork for <em>one-person</em> businesses.
-          </h1>
-          <p className={styles.lede}>
-            Invoices, quotes and agreements that run in your browser. Free, no login, and nothing you type leaves your
-            device.
-          </p>
-          <div className={styles.actions}>
-            <Button href={toolHref('invoice')}>Create an invoice</Button>
-            <Button href="/#tools" variant="secondary">
-              See all tools
-            </Button>
-          </div>
-          <TrustStrip />
+    <section className={styles.hero}>
+      <div className={styles.backdrop} aria-hidden="true">
+        <span className={`${styles.blob} ${styles.b1}`} />
+        <span className={`${styles.blob} ${styles.b2}`} />
+        <span className={`${styles.blob} ${styles.b3}`} />
+        <span className={`${styles.blob} ${styles.b4}`} />
+        <span className={styles.grid} />
+      </div>
+
+      <div className={`container ${styles.intro}`}>
+        <p className={styles.chip}>
+          <span className={styles.dot} aria-hidden="true" />
+          Free tools, built in India
+        </p>
+        <h1 className={styles.title}>
+          Paperwork for <span className={styles.fade}>
+            <span className={styles.nowrap}>one-person</span> businesses.
+          </span>
+        </h1>
+        <p className={styles.lede}>
+          Invoices, quotes and agreements that run in your browser. Free, no login, and nothing you type leaves your
+          device.
+        </p>
+        <div className={styles.actions}>
+          <a className={`${styles.pill} ${styles.solid}`} href={toolHref('invoice')}>
+            Create an invoice
+          </a>
+          <a className={`${styles.pill} ${styles.outline}`} href="/#tools">
+            See all tools
+          </a>
         </div>
-        <ReceiptDemo />
+        <TrustStrip />
+      </div>
+
+      <div className={`container ${styles.stage}`}>
+        <AppFrame />
       </div>
     </section>
   );
