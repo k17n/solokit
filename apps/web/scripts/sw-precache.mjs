@@ -10,7 +10,10 @@ import { fileURLToPath } from 'node:url';
 // which would make cache.addAll() reject and block the worker from installing.
 const isErrorPage = (path) => /^(404\.html|404\/index\.html|_not-found(\.|\/))/.test(path);
 
-const isPrecached = (path) => path !== 'sw.js' && !path.endsWith('.map') && !isErrorPage(path);
+// Cloudflare Pages reads _headers and _redirects but never serves them, and robots.txt and sitemap.xml are for crawlers.
+const isHostFile = (path) => ['_headers', '_redirects', 'robots.txt', 'sitemap.xml'].includes(path);
+
+const isPrecached = (path) => path !== 'sw.js' && !path.endsWith('.map') && !isErrorPage(path) && !isHostFile(path);
 
 function toUrl(path) {
   if (path === 'index.html') return '/';
