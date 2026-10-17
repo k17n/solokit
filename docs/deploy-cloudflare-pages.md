@@ -87,3 +87,19 @@ Run `pnpm e2e` after any change to `_headers`: the test server (`apps/web/script
 - [ ] Check the footer's tax-rules date and the "not tax or legal advice" wording are current.
 - [ ] Add a share image (Open Graph image) if you want previews with a picture; none is included yet.
 - [ ] Re-run `pnpm test`, `pnpm typecheck` and `pnpm e2e` on the commit being deployed.
+
+## Deploying from the command line (how the first deploy was done)
+
+The first deploy used Wrangler's direct upload, with no GitHub connection:
+
+1. `npx wrangler login` (approve in the browser; run once per machine).
+2. Build with the real address: `NEXT_PUBLIC_SITE_URL=https://solokit-9lh.pages.dev pnpm build` (add `NEXT_PUBLIC_CF_ANALYTICS_TOKEN=<token>` once the analytics site exists; both values are baked in at build time).
+3. Run Wrangler from outside the repo, because it refuses to guess a project at a pnpm workspace root:
+   `wrangler pages deploy <path to apps/web/out> --project-name solokit --branch main`
+
+Notes:
+- The project was created with `wrangler pages project create solokit --production-branch main --force`. `--force` is needed once, because newer Wrangler tries to create a Workers project instead of a Pages project. Later commands do not need it.
+- Cloudflare gave the project the address `solokit-9lh.pages.dev` because `solokit.pages.dev` was taken.
+- A direct upload does not redeploy when you push to GitHub. To get automatic deploys, connect the GitHub repository to a new Pages project in the dashboard (section 1 above).
+- After a deploy, check `/`, a tool page and `/sw.js` return 200, and that the service worker caches all precache files (about 10 seconds on a first visit) before testing offline.
+- `/favicon.ico` returns 404 because the site uses `icon.svg`; this is harmless.
