@@ -26,6 +26,10 @@ describe('collectUrls', () => {
     expect(collectUrls(['a\\b\\index.html', '_next\\x.js'])).toEqual(['/_next/x.js', '/a/b/']);
   });
 
+  it('excludes host configuration files that a static host does not serve', () => {
+    expect(collectUrls(['_headers', '_redirects', 'index.html', 'robots.txt', 'sitemap.xml'])).toEqual(['/']);
+  });
+
   it('excludes sw.js and source maps, and dedupes', () => {
     expect(collectUrls(['sw.js', '_next/a.js.map', 'x.js', 'x.js', 'index.html'])).toEqual(['/', '/x.js']);
   });

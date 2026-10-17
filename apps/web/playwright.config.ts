@@ -13,7 +13,7 @@ export default defineConfig({
     viewport: { width: 1280, height: 800 },
   },
   webServer: {
-    command: 'pnpm exec serve out -l 4180 --no-clipboard',
+    command: 'node scripts/serve-with-headers.mjs 4180',
     url: 'http://localhost:4180',
     reuseExistingServer: true,
     timeout: 60_000,

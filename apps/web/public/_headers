@@ -1,0 +1,40 @@
+# Cloudflare Pages response headers (https://developers.cloudflare.com/pages/configuration/headers/).
+# Copied to the root of the build output by the static export. Rules that match a request are merged, so the
+# Cache-Control rules below are written so that no two of them can match the same file.
+#
+# CSP notes:
+# - 'unsafe-inline' for scripts and styles: the static export inlines Next's hydration data and the page styles, and a
+#   static host cannot add per-request nonces. Everything else is limited to this site.
+# - static.cloudflareinsights.com / cloudflareinsights.com: the Cloudflare Web Analytics beacon and its reports.
+# - 'wasm-unsafe-eval' and data: in connect-src: the PDF layout code ships a WebAssembly module embedded as a data: URI
+#   (found by the e2e run; without both, previews and downloads fail). Plain eval stays blocked.
+# - blob: images, frames and objects: the PDF preview; blob: workers cover the PDF libraries.
+# Check docs/deploy-cloudflare-pages.md before loosening anything.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' data: https://cloudflareinsights.com; frame-src 'self' blob:; object-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# Pages (HTML) and files that must update promptly: always revalidate. The service worker in particular has to be
+# fetched fresh or visitors would never receive a new version.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/*/
+  Cache-Control: public, max-age=0, must-revalidate
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+/robots.txt
+  Cache-Control: public, max-age=3600
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+
+# Fingerprinted build output and bundled fonts never change under the same address.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
