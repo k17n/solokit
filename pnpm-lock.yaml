@@ -171,6 +171,9 @@ importers:
       '@solokit/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@solokit/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
       '@solokit/profile':
         specifier: workspace:*
         version: link:../../packages/profile

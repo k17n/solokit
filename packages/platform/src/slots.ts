@@ -7,7 +7,7 @@ export interface SlotContexts {
   /** Next to Duplicate on an agreement. */
   'contract.viewer.actions': { documentId: string; kind: string; final: boolean };
   /** The Plans section of the Business page. */
-  'business.plans': Record<string, never>;
+  'business.plans': Record<never, never>;
 }
 
 export type SlotName = keyof SlotContexts;
