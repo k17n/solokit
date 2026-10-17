@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "preview": "node scripts/serve-with-headers.mjs 4173",
     "icons": "node scripts/generate-icons.mjs",
     "fonts": "node scripts/build-invoice-fonts.mjs"
   },
