@@ -1,8 +1,3 @@
-/* The home page is the first screen on design system v2; it paints the body so no old paper shows round the edges. */
-:global(body):has(.page) {
-  background: var(--ds-bg);
-}
-
 .page {
   font-family: var(--ds-ff);
   font-size: 0.9375rem;

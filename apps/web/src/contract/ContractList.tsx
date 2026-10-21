@@ -172,7 +172,7 @@ export function ContractList({ storage, invoice, onNew, onEdit, onView, onOpenBa
   if (contracts.length === 0) {
     return (
       <div className={styles.empty}>
-        <h2 style={{ fontSize: '1.8rem' }}>Start your first agreement</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>Start your first agreement</h2>
         <p className={styles.lead}>Pick what you need. You fill in the details in plain English, review a summary of your choices, and download a PDF or an editable Word file.</p>
         <KindCards onPick={onNew} label="Choose an agreement type to start with" />
         <p className={styles.hint}>
@@ -200,7 +200,7 @@ export function ContractList({ storage, invoice, onNew, onEdit, onView, onOpenBa
           }
         }}
       >
-        <h2 style={{ fontSize: '1.8rem' }}>Agreements</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>Agreements</h2>
         <Button aria-expanded={choosing} aria-controls="new-agreement-chooser" onClick={() => setChoosing((open) => !open)}>
           <span aria-hidden="true">+</span> New
         </Button>

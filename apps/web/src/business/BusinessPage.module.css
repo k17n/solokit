@@ -5,23 +5,27 @@
 }
 
 .jump {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 2px;
+  justify-self: start;
+  max-width: 100%;
+  padding: 3px;
+  background: var(--ds-input);
+  border-radius: 999px;
 }
 
 .jump a {
-  padding: 0.5rem 0.9rem;
-  font: 600 0.95rem/1 var(--ff-sans);
-  color: var(--text-muted);
+  padding: 0.45rem 0.9rem;
+  font: 500 0.8125rem/1 var(--ds-ff);
+  color: var(--ds-text-2);
   text-decoration: none;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
+  border-radius: 999px;
 }
 
 .jump a:hover {
-  color: var(--text);
-  background: var(--surface-2);
+  color: var(--ds-text);
+  background: var(--ds-surface);
 }
 
 .section {
@@ -32,7 +36,7 @@
 }
 
 .heading {
-  font-size: 1.8rem;
+  font-size: 1.375rem;
 }
 
 .heading:focus {
@@ -40,8 +44,8 @@
 }
 
 .heading:focus-visible {
-  outline: 3px solid var(--edge);
-  outline-offset: 3px;
+  outline: 2px solid var(--ds-text);
+  outline-offset: 2px;
 }
 
 .lede {
@@ -52,7 +56,7 @@
 
 .saved {
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--accent-text);
 }
 

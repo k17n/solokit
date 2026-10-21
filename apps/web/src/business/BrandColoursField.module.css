@@ -4,20 +4,19 @@
   min-width: 0;
   padding: 1.1rem;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
 }
 
 .heading {
   margin: 0;
-  font-family: var(--ff-display);
-  font-size: 1.15rem;
+  font-size: 1rem;
 }
 
 .hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .found {
@@ -28,8 +27,8 @@
 
 .sub {
   margin: 0;
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
 .palette {
@@ -52,19 +51,19 @@
   flex: none;
   width: 1.9rem;
   height: 1.9rem;
-  border: 1.5px solid var(--edge);
+  border: 1px solid var(--ds-border-strong);
   border-radius: var(--radius-s);
 }
 
 .hex {
-  font-family: var(--ff-mono);
-  font-size: 0.9rem;
+  font-family: var(--ds-ff);
+  font-size: 0.8125rem;
   font-weight: 500;
 }
 
 .share {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
 }
 
 .actions {
@@ -98,7 +97,7 @@
   margin-top: 1.7rem;
   padding: 2px;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-s);
   cursor: pointer;
 }
@@ -106,7 +105,7 @@
 .source {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .link {
@@ -125,13 +124,13 @@
   margin: 0.4rem 0 0;
   padding: 0;
   list-style: none;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .verdict {
   display: inline-block;
   min-width: 3.6rem;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .checks li[data-pass='true'] .verdict {

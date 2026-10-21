@@ -162,7 +162,7 @@ export function RequiredFieldsStep({ tool, profile, suggestedName, onDone, onSki
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem', maxWidth: '40rem' }}>
-      <h2 ref={headingRef} tabIndex={-1} style={{ fontSize: '1.8rem' }}>
+      <h2 ref={headingRef} tabIndex={-1} style={{ fontSize: '1.5rem' }}>
         Set up your business
       </h2>
       <p>

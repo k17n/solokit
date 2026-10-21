@@ -1,40 +1,35 @@
+/*
+ * Legacy names, kept so every component written before design system v2 still resolves. They are aliases of the
+ * --ds-* tokens below, so light and dark (and [data-theme]) switch with them; new code uses --ds-* directly.
+ */
 :root {
-  /* palette */
-  --ink: #0b1b3a;
-  --ink-2: #13294f;
-  --paper: #faf8f4;
-  --paper-2: #f2eee6;
-  --emerald: #10b981;
-  --emerald-deep: #047857;
+  --ink: #111111;
+  --paper: #ffffff;
+  --emerald: #3fb950;
   --amber: #f5b54a;
 
-  /* semantic, light */
-  --bg: var(--paper);
-  --surface: #ffffff;
-  --surface-2: var(--paper-2);
-  --text: var(--ink);
-  --text-muted: #4a5876;
-  --border: #e2dccf;
-  --accent: var(--emerald);
-  --accent-text: var(--emerald-deep);
-  --edge: var(--ink);
-  --danger: #b42318;
+  --bg: var(--ds-bg);
+  --surface: var(--ds-surface);
+  --surface-2: var(--ds-active);
+  --text: var(--ds-text);
+  --text-muted: var(--ds-text-2);
+  --border: var(--ds-border-strong);
+  --accent: var(--ds-success);
+  --accent-text: var(--ds-success-text);
+  --edge: var(--ds-text);
+  --danger: #c4320a;
   --danger-bg: #fef3f2;
-  --warning-bg: #fff6e0;
+  --warning-bg: #fff8e6;
+  --grain: none;
 
-  /* paper grain (ink-coloured noise, very faint) */
-  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .04  0 0 0 0 .1  0 0 0 0 .23  0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.07'/></svg>");
+  --ff-display: var(--ds-ff);
+  --ff-sans: var(--ds-ff);
+  --ff-mono: var(--ds-ff-mono);
 
-  /* type */
-  --ff-display: var(--font-display, 'Bricolage Grotesque'), system-ui, sans-serif;
-  --ff-sans: var(--font-sans, 'Geist'), system-ui, sans-serif;
-  --ff-mono: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace;
-
-  /* shape and layout */
-  --radius-s: 6px;
-  --radius-m: 12px;
-  --radius-l: 20px;
-  --shadow-card: 0 1px 0 rgb(11 27 58 / 0.05), 0 18px 40px -22px rgb(11 27 58 / 0.35);
+  --radius-s: var(--ds-r-chip);
+  --radius-m: var(--ds-r-card);
+  --radius-l: var(--ds-r-frame);
+  --shadow-card: var(--ds-shadow-frame);
   --container: 72rem;
   --space-section: clamp(3.5rem, 8vw, 6.5rem);
 
@@ -42,21 +37,18 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0a1428;
-    --surface: #101e3a;
-    --surface-2: #0d1930;
-    --text: #eaf0fa;
-    --text-muted: #9aabc8;
-    --border: #22345a;
-    --accent-text: #34d399;
-    --edge: #eaf0fa;
-    --danger: #fda29b;
-    --danger-bg: #3a1514;
-    --warning-bg: #3a2a0c;
-    --shadow-card: 0 1px 0 rgb(0 0 0 / 0.3), 0 18px 40px -22px rgb(0 0 0 / 0.7);
+  :root:not([data-theme='light']) {
+    --danger: #ff8a7a;
+    --danger-bg: #2a1311;
+    --warning-bg: #2a2110;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --danger: #ff8a7a;
+  --danger-bg: #2a1311;
+  --warning-bg: #2a2110;
 }
 
 /*
@@ -179,11 +171,11 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--ff-sans);
-  font-size: 1.0625rem;
-  line-height: 1.6;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-ff);
+  font-size: 0.9375rem;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -192,9 +184,10 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-family: var(--ff-display);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-family: var(--ds-ff);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
@@ -214,8 +207,13 @@ svg {
 }
 
 :focus-visible {
-  outline: 3px solid var(--edge);
-  outline-offset: 3px;
+  outline: 2px solid var(--ds-text);
+  outline-offset: 2px;
+}
+
+/* headings that receive focus from code (after a step changes) are not controls; no ring around them */
+:is(h1, h2, h3, h4)[tabindex='-1']:focus {
+  outline: none;
 }
 
 .container {
@@ -224,7 +222,7 @@ svg {
 }
 
 .num {
-  font-family: var(--ff-mono);
+  font-family: var(--ds-ff);
   font-variant-numeric: tabular-nums;
 }
 
@@ -246,9 +244,9 @@ svg {
   top: -4rem;
   z-index: 100;
   padding: 0.6rem 1rem;
-  background: var(--ink);
-  color: var(--paper);
-  border-radius: var(--radius-s);
+  background: var(--ds-cta-bg);
+  color: var(--ds-cta-fg);
+  border-radius: 999px;
 }
 
 .skip-link:focus {

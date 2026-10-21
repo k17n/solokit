@@ -270,7 +270,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   return (
     <div className={styles.editor}>
       <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>{isNew ? `New ${name.toLowerCase()}` : 'Edit draft'}</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>{isNew ? `New ${name.toLowerCase()}` : 'Edit draft'}</h2>
         <Button variant="secondary" onClick={onBack}>
           Back to documents
         </Button>
@@ -390,7 +390,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
           <TotalsPanel document={totalsDocument} />
           <section className={styles.preview} aria-labelledby="preview-heading">
             <div className={styles.header}>
-              <h3 id="preview-heading" style={{ fontSize: '1.25rem' }}>
+              <h3 id="preview-heading" style={{ fontSize: '1.0625rem' }}>
                 Preview
               </h3>
               <Button variant="secondary" onClick={() => setShowPreview((shown) => !shown)}>

@@ -124,7 +124,7 @@ function MilestonesEditor({ milestones, errors, onChange }: { milestones: Milest
         Split the fee into steps. Each milestone is a payment the client makes when something is done.
       </p>
       {errors['milestones'] ? (
-        <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontWeight: 600 }} tabIndex={-1} data-problem="milestones">
+        <p role="alert" style={{ margin: 0, color: 'var(--danger)', fontWeight: 500 }} tabIndex={-1} data-problem="milestones">
           {errors['milestones']}
         </p>
       ) : null}

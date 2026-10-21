@@ -18,7 +18,7 @@ export interface DetailsSectionProps {
 }
 
 const groupStyle = { display: 'grid', gap: '1rem', minWidth: 0, margin: 0, padding: 0, border: 0 } as const;
-const legendStyle = { padding: 0, marginBottom: '0.25rem', fontFamily: 'var(--ff-display)', fontSize: '1.25rem', fontWeight: 700 } as const;
+const legendStyle = { padding: 0, marginBottom: '0.25rem', fontSize: '1rem', fontWeight: 500 } as const;
 const rowStyle = { display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', alignItems: 'start' } as const;
 
 const NUMBER_LABEL: Record<EditorState['kind'], string> = { invoice: 'Invoice number', proforma: 'Proforma number', quote: 'Quotation number' };

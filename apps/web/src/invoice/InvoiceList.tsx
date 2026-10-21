@@ -202,7 +202,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
   if (invoices.length === 0) {
     return (
       <div className={styles.empty}>
-        <h2 style={{ fontSize: '1.8rem' }}>Start your first document</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>Start your first document</h2>
         <p className={styles.lead}>Pick what you want to make. Each kind has its own numbers and its own use.</p>
         <KindCards gstStatus={profile?.gstStatus} onPick={onNew} label="Choose a document type to start with" />
         <p className={styles.hint}>
@@ -235,7 +235,7 @@ export function InvoiceList({ storage, onNew, onEdit, onView, onOpenBackup, rend
           }
         }}
       >
-        <h2 style={{ fontSize: '1.8rem' }}>Documents</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>Documents</h2>
         <Button aria-expanded={choosing} aria-controls="new-document-chooser" onClick={() => setChoosing((open) => !open)}>
           <span aria-hidden="true">+</span> New
         </Button>

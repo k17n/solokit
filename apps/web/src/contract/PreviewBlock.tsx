@@ -23,7 +23,7 @@ export function PreviewBlock({ contract, theme, exporter, placeholder }: Preview
   return (
     <section aria-labelledby="preview-heading" style={{ display: 'grid', gap: '0.75rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-        <h4 id="preview-heading" style={{ fontSize: '1.25rem' }}>
+        <h4 id="preview-heading" style={{ fontSize: '1.0625rem' }}>
           Preview of the agreement
         </h4>
         <Button variant="secondary" aria-expanded={shown} onClick={() => setShown((open) => !open)}>

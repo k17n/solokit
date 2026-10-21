@@ -1,9 +1,4 @@
-/* Follows the colour scheme like the rest of the new system; old tokens are re-mapped so Badge adapts locally. */
 .footer {
-  --text: var(--ds-text);
-  --text-muted: var(--ds-text-2);
-  --border: var(--ds-border-strong);
-  --edge: var(--ds-text);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -125,27 +120,6 @@
 
 .muted {
   color: var(--ds-text-2);
-}
-
-/* status pills: success on a 15% green tint, coming soon as a quiet grey chip */
-.footer [data-tone] {
-  padding: 0.15rem 0.45rem;
-  font: 500 0.6875rem/1.2 var(--ds-ff);
-  letter-spacing: 0;
-  text-transform: none;
-  border: 1px solid var(--ds-border);
-  border-radius: 999px;
-}
-
-.footer [data-tone='success'] {
-  color: var(--ds-success-text);
-  background: var(--ds-success-bg);
-  border-color: transparent;
-}
-
-.footer [data-tone='soon'] {
-  color: var(--ds-text-2);
-  background: var(--ds-active);
 }
 
 .legal {

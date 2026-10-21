@@ -1,4 +1,4 @@
-/* One colour per agreement kind, used for the badge, the list stripe and the chooser cards.
+/* One colour per agreement kind, used for the badge and the chooser cards.
    Mutual NDA = violet, one-way NDA = teal, services agreement = coral. They stay apart from the invoice tool's emerald, amber and blue. */
 .scope {
   --k-line: #9b6bd6;
@@ -19,19 +19,19 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .scope {
+  :global(:root:not([data-theme='light'])) .scope {
     --k-line: #b394ea;
     --k-ink: #d3c3ff;
     --k-soft: color-mix(in srgb, #b394ea 18%, transparent);
   }
 
-  .scope[data-kind='nda-one-way'] {
+  :global(:root:not([data-theme='light'])) .scope[data-kind='nda-one-way'] {
     --k-line: #3cc4be;
     --k-ink: #8fe6e1;
     --k-soft: color-mix(in srgb, #3cc4be 17%, transparent);
   }
 
-  .scope[data-kind='services'] {
+  :global(:root:not([data-theme='light'])) .scope[data-kind='services'] {
     --k-line: #f08f78;
     --k-ink: #ffc2b3;
     --k-soft: color-mix(in srgb, #f08f78 18%, transparent);
@@ -40,43 +40,42 @@
 
 .badge {
   display: inline-flex;
-  align-items: stretch;
-  overflow: hidden;
-  font: 600 0.75rem/1.2 var(--ff-sans);
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.55rem 0.12rem 0.15rem;
+  font: 500 0.6875rem/1.4 var(--ds-ff);
   white-space: nowrap;
   color: var(--k-ink);
   background: var(--k-soft);
-  border: 1px solid var(--k-line);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
 }
 
 .glyph {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.4rem;
-  font: 700 0.7rem/1.2 var(--ff-mono);
-  letter-spacing: 0.06em;
-  color: #0b1b3a;
+  padding: 0.05rem 0.35rem;
+  font: 600 0.625rem/1.3 var(--ds-ff);
+  color: #111111;
   background: var(--k-line);
+  border-radius: 999px;
 }
 
 .name {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.5rem;
 }
 
 .large {
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .large .glyph {
-  padding: 0.3rem 0.55rem;
-  font-size: 0.85rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
 }
 
 .large .name {
-  padding: 0.3rem 0.7rem;
+  padding-right: 0.2rem;
 }
 
 .cards {
@@ -97,40 +96,37 @@
   text-align: left;
   color: var(--text);
   background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-top: 5px solid var(--k-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
   cursor: pointer;
   transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    border-color 0.12s ease;
+    transform 0.2s var(--ds-ease),
+    border-color 0.2s var(--ds-ease);
 }
 
 .card:hover {
   border-color: var(--k-line);
-  box-shadow: 0 3px 0 var(--k-line);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .tile {
   display: inline-flex;
-  padding: 0.25rem 0.5rem;
-  font: 700 0.8rem/1.2 var(--ff-mono);
-  letter-spacing: 0.06em;
-  color: #0b1b3a;
+  padding: 0.2rem 0.5rem;
+  font: 600 0.75rem/1.2 var(--ds-ff);
+  color: #111111;
   background: var(--k-line);
-  border-radius: var(--radius-s);
+  border-radius: 6px;
 }
 
 .cardTitle {
-  font: 700 1.2rem/1.2 var(--ff-display);
+  font: 500 1rem/1.3 var(--ds-ff);
+  letter-spacing: -0.01em;
 }
 
 .cardUse {
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.4;
+  color: var(--ds-text-2);
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .banner {
@@ -140,9 +136,8 @@
   gap: 0.4rem 0.75rem;
   padding: 0.9rem 1.1rem;
   background: var(--k-soft);
-  border: 1.5px solid var(--k-line);
-  border-left-width: 6px;
-  border-radius: var(--radius-m);
+  border: 1px solid color-mix(in srgb, var(--k-line) 45%, transparent);
+  border-radius: var(--ds-r-card);
 }
 
 .bannerText {

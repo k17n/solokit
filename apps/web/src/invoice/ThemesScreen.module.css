@@ -54,23 +54,24 @@
   align-items: center;
   gap: 0.2rem 0.75rem;
   width: 100%;
-  padding: 0.6rem 0.8rem;
-  font: 600 1rem/1.2 var(--ff-sans);
+  padding: 0.6rem 0.75rem;
+  font: 500 0.875rem/1.2 var(--ds-ff);
   text-align: left;
-  color: var(--text);
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
+  color: var(--ds-text);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
   cursor: pointer;
+  transition: border-color 0.15s var(--ds-ease);
 }
 
 .themeButton:hover {
-  background: var(--surface-2);
+  border-color: var(--ds-text-3);
 }
 
 .themeButton[aria-current='true'] {
-  border-color: var(--edge);
-  box-shadow: 0 2px 0 var(--edge);
+  border-color: var(--ds-text);
+  box-shadow: inset 0 0 0 1px var(--ds-text);
 }
 
 .swatches {
@@ -103,14 +104,14 @@
   gap: 1rem;
   padding: 1.1rem;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
 }
 
 .hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .colour {
@@ -126,7 +127,7 @@
   margin-top: 1.7rem;
   padding: 2px;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-s);
   cursor: pointer;
 }
@@ -144,17 +145,18 @@
 
 .saved {
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--accent-text);
 }
 
 .danger {
-  padding: 0.7rem 1rem;
-  font: 600 1rem/1 var(--ff-sans);
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font: 500 0.875rem/1 var(--ds-ff);
   color: var(--danger);
   background: transparent;
-  border: 1.5px solid transparent;
-  border-radius: var(--radius-m);
+  border: 1px solid transparent;
+  border-radius: 999px;
   cursor: pointer;
 }
 

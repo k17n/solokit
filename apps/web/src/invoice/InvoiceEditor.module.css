@@ -47,9 +47,8 @@
 
 .sectionTitle {
   padding: 0;
-  font-family: var(--ff-display);
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.0625rem;
+  font-weight: 500;
 }
 
 .actions {

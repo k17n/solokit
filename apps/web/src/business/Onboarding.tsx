@@ -44,7 +44,7 @@ function FirstInvoiceSetup({ onDone, processLogo, suggestedName }: Pick<Onboardi
   if (step === 'profile' && status) {
     return (
       <div style={{ display: 'grid', gap: '1.5rem' }}>
-        <h2 style={{ fontSize: '1.8rem' }}>Your business details</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>Your business details</h2>
         <div>
           <Button variant="ghost" onClick={() => setStep('status')}>
             Back
@@ -62,7 +62,7 @@ function FirstInvoiceSetup({ onDone, processLogo, suggestedName }: Pick<Onboardi
 
   return (
     <div style={{ display: 'grid', gap: '1.5rem', maxWidth: '40rem' }}>
-      <h2 style={{ fontSize: '1.8rem' }}>Set up your business</h2>
+      <h2 style={{ fontSize: '1.5rem' }}>Set up your business</h2>
       <p>This takes a minute. Your details stay on this device and appear on your invoices.</p>
       <RadioCards
         legend="How are you registered for GST?"

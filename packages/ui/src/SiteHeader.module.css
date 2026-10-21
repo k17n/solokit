@@ -1,14 +1,4 @@
-/* Old tokens are re-mapped here so the Business switcher (still on them) picks up the new look in the header. */
 .header {
-  --bg: var(--ds-bg);
-  --surface: var(--ds-surface);
-  --surface-2: var(--ds-active);
-  --text: var(--ds-text);
-  --text-muted: var(--ds-text-2);
-  --border: var(--ds-border-strong);
-  --edge: var(--ds-text);
-  --radius-m: 999px;
-  --radius-s: var(--ds-r-chip);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -67,30 +57,11 @@
   font-size: 0.8125rem;
 }
 
-/* two classes so these win over Button's own styles regardless of stylesheet order */
+/* two classes so this wins over Button's own padding regardless of stylesheet order */
 .header .cta {
   min-height: 2.25rem;
   padding: 0.45rem 1rem;
-  font: 500 0.8125rem/1 var(--ds-ff);
-  white-space: nowrap;
-  color: var(--ds-cta-fg);
-  background: var(--ds-cta-bg);
-  border: 1px solid var(--ds-cta-bg);
-  border-radius: 999px;
-  box-shadow: none;
-  transition:
-    opacity 0.15s var(--ds-ease),
-    transform 0.15s var(--ds-ease);
-}
-
-.header .cta:hover {
-  opacity: 0.88;
-  transform: translateY(-1px);
-  box-shadow: none;
-}
-
-.header .cta:active {
-  transform: none;
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 48rem) {
