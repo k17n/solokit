@@ -1,13 +1,10 @@
-import { getTools, toolHref } from '@solokit/registry';
+import { APP_HOME, BUSINESS_PATH, SETUP_PATH, appToolAt } from '../paths';
+
+export { APP_HOME, SETUP_PATH };
 
 /** The steps of the business setup, in order. */
 export const SETUP_STEPS = ['tax', 'details', 'brand', 'payments', 'defaults'] as const;
 export type SetupStep = (typeof SETUP_STEPS)[number];
-
-export const SETUP_PATH = '/setup/';
-
-/** The app home: the tools a set-up Business can use. "Get started" goes here, and it sends a new Business to setup first. */
-export const APP_HOME = '/app/';
 
 /** Where setup goes when it was not opened from somewhere: the app home, welcoming the person. */
 export const AFTER_FIRST_SETUP = `${APP_HOME}?welcome=1`;
@@ -15,7 +12,7 @@ export const AFTER_FIRST_SETUP = `${APP_HOME}?welcome=1`;
 const isStep = (value: string | null): value is SetupStep => value !== null && (SETUP_STEPS as readonly string[]).includes(value);
 
 /**
- * A path on this site to go back to, or null. Only plain same-site paths count ("/tools/invoice/"), never "//other.site"
+ * A path on this site to go back to, or null. Only plain same-site paths count ("/app/invoice/"), never "//other.site"
  * or a full URL, so a link cannot send people somewhere else after setup.
  */
 export function safeReturnPath(raw: string | null | undefined): string | null {
@@ -40,17 +37,12 @@ export function readSetupQuery(search: string): { next: string | null; step: Set
   return { next: safeReturnPath(params.get('next')), step: isStep(step) ? step : null };
 }
 
-/** The tool a path opens, if it opens one. */
-function toolAt(path: string) {
-  return getTools().find((candidate) => path.startsWith(toolHref(candidate.slug)));
-}
-
-/** Whether the path opens a tool, such as "/tools/invoice/". */
-export const isToolPath = (path: string): boolean => toolAt(path) !== undefined;
+/** Whether the path opens a tool, such as "/app/invoice/". */
+export const isToolPath = (path: string): boolean => appToolAt(path) !== undefined;
 
 /** What to call the page someone returns to, for a button: "Invoice generator", "Your business", "your tools". */
 export function returnLabel(path: string): string {
-  if (path === '/business/' || path.startsWith('/business/#')) return 'Your business';
+  if (path === BUSINESS_PATH || path.startsWith(`${BUSINESS_PATH}#`)) return 'Your business';
   if (path === APP_HOME || path.startsWith(`${APP_HOME}?`)) return 'your tools';
-  return toolAt(path)?.name ?? 'where you were';
+  return appToolAt(path)?.name ?? 'where you were';
 }

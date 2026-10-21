@@ -14,6 +14,7 @@ import { ManageBusinesses } from './ManageBusinesses';
 import { GST_STATUS_OPTIONS, STEP_INFO } from './ProfileForm';
 import { SETUP_STEPS, setupHref, type SetupStep } from '../setup/links';
 import { navigate } from '../setup/navigate';
+import { BUSINESS_PATH } from '../paths';
 import styles from './BusinessPage.module.css';
 
 type Hash = '' | 'add' | 'details' | 'backup' | 'businesses';
@@ -64,7 +65,7 @@ export function BusinessPage({ now }: BusinessPageProps = {}) {
   if (!ready) return <p>Opening your businesses…</p>;
 
   // A new, empty Business goes straight to setup; one restored from a backup already has its details.
-  if (hash === 'add') return <AddBusiness onCreated={() => navigate(setupHref('/business/'))} onRestored={leaveAdd} onCancel={leaveAdd} />;
+  if (hash === 'add') return <AddBusiness onCreated={() => navigate(setupHref(BUSINESS_PATH))} onRestored={leaveAdd} onCancel={leaveAdd} />;
 
   return (
     <div className={styles.page}>
@@ -163,7 +164,7 @@ function CurrentBusiness({ now }: BusinessPageProps) {
             </p>
           </div>
           {complete ? (
-            <Button variant="secondary" href={setupHref('/business/')}>
+            <Button variant="secondary" href={setupHref(BUSINESS_PATH)}>
               Edit details
             </Button>
           ) : null}
@@ -172,7 +173,7 @@ function CurrentBusiness({ now }: BusinessPageProps) {
           <ProfileSummary profile={profile} />
         ) : (
           <div>
-            <Button href={setupHref('/business/')}>{profile ? 'Finish setup' : 'Set up this business'}</Button>
+            <Button href={setupHref(BUSINESS_PATH)}>{profile ? 'Finish setup' : 'Set up this business'}</Button>
           </div>
         )}
       </section>
@@ -241,7 +242,7 @@ function ProfileSummary({ profile }: { profile: BusinessProfile }) {
           <dt>{STEP_INFO[step].title}</dt>
           <dd>{summaryOf(profile, step)}</dd>
           <dd className={styles.summaryAction}>
-            <a href={setupHref('/business/', step)} aria-label={`Change ${STEP_INFO[step].title.toLowerCase()}`}>
+            <a href={setupHref(BUSINESS_PATH, step)} aria-label={`Change ${STEP_INFO[step].title.toLowerCase()}`}>
               Change
             </a>
           </dd>

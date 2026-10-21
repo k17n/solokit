@@ -8,10 +8,10 @@ const shots = 'e2e-screenshots';
 
 const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
-const BRAND_STEP = '/setup/?next=%2Fbusiness%2F&step=brand';
+const BRAND_STEP = '/app/setup/?next=%2Fapp%2Fbusiness%2F&step=brand';
 
 /**
- * Sets up a new Business from /business/ through the setup page, with a logo and brand colours from that logo, then
+ * Sets up a new Business from /app/business/ through the setup page, with a logo and brand colours from that logo, then
  * opens the brand step again for editing, where the brand theme is offered. Returns the accent.
  */
 async function brandedBusiness(page: Page, name: string): Promise<string> {
@@ -93,15 +93,15 @@ test.describe('an existing user keeps everything', () => {
       { profile, invoice },
     );
 
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await expect(page.getByRole('button', { name: 'Documents', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('listitem').filter({ hasText: '2026-27/0001' })).toBeVisible();
-    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
     await expect(page.getByRole('banner').getByRole('button', { name: /^Business Legacy Studio/ })).toBeVisible();
 
     // The old database is still the one in use; only the small list of businesses was added.
     expect(await databaseNames(page)).toEqual(['solokit', 'solokit-workspaces']);
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await expect(page.getByRole('heading', { name: 'This business' })).toBeVisible();
     await expect(page.locator('#details dl')).toContainText('Legacy Studio');
     await expect(page.locator('#details dl')).toContainText('legacy@example.com');
@@ -116,7 +116,7 @@ test.describe('the business page: logo, brand colours and a brand theme', () => 
   test('a real PNG logo gives brand colours, a brand theme, and an invoice that prints in them', async ({ page }) => {
     const problems: string[] = [];
     page.on('pageerror', (error) => problems.push(error.message));
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await expect(page.getByRole('heading', { level: 1, name: 'Your business' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Set up My business' })).toBeVisible();
 
@@ -140,7 +140,7 @@ test.describe('the business page: logo, brand colours and a brand theme', () => 
     await expect(page.getByLabel('Accent colour', { exact: true })).toHaveValue(accent);
     await expect(page.getByText(/matches your brand colours/)).toBeVisible();
 
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await page.getByRole('button', { name: 'Themes' }).click();
     await expect(page.getByRole('list', { name: 'Themes' }).getByRole('button', { name: /^Terra Studio brand/ })).toContainText('Default');
     await page.getByRole('button', { name: 'Documents', exact: true }).click();
@@ -155,7 +155,7 @@ test.describe('the business page: logo, brand colours and a brand theme', () => 
   });
 
   test('a changed logo offers to update an untouched brand theme, and never overwrites an edited one', async ({ page }) => {
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await brandedBusiness(page, 'Terra Studio');
     await page.getByRole('button', { name: 'Create a Brand theme' }).click();
     await expect(page.getByText(/^Created the theme/)).toBeVisible();
@@ -170,7 +170,7 @@ test.describe('the business page: logo, brand colours and a brand theme', () => 
     await expect(page.getByText('Updated "Terra Studio brand" to your new brand colours.')).toBeVisible();
 
     // Edit the theme by hand in the invoice tool, then change the brand again: only a new theme is offered.
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await page.getByRole('button', { name: 'Themes' }).click();
     await page.getByRole('list', { name: 'Themes' }).getByRole('button', { name: /^Terra Studio brand/ }).click();
     await page.getByLabel('Font').selectOption('poppins');
@@ -191,9 +191,9 @@ test.describe('the business page: logo, brand colours and a brand theme', () => 
 
 test.describe('several businesses', () => {
   test('a second business is separate, switching is announced, and switching back finds the first as it was', async ({ page }) => {
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await saveBusinessDetails(page, { name: 'First Co' });
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await startDocument(page, 'Invoice');
     await fillInvoice(page);
     const number = await issue(page);
@@ -205,22 +205,22 @@ test.describe('several businesses', () => {
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByRole('button', { name: /^First Co/ })).toHaveAttribute('aria-current', 'true');
     await page.getByRole('link', { name: '+ Add a business' }).click();
-    await expect(page).toHaveURL(/\/business\/#add$/);
+    await expect(page).toHaveURL(/\/app\/business\/#add$/);
     await expect(page.getByRole('heading', { name: 'Add a business' })).toBeFocused();
     await page.getByLabel('Business name').fill('Second Co');
     await page.getByRole('button', { name: 'Create business' }).click();
     // A new business goes straight to its own setup, and comes back to Your business.
-    await expect(page).toHaveURL(/\/setup\/\?next=%2Fbusiness%2F$/);
+    await expect(page).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2Fbusiness%2F$/);
     await expect(page.getByRole('banner').getByRole('button', { name: /^Business Second Co/ })).toBeVisible();
     await saveBusinessDetails(page, { name: 'Second Co', line1: '9 Hill Road', city: 'Pune' });
 
     // Separate data: the invoice list of the second business is empty.
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await expect(page.getByRole('banner').getByRole('button', { name: /^Business Second Co/ })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: number })).toHaveCount(0);
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await expect(page.locator('#details dl')).toContainText('9 Hill Road');
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await expect(page.getByRole('button', { name: 'Documents', exact: true })).toBeVisible();
 
     // Back to the first one with the keyboard.
@@ -247,11 +247,11 @@ test.describe('several businesses', () => {
 
   test('every tool sends a new business to the one setup, comes back, and changes go through setup too', async ({ page }) => {
     // The first tool opened sends the new business to setup, naming the tool, and setup brings it back there.
-    await page.goto('/tools/contract/');
-    await expect(page).toHaveURL(/\/setup\/\?next=%2Ftools%2Fcontract%2F$/);
+    await page.goto('/app/contract/');
+    await expect(page).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2Fcontract%2F$/);
     await expect(page.getByText(/Before you open the Contract and NDA generator/)).toBeVisible();
     await completeSetup(page, { name: 'Shared Co', line1: '5 Mill Road', city: 'Surat', email: 'legal@shared.example' });
-    await expect(page).toHaveURL(/\/tools\/contract\/$/);
+    await expect(page).toHaveURL(/\/app\/contract\/$/);
     await expect(page.getByRole('button', { name: 'Agreements' })).toHaveAttribute('aria-current', 'page');
 
     await startAgreement(page, 'Freelance services');
@@ -261,34 +261,34 @@ test.describe('several businesses', () => {
     await expect(party.getByLabel('Email for notices')).toHaveValue('legal@shared.example');
 
     // The invoice tool asks nothing: setup already has all it needs. It has no profile form of its own.
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await expect(page.getByRole('button', { name: 'Documents', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByLabel('Business or personal name')).toHaveCount(0);
 
     // Its Business details link opens setup for editing and comes back to the tool.
     await page.getByRole('link', { name: 'Business details' }).click();
-    await expect(page).toHaveURL(/\/setup\/\?next=%2Ftools%2Finvoice%2F$/);
+    await expect(page).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2Finvoice%2F$/);
     await page.getByRole('navigation', { name: 'Setup steps' }).getByRole('button', { name: /^Business details/ }).click();
     await page.getByLabel(/^Email/).fill('accounts@shared.example');
     await page.getByRole('button', { name: 'Save and return to Invoice generator' }).click();
-    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
-    await page.goto('/business/');
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
+    await page.goto('/app/business/');
     await expect(page.locator('#details dl')).toContainText('accounts@shared.example');
   });
 
   test('a business is deleted only after a warning that names what goes and its name typed in', async ({ page }) => {
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await saveBusinessDetails(page, { name: 'Keep Co' });
-    await page.goto('/business/#add');
+    await page.goto('/app/business/#add');
     await page.getByLabel('Business name').fill('Doomed Co');
     await page.getByRole('button', { name: 'Create business' }).click();
     await saveBusinessDetails(page, { name: 'Doomed Co' });
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await startDocument(page, 'Invoice');
     await fillInvoice(page);
     await issue(page);
 
-    await page.goto('/business/#businesses');
+    await page.goto('/app/business/#businesses');
     await expect(page.getByRole('heading', { name: 'Your businesses' })).toBeFocused();
     const list = page.getByRole('list', { name: 'Your businesses' });
     await list.getByRole('button', { name: 'Delete Doomed Co' }).click();
@@ -316,14 +316,14 @@ test.describe('several businesses', () => {
   });
 
   test('a backup restores into a new business and leaves the current one alone', async ({ page }) => {
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await saveBusinessDetails(page, { name: 'Source Co' });
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await startDocument(page, 'Invoice');
     await fillInvoice(page);
     const number = await issue(page);
 
-    await page.goto('/business/#backup');
+    await page.goto('/app/business/#backup');
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download backup' }).click()]);
     const backupPath = await download.path();
 
@@ -343,7 +343,7 @@ test.describe('several businesses', () => {
     await openSwitcher(page);
     await expect(page.getByRole('group', { name: 'Businesses' }).getByRole('button')).toHaveCount(2);
     await page.keyboard.press('Escape');
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await expect(page.getByRole('listitem').filter({ hasText: number })).toBeVisible();
   });
 });
@@ -357,7 +357,7 @@ test.describe('light, dark, desktop and phone', () => {
       test(`the business page, the switcher and the brand colours in ${scheme} on ${label}`, async ({ page }) => {
         await page.emulateMedia({ colorScheme: scheme });
         await page.setViewportSize(size);
-        await page.goto('/business/');
+        await page.goto('/app/business/');
         await expect(page.getByRole('heading', { name: 'Set up My business' })).toBeVisible();
         expect(await noOverflow(page)).toBe(true);
         await page.screenshot({ path: `${shots}/business-fresh-${scheme}-${label}.png`, fullPage: true });
@@ -374,12 +374,12 @@ test.describe('light, dark, desktop and phone', () => {
         await page.screenshot({ path: `${shots}/business-switcher-open-${scheme}-${label}.png` });
         await page.keyboard.press('Escape');
 
-        await page.goto('/business/#businesses');
+        await page.goto('/app/business/#businesses');
         await expect(page.getByRole('heading', { name: 'Your businesses' })).toBeVisible();
         expect(await noOverflow(page)).toBe(true);
         await page.screenshot({ path: `${shots}/business-manage-${scheme}-${label}.png`, fullPage: true });
 
-        await page.goto('/tools/contract/');
+        await page.goto('/app/contract/');
         await expect(page.getByRole('button', { name: 'Agreements' })).toBeVisible();
         expect(await noOverflow(page)).toBe(true);
         await page.goto('/');

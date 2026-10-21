@@ -1,4 +1,5 @@
-import { TOOL_CATEGORY_LABELS, getTools, toolHref, type ToolDefinition } from '@solokit/registry';
+import { TOOL_CATEGORY_LABELS, getTools, type ToolDefinition } from '@solokit/registry';
+import { toolAppHref } from '../paths';
 import { ToolIcon } from './ToolIcon';
 import styles from './ToolGrid.module.css';
 
@@ -10,7 +11,7 @@ const SHOWCASE: Record<string, string> = {
 
 function ReadyCard({ tool }: { tool: ToolDefinition }) {
   return (
-    <a className={styles.card} href={toolHref(tool.slug)}>
+    <a className={styles.card} href={toolAppHref(tool.slug)}>
       <div className={styles.media} data-tool={tool.slug} aria-hidden="true">
         <span className={styles.mediaChip}>
           <span className={styles.mediaAvatar} />

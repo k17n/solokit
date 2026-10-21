@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { missingForSetup, type BusinessProfile } from '@solokit/profile';
-import { toolHref } from '@solokit/registry';
+import { toolAppHref } from '../paths';
 import type { ContractKind } from '@solokit/tool-contract';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
@@ -22,7 +22,7 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
 ];
 
-const HOME = toolHref('contract');
+const HOME = toolAppHref('contract');
 
 export function ContractApp({ exporter, now }: { exporter?: ContractExporter; now?: () => Date } = {}) {
   const { contracts, invoice, store, ready, persistent } = useContractStorage(now);

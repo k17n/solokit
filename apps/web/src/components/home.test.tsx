@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { getTools } from '@solokit/registry';
-import Home from '../../app/page';
+import Home from '../../app/(site)/page';
 
 describe('Home page', () => {
   it('leads with the promise and the main call to action', () => {
@@ -38,8 +38,8 @@ describe('Home page', () => {
   it('links the invoice and contract generators now that they are available', () => {
     render(<Home />);
     const section = screen.getByRole('region', { name: 'Tools' });
-    expect(within(section).getByRole('link', { name: /Invoice generator/ })).toHaveAttribute('href', '/tools/invoice/');
-    expect(within(section).getByRole('link', { name: /Contract and NDA generator/ })).toHaveAttribute('href', '/tools/contract/');
+    expect(within(section).getByRole('link', { name: /Invoice generator/ })).toHaveAttribute('href', '/app/invoice/');
+    expect(within(section).getByRole('link', { name: /Contract and NDA generator/ })).toHaveAttribute('href', '/app/contract/');
     expect(within(section).getAllByText('Ready')).toHaveLength(2);
   });
 

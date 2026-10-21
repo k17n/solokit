@@ -4,7 +4,7 @@ import { onboardInvoice } from './setup-helpers';
 /** Sets up a business, then opens the logo step of setup for editing. */
 async function openLogoStep(page: Page) {
   await onboardInvoice(page, { name: 'Ravi Kumar Design' });
-  await page.goto('/setup/?step=brand');
+  await page.goto('/app/setup/?step=brand');
   await expect(page.getByRole('heading', { level: 2, name: 'Logo and brand colours' })).toBeVisible();
 }
 

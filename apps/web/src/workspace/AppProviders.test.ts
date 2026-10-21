@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { usesBusiness } from './AppProviders';
 
 describe('usesBusiness', () => {
-  it('opens the list of Businesses on the app home, the tools, Your business and the business setup', () => {
-    for (const path of ['/app/', '/tools/invoice/', '/business/', '/business', '/setup/', '/setup']) expect(usesBusiness(path)).toBe(true);
+  it('opens the list of Businesses everywhere in the app', () => {
+    for (const path of ['/app', '/app/', '/app/invoice/', '/app/business/', '/app/setup/']) expect(usesBusiness(path)).toBe(true);
   });
 
-  it('leaves it closed on pages that read and create nothing', () => {
-    for (const path of ['/', '/privacy/', '/setups/', '/apps/', null]) expect(usesBusiness(path)).toBe(false);
+  it('leaves it closed on the site, which reads and creates nothing', () => {
+    for (const path of ['/', '/privacy/', '/tools/invoice/', '/business/', '/setup/', '/apps/', null]) expect(usesBusiness(path)).toBe(false);
   });
 });

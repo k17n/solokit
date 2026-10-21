@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { PageShell } from '../../src/components/PageShell';
-import { SetupPageLoader } from '../../src/setup/SetupPageLoader';
+import { PageShell } from '../../../src/components/PageShell';
+import { SetupPageLoader } from '../../../src/setup/SetupPageLoader';
 
 export const metadata: Metadata = {
   title: 'Set up your business',
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function SetupRoute() {
   return (
-    <PageShell eyebrow="Your business" title="Business setup" wide>
+    <PageShell eyebrow="Your business" title="Business setup" wide compact>
       <SetupPageLoader />
     </PageShell>
   );

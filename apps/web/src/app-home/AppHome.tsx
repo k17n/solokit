@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { missingForSetup, type BusinessProfile } from '@solokit/profile';
-import { TOOL_CATEGORY_LABELS, getTools, toolHref } from '@solokit/registry';
+import { TOOL_CATEGORY_LABELS, getTools } from '@solokit/registry';
 import { isBackupDue } from '@solokit/tool-invoice';
 import { Button, Notice, formatIsoDate } from '@solokit/ui';
+import { AppLink } from '../app-shell/AppLink';
 import { GST_STATUS_OPTIONS } from '../business/ProfileForm';
 import { ToolIcon } from '../components/ToolIcon';
 import { useContractStorage } from '../contract/useContractStorage';
-import { APP_HOME, AFTER_FIRST_SETUP, setupHref } from '../setup/links';
+import { APP_HOME, BUSINESS_PATH, toolAppHref } from '../paths';
+import { AFTER_FIRST_SETUP, setupHref } from '../setup/links';
 import { SetupRequired } from '../setup/SetupRequired';
 import styles from './AppHome.module.css';
 
@@ -114,15 +116,15 @@ export function AppHome({ now = () => new Date() }: { now?: () => Date } = {}) {
           </p>
         </div>
         <div className={styles.businessActions}>
-          <a href={setupHref(APP_HOME)}>Edit business details</a>
-          <a href="/business/">Backups and other businesses</a>
+          <AppLink href={setupHref(APP_HOME)}>Edit business details</AppLink>
+          <AppLink href={BUSINESS_PATH}>Backups and other businesses</AppLink>
         </div>
       </section>
 
       {isBackupDue(lastBackupAt, now(), hasData) ? (
         <Notice tone="warning" title="Back up your work">
           {lastBackupAt ? `Your last backup was on ${formatIsoDate(lastBackupAt.slice(0, 10))}.` : 'You have not made a backup yet.'} Everything is stored only in
-          this browser, so a backup file is your safety net. <a href="/business/#backup">Download a backup</a>
+          this browser, so a backup file is your safety net. <a href={`${BUSINESS_PATH}#backup`}>Download a backup</a>
         </Notice>
       ) : null}
 
@@ -133,7 +135,7 @@ export function AppHome({ now = () => new Date() }: { now?: () => Date } = {}) {
         <ul role="list" className={styles.grid}>
           {readyTools.map((tool) => (
             <li key={tool.slug}>
-              <a className={styles.card} href={toolHref(tool.slug)}>
+              <AppLink className={styles.card} href={toolAppHref(tool.slug)}>
                 <span className={styles.cardTop}>
                   <ToolIcon slug={tool.slug} category={tool.category} />
                   <span className={styles.category}>{TOOL_CATEGORY_LABELS[tool.category]}</span>
@@ -144,7 +146,7 @@ export function AppHome({ now = () => new Date() }: { now?: () => Date } = {}) {
                 <span className={styles.open} aria-hidden="true">
                   Open <span className={styles.arrow}>→</span>
                 </span>
-              </a>
+              </AppLink>
             </li>
           ))}
         </ul>

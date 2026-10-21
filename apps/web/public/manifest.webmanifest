@@ -3,7 +3,7 @@
   "short_name": "SoloKit",
   "description": "Free tools for freelancers and solopreneurs. Works offline and keeps your data on your device.",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/app/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

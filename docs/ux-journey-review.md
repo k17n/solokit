@@ -184,9 +184,11 @@ Why not one or the other:
 
 How to get there from here, in small steps:
 1. **Done:** `/app/` as the app home behind "Get started".
-2. Move the tools into the app as routes, `/app/invoices/` and `/app/agreements/`, inside a shared app layout (`app/app/layout.tsx`) with the compact shell. Next.js keeps the layout mounted on client navigation, so providers and the database stay open.
-3. Give each view a URL that works with the static export: `/app/invoices/?doc=<id>&mode=edit`, `/app/invoices/new/?kind=quote`. Back, refresh and bookmarks then work.
-4. Turn `/tools/invoice/` and `/tools/contract/` back into landing pages for search: what the tool does, screenshots, FAQ, and an "Open in SoloKit" button into `/app/`. Old links into the tools keep working by forwarding to the app route.
-5. Move `/setup/` and `/business/` under the app shell as well (`/app/setup/`, `/app/business/`), so the whole signed-in-feeling experience shares one frame.
+2. **Done:** the tools moved into the app as `/app/invoice/` and `/app/contract/`, inside a shared app layout (`app/app/layout.tsx`) with the compact shell. Next.js keeps the layout mounted on client navigation, so providers and the database stay open. Links inside the app ask before leaving unsaved work.
+3. Next: give each view a URL that works with the static export: `/app/invoice/?doc=<id>&mode=edit`, `/app/invoice/?new=quote`. Back, refresh and bookmarks then work.
+4. **Done:** `/tools/invoice/` and `/tools/contract/` are landing pages again for search: what the tool does and a button into the tool in the app. Screenshots and an FAQ can follow.
+5. **Done:** setup and Your business moved under the app shell (`/app/setup/`, `/app/business/`); the old addresses forward there.
+
+Why a path and not a subdomain (`app.trysolokit.com`): everything is stored in the browser per origin, so a subdomain would start every existing user with an empty app unless their data is migrated across. Revisit only if the marketing site moves to another stack or accounts and server sync arrive.
 
 This keeps search traffic, gives a fast app feel, and fits the current static export and offline service worker without a server.

@@ -1,4 +1,4 @@
-import { APP_HOME } from '../setup/links';
+import { APP_HOME } from '../paths';
 import { AppFrame } from './AppFrame';
 import { TrustStrip } from './TrustStrip';
 import styles from './Hero.module.css';

@@ -41,7 +41,7 @@ test.describe('hosting headers', () => {
 
   test('the pages, the 404 page and a PDF preview load without any policy violation', async ({ page }) => {
     const violations = watchViolations(page);
-    for (const path of ['/', '/privacy/', '/business/', '/tools/invoice/', '/tools/rate-calculator/']) {
+    for (const path of ['/', '/privacy/', '/tools/invoice/', '/tools/rate-calculator/', '/app/', '/app/business/', '/app/invoice/']) {
       await page.goto(path);
       await expect(page.locator('main')).toBeVisible();
     }

@@ -20,7 +20,8 @@ export function sitemapPaths(): string[] {
   const tools = getTools()
     .filter((tool) => tool.status === 'available')
     .map((tool) => toolHref(tool.slug));
-  return ['/', '/business/', '/privacy/', ...tools];
+  // The app under /app/ is not for search engines: it is empty until someone sets up their business.
+  return ['/', '/privacy/', ...tools];
 }
 
 const TITLE = `${BRAND.name}: free tools for freelancers and solopreneurs`;

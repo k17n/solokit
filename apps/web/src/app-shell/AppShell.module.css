@@ -1,0 +1,127 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  font-family: var(--ds-ff);
+  background: color-mix(in srgb, var(--ds-bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--ds-border);
+}
+
+/* One row on a wide screen: logo, navigation, switcher. On a phone the navigation moves to its own row. */
+.barInner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'logo nav switcher';
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  min-height: 3.5rem;
+}
+
+.barInner > :first-child {
+  grid-area: logo;
+}
+
+.nav {
+  grid-area: nav;
+  min-width: 0;
+}
+
+.switcher {
+  grid-area: switcher;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.navList {
+  display: flex;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.navLink {
+  display: block;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ds-text-2);
+  white-space: nowrap;
+  text-decoration: none;
+  border-radius: 0.6rem;
+  transition:
+    color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
+}
+
+.navLink:hover {
+  color: var(--ds-text);
+  background: var(--ds-active);
+}
+
+.navLink[aria-current='page'] {
+  color: var(--ds-text);
+  background: var(--ds-input);
+}
+
+@media (max-width: 48rem) {
+  .barInner {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'logo switcher'
+      'nav nav';
+    padding-bottom: 0.4rem;
+  }
+
+  .switcher {
+    justify-self: end;
+  }
+}
+
+.content {
+  flex: 1;
+  padding-bottom: 4rem;
+}
+
+.footer {
+  font-size: 0.8125rem;
+  color: var(--ds-text-2);
+  border-top: 1px solid var(--ds-border);
+}
+
+.footerInner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-block: 1.25rem;
+}
+
+.footerInner p {
+  margin: 0;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.footerLinks a {
+  color: var(--ds-text-2);
+}
+
+.footerLinks a:hover {
+  color: var(--ds-text);
+}

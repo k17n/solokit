@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { BUSINESS_PATH } from '../paths';
 import { useWorkspaces } from './WorkspaceProvider';
 import { useGuardedSwitch } from './useGuardedSwitch';
 import styles from './BusinessSwitcher.module.css';
@@ -125,8 +126,8 @@ export function BusinessSwitcher() {
                 </p>
               ) : null}
               <div className={styles.links}>
-                <a href="/business/#add">+ Add a business</a>
-                <a href="/business/#businesses">Manage businesses</a>
+                <a href={`${BUSINESS_PATH}#add`}>+ Add a business</a>
+                <a href={`${BUSINESS_PATH}#businesses`}>Manage businesses</a>
               </div>
             </div>
           ) : null}

@@ -7,7 +7,7 @@ test.describe('first run: the business setup before any tool', () => {
   test('Get started on the home page runs the setup, then lists the tools to open', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('main').getByRole('link', { name: 'Get started' }).click();
-    await expect(page).toHaveURL(/\/setup\/\?next=%2Fapp%2F%3Fwelcome%3D1$/);
+    await expect(page).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2F%3Fwelcome%3D1$/);
     await expect(page.getByText(/When you finish, you will see the tools you can use/)).toBeVisible();
     await completeSetup(page, { name: 'Meera Iyer Studio' });
 
@@ -23,13 +23,13 @@ test.describe('first run: the business setup before any tool', () => {
     await expect(page).toHaveURL(/\/app\/$/);
     await expect(page.getByText('Meera Iyer Studio is set up')).toHaveCount(0);
     await ready.getByRole('link', { name: /Invoice generator/ }).click();
-    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
     await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
   });
 
   test('a new visitor is sent from the tool to setup, sets up an unregistered business step by step, and is brought back', async ({ page }) => {
-    await page.goto('/tools/invoice/');
-    await expect(page).toHaveURL(/\/setup\/\?next=%2Ftools%2Finvoice%2F$/);
+    await page.goto('/app/invoice/');
+    await expect(page).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2Finvoice%2F$/);
     await onStep(page, 'Tax registration');
     await expect(page.getByText(/Before you open the Invoice generator/)).toBeVisible();
     await page.screenshot({ path: `${shots}/onboarding-status.png`, fullPage: true });
@@ -49,11 +49,11 @@ test.describe('first run: the business setup before any tool', () => {
     await continueTo(page, 'Invoice defaults');
     await page.getByRole('button', { name: 'Finish and open Invoice generator' }).click();
 
-    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
     await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
     await page.reload();
     await expect(page.getByRole('button', { name: 'Documents' })).toBeVisible();
-    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
 
     // The tool has no profile form of its own; its link opens the same setup, for editing.
     await page.getByRole('link', { name: 'Business details' }).click();
@@ -61,11 +61,11 @@ test.describe('first run: the business setup before any tool', () => {
     await expect(page.getByLabel('Business or personal name')).toHaveValue('Ravi Kumar Design');
     await page.screenshot({ path: `${shots}/profile-after-reload.png`, fullPage: true });
     await page.getByRole('link', { name: 'Back to Invoice generator without saving' }).click();
-    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
   });
 
   test('a regular seller is told what is wrong with the GSTIN, and the state fills in from a valid one', async ({ page }) => {
-    await page.goto('/setup/');
+    await page.goto('/app/setup/');
     await page.getByRole('radio', { name: /Regular GST registration/ }).check();
     await continueTo(page, 'Business details');
 
@@ -87,12 +87,12 @@ test.describe('first run: the business setup before any tool', () => {
     await page.getByRole('button', { name: 'Finish setup' }).click();
     await expect(page).toHaveURL(/\/app\/\?welcome=1$/);
 
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await expect(page.locator('#details dl')).toContainText('GSTIN 27AAPFU0939F1ZV');
   });
 
   test('bank details must be complete once started', async ({ page }) => {
-    await page.goto('/setup/');
+    await page.goto('/app/setup/');
     await page.getByRole('radio', { name: /Not registered for GST/ }).check();
     await continueTo(page, 'Business details');
     await page.getByLabel('Business or personal name').fill('Ravi Kumar');
@@ -110,7 +110,7 @@ test.describe('first run: the business setup before any tool', () => {
   test('setup reopens offline once the site has been visited', async ({ page, context }) => {
     await page.goto('/');
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await onStep(page, 'Tax registration');
     // Reload until the service worker controls the page, so the cache is warm and used.
     for (let i = 0; i < 5; i++) {
@@ -119,14 +119,14 @@ test.describe('first run: the business setup before any tool', () => {
     }
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await onStep(page, 'Tax registration');
     await page.screenshot({ path: `${shots}/tool-offline.png`, fullPage: true });
   });
 
   test('works on a phone-sized screen without sideways scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/setup/');
+    await page.goto('/app/setup/');
     await page.getByRole('radio', { name: /Regular GST registration/ }).check();
     await continueTo(page, 'Business details');
     await page.screenshot({ path: `${shots}/profile-mobile.png`, fullPage: true });

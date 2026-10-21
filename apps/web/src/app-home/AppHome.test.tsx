@@ -10,6 +10,7 @@ import { StoreProvider } from '../store/StoreProvider';
 import { AppHome } from './AppHome';
 
 vi.mock('../setup/navigate', () => ({ navigate: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => '/app/' }));
 
 const NOW = new Date('2026-10-21T10:00:00Z');
 
@@ -36,7 +37,7 @@ describe('AppHome', () => {
   it('sends a business that is not set up to setup, which comes back here with a welcome', async () => {
     renderHome(createMemoryStore());
     expect(screen.getByText('Opening your tools…')).toBeInTheDocument();
-    const href = '/setup/?next=%2Fapp%2F%3Fwelcome%3D1';
+    const href = '/app/setup/?next=%2Fapp%2F%3Fwelcome%3D1';
     expect(await screen.findByRole('link', { name: 'Go to setup' })).toHaveAttribute('href', href);
     expect(navigate).toHaveBeenCalledWith(href, { replace: true });
   });
@@ -47,7 +48,7 @@ describe('AppHome', () => {
     await createInvoiceStorage(store).invoices.save(makeInvoice({ id: 'i2', number: '2026-27/0002' }));
     renderHome(store);
     const ready = within(await screen.findByRole('region', { name: 'Ready to use' }));
-    expect(ready.getByRole('link', { name: /Invoice generator/ })).toHaveAttribute('href', '/tools/invoice/');
+    expect(ready.getByRole('link', { name: /Invoice generator/ })).toHaveAttribute('href', '/app/invoice/');
     expect(ready.getByRole('link', { name: /Invoice generator/ })).toHaveTextContent('2 invoices and quotations');
     expect(ready.getByRole('link', { name: /Contract and NDA generator/ })).toHaveTextContent('Make your first NDA or services agreement');
     const soon = within(screen.getByRole('region', { name: 'Coming soon' }));
@@ -68,8 +69,8 @@ describe('AppHome', () => {
     const business = within(await screen.findByRole('region', { name: 'This business' }));
     expect(business.getByText('Asha Rao Consulting')).toBeInTheDocument();
     expect(business.getByText(/Regular GST registration · 27AAPFU0939F1ZV · Mumbai/)).toBeInTheDocument();
-    expect(business.getByRole('link', { name: 'Edit business details' })).toHaveAttribute('href', '/setup/?next=%2Fapp%2F');
-    expect(business.getByRole('link', { name: 'Backups and other businesses' })).toHaveAttribute('href', '/business/');
+    expect(business.getByRole('link', { name: 'Edit business details' })).toHaveAttribute('href', '/app/setup/?next=%2Fapp%2F');
+    expect(business.getByRole('link', { name: 'Backups and other businesses' })).toHaveAttribute('href', '/app/business/');
   });
 
   it('welcomes the person just after setup, with focus on the message', async () => {
@@ -90,7 +91,7 @@ describe('AppHome', () => {
     await createInvoiceStorage(store).invoices.save(makeInvoice({ id: 'i1' }));
     renderHome(store);
     expect(await screen.findByText('Back up your work')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Download a backup' })).toHaveAttribute('href', '/business/#backup');
+    expect(screen.getByRole('link', { name: 'Download a backup' })).toHaveAttribute('href', '/app/business/#backup');
   });
 
   it('does not ask for a backup before there is anything to lose', async () => {

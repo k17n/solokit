@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { TOOL_CATEGORY_LABELS, getToolBySlug, getTools } from '@solokit/registry';
 import { Badge, Button } from '@solokit/ui';
-import { PageShell } from '../../../src/components/PageShell';
-import { TOOL_COMPONENTS } from '../../../src/tools';
+import { PageShell } from '../../../../src/components/PageShell';
+import { ToolLanding } from '../../../../src/components/ToolLanding';
 
 export const dynamicParams = false;
 
@@ -27,11 +27,11 @@ export default async function ToolPage({ params }: ToolPageProps) {
   const tool = getToolBySlug(slug);
   if (!tool) notFound();
 
-  const Tool = TOOL_COMPONENTS[tool.slug];
-  if (Tool) {
+  // A ready tool's page here is its public landing page; the tool itself runs inside the app, under /app/.
+  if (tool.status === 'available') {
     return (
-      <PageShell eyebrow={TOOL_CATEGORY_LABELS[tool.category]} title={tool.name} lede={tool.tagline} wide>
-        <Tool />
+      <PageShell eyebrow={TOOL_CATEGORY_LABELS[tool.category]} title={tool.name} lede={tool.tagline}>
+        <ToolLanding tool={tool} />
       </PageShell>
     );
   }

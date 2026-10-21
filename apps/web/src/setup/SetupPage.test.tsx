@@ -75,20 +75,20 @@ afterEach(() => {
 
 describe('SetupPage: the first time', () => {
   it('names the tool it came from, sets the business up step by step, and goes back to the tool', async () => {
-    at('/setup/?next=%2Ftools%2Finvoice%2F');
+    at('/app/setup/?next=%2Fapp%2Finvoice%2F');
     const store = renderSetup();
     expect(screen.getByText('Opening your business…')).toBeInTheDocument();
     expect(await screen.findByText(/Before you open the/)).toHaveTextContent('Before you open the Invoice generator, tell SoloKit about your business.');
     await walkThrough();
     await userEvent.click(screen.getByRole('button', { name: 'Finish and open Invoice generator' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tools/invoice/'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/invoice/'));
     const storage = createInvoiceStorage(store);
     expect(await storage.profile.get()).toMatchObject({ name: 'Ravi Kumar', gstStatus: 'unregistered', email: 'ravi@example.com' });
     expect((await storage.settings.get()).onboarded).toBe(true);
   });
 
   it('goes to the app home, welcoming the person, when it was opened on its own', async () => {
-    at('/setup/');
+    at('/app/setup/');
     renderSetup();
     await walkThrough();
     await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
@@ -96,7 +96,7 @@ describe('SetupPage: the first time', () => {
   });
 
   it('never sends people to another site after setup', async () => {
-    at('/setup/?next=https%3A%2F%2Fevil.example%2F');
+    at('/app/setup/?next=https%3A%2F%2Fevil.example%2F');
     renderSetup();
     await walkThrough();
     await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
@@ -108,7 +108,7 @@ describe('SetupPage: the first time', () => {
     await manager.list();
     const created = await manager.create('Studio Two', { nameInSync: true });
     await manager.setCurrent(created.id);
-    at('/setup/?next=%2Fbusiness%2F');
+    at('/app/setup/?next=%2Fapp%2Fbusiness%2F');
     renderWithBusinesses(manager);
     await screen.findByRole('heading', { name: 'Tax registration' });
     await userEvent.click(screen.getByRole('radio', { name: /Not registered for GST/ }));
@@ -117,14 +117,14 @@ describe('SetupPage: the first time', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
     await walkThrough('Studio Two Design');
     await userEvent.click(screen.getByRole('button', { name: 'Finish and open Your business' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/business/'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/business/'));
     await waitFor(() => expect(latest.current?.name).toBe('Studio Two Design'));
   });
 
   it('opens at the first step with something missing when only part of the details is there', async () => {
     const store = createMemoryStore();
     await createInvoiceStorage(store).profile.save(makeSeller({ email: undefined }));
-    at('/setup/?next=%2Ftools%2Fcontract%2F');
+    at('/app/setup/?next=%2Fapp%2Fcontract%2F');
     renderSetup(store);
     expect(await screen.findByRole('heading', { name: 'Business details' })).toBeInTheDocument();
     expect(screen.getByLabelText('Business or personal name')).toHaveValue('Asha Rao Consulting');
@@ -132,7 +132,7 @@ describe('SetupPage: the first time', () => {
   });
 
   it('warns when the browser is not saving data', async () => {
-    at('/setup/');
+    at('/app/setup/');
     renderSetup(createMemoryStore(), { persistent: false });
     expect(await screen.findByText('Your browser is not saving data')).toBeInTheDocument();
   });
@@ -141,11 +141,11 @@ describe('SetupPage: the first time', () => {
     const inner = createMemoryStore();
     const store: DataStore = { ...inner, put: (collection, record) => (collection === 'settings' ? Promise.reject(new Error('write failed')) : inner.put(collection, record)) };
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    at('/setup/?next=%2Ftools%2Finvoice%2F');
+    at('/app/setup/?next=%2Fapp%2Finvoice%2F');
     renderSetup(store);
     await walkThrough();
     await userEvent.click(screen.getByRole('button', { name: 'Finish and open Invoice generator' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tools/invoice/'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/invoice/'));
     expect(error).toHaveBeenCalled();
     expect((await createInvoiceStorage(inner).profile.get())?.name).toBe('Ravi Kumar');
   });
@@ -155,7 +155,7 @@ describe('SetupPage: the first time', () => {
     let failing = true;
     const store: DataStore = { ...inner, get: (collection, id) => (failing ? Promise.reject(new Error('read failed')) : inner.get(collection, id)) };
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    at('/setup/');
+    at('/app/setup/');
     renderSetup(store);
     expect(await screen.findByText('Your saved details could not be opened')).toBeInTheDocument();
     failing = false;
@@ -181,15 +181,15 @@ describe('SetupPage: restoring on a new device', () => {
   }
 
   it('restores a backup instead of setting up, and goes on to the tool', async () => {
-    at('/setup/?next=%2Ftools%2Finvoice%2F');
+    at('/app/setup/?next=%2Fapp%2Finvoice%2F');
     const store = renderSetup();
     await restore(await backupJson(true));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tools/invoice/'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/invoice/'));
     expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Moved Co');
   });
 
   it('asks for the rest when the backup has no business details', async () => {
-    at('/setup/?next=%2Ftools%2Finvoice%2F');
+    at('/app/setup/?next=%2Fapp%2Finvoice%2F');
     renderSetup();
     await restore(await backupJson(false));
     expect(await screen.findByText('Backup restored')).toBeInTheDocument();
@@ -198,7 +198,7 @@ describe('SetupPage: restoring on a new device', () => {
   });
 
   it('goes back to setup', async () => {
-    at('/setup/');
+    at('/app/setup/');
     renderSetup();
     await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Back to setup' }));
@@ -215,29 +215,29 @@ describe('SetupPage: changing the details later', () => {
 
   it('opens the step asked for, saves, and goes back to the tool it came from', async () => {
     const store = await seeded();
-    at('/setup/?next=%2Ftools%2Fcontract%2F&step=payments');
+    at('/app/setup/?next=%2Fapp%2Fcontract%2F&step=payments');
     renderSetup(store);
     expect(await screen.findByRole('heading', { name: 'Getting paid' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to Contract and NDA generator without saving' })).toHaveAttribute('href', '/tools/contract/');
+    expect(screen.getByRole('link', { name: 'Back to Contract and NDA generator without saving' })).toHaveAttribute('href', '/app/contract/');
     const upi = screen.getByLabelText('UPI ID');
     await userEvent.clear(upi);
     await userEvent.type(upi, 'asha@okicici');
     await userEvent.click(screen.getByRole('button', { name: 'Save and return to Contract and NDA generator' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/tools/contract/'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/contract/'));
     expect((await createInvoiceStorage(store).profile.get())?.upiId).toBe('asha@okicici');
   });
 
   it('goes back to Your business when opened on its own', async () => {
-    at('/setup/');
+    at('/app/setup/');
     renderSetup(await seeded());
     await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/business/'));
-    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/business/');
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/business/'));
+    expect(screen.getByRole('link', { name: 'Cancel' })).toHaveAttribute('href', '/app/business/');
   });
 
   it('offers the brand theme under the brand colours, and keeps the link to it when saving', async () => {
     const store = await seeded(makeSeller({ brand: { primary: '#7C2D12' }, brandSource: 'manual' }));
-    at('/setup/?step=brand');
+    at('/app/setup/?step=brand');
     renderSetup(store);
     await userEvent.click(await screen.findByRole('button', { name: 'Create a Brand theme' }));
     expect(await screen.findByText(/Created the theme "Asha Rao Consulting brand"/)).toBeInTheDocument();
@@ -253,7 +253,7 @@ describe('SetupPage: changing the details later', () => {
     await manager.list();
     await manager.rename('default', 'Front desk');
     await createInvoiceStorage(await manager.openStore('default')).profile.save(makeSeller());
-    at('/setup/?step=details');
+    at('/app/setup/?step=details');
     renderWithBusinesses(manager);
     const name = await screen.findByLabelText('Business or personal name');
     await userEvent.clear(name);

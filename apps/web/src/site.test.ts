@@ -6,7 +6,7 @@ describe('site config', () => {
   it('points the header call to action at the list of tools, not at one of them', () => {
     expect(HEADER_PROPS.cta).toEqual({ label: 'Get started', href: '/app/' });
     expect(HEADER_PROPS.links.map((link) => link.label)).toEqual(['Tools', 'Your business', 'Privacy']);
-    expect(HEADER_PROPS.links.find((link) => link.label === 'Your business')?.href).toBe('/business/');
+    expect(HEADER_PROPS.links.find((link) => link.label === 'Your business')?.href).toBe('/app/business/');
   });
 
   it('builds footer tool links from the registry', () => {
@@ -29,7 +29,8 @@ describe('site config', () => {
   it('offers project links to pages that exist', () => {
     expect(getFooterProps().projectLinks).toEqual([
       { label: 'Home', href: '/' },
-      { label: 'Your business', href: '/business/' },
+      { label: 'Open SoloKit', href: '/app/' },
+      { label: 'Your business', href: '/app/business/' },
       { label: 'Privacy', href: '/privacy/' },
     ]);
   });

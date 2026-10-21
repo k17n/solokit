@@ -11,7 +11,7 @@ import { makeManager } from './testWorkspaces';
 
 vi.mock('../setup/navigate', () => ({ navigate: vi.fn() }));
 
-const SETUP = '/setup/?next=%2Fbusiness%2F';
+const SETUP = '/app/setup/?next=%2Fapp%2Fbusiness%2F';
 
 let latest: WorkspacesState;
 

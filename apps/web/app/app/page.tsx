@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function AppHomeRoute() {
   return (
-    <PageShell eyebrow="Your workspace" title="Your tools" lede="Everything here uses your business details and stays on this device." wide>
+    <PageShell eyebrow="Your workspace" title="Your tools" lede="Everything here uses your business details and stays on this device." wide compact>
       <AppHomeLoader />
     </PageShell>
   );

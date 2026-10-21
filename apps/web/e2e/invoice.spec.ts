@@ -140,7 +140,7 @@ test.describe('invoices in a real browser', () => {
   test('an invoice can be created, issued and downloaded offline', async ({ page, context }) => {
     await page.goto('/');
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     for (let i = 0; i < 5; i++) {
       if (await page.evaluate(() => navigator.serviceWorker.controller !== null)) break;
       await page.reload();
@@ -148,7 +148,7 @@ test.describe('invoices in a real browser', () => {
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await onboard(page, 'unregistered');
     await context.setOffline(true);
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await startDocument(page, 'Invoice');
     await fillClient(page, { name: 'Local Client', line1: '9 Lake Road', city: 'Kolkata' });
     await fillItem(page, { description: 'Design work', quantity: '2', rate: '2500' });

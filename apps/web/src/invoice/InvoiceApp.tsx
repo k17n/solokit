@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { InvoiceKind } from '@solokit/tool-invoice';
 import { missingForSetup, type BusinessProfile } from '@solokit/profile';
-import { toolHref } from '@solokit/registry';
+import { toolAppHref } from '../paths';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
 import { setupHref } from '../setup/links';
@@ -25,7 +25,7 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
 ];
 
-const HOME = toolHref('invoice');
+const HOME = toolAppHref('invoice');
 
 export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
   const { storage, store, ready, persistent } = useInvoiceStorage();

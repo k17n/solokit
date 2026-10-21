@@ -18,7 +18,7 @@ import { useUnsavedGuard } from '../workspace/unsavedGuard';
 import { TotalsPanel } from './TotalsPanel';
 import { defaultPdfRenderer, usePdfPreview, type PdfRenderer } from './usePdfPreview';
 import styles from './InvoiceEditor.module.css';
-import { toolHref } from '@solokit/registry';
+import { toolAppHref } from '../paths';
 import { setupHref } from '../setup/links';
 
 export interface InvoiceEditorProps {
@@ -315,7 +315,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
                 </ul>
                 {profileIssues ? (
                   <p>
-                    Save a draft, then fix the items marked Profile in your <a href={setupHref(toolHref('invoice'), 'details')}>business details</a>. You come back here when they are saved.
+                    Save a draft, then fix the items marked Profile in your <a href={setupHref(toolAppHref('invoice'), 'details')}>business details</a>. You come back here when they are saved.
                   </p>
                 ) : null}
               </Notice>

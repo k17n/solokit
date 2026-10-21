@@ -57,13 +57,13 @@ export async function makeLogoPng(page: Page): Promise<Buffer> {
 }
 
 /**
- * Sets up the current Business through the setup page and comes back to /business/. Starts from wherever the page is:
- * already on the setup page (adding a business goes there), or anywhere else. Leaves the page on /business/.
+ * Sets up the current Business through the setup page and comes back to /app/business/. Starts from wherever the page is:
+ * already on the setup page (adding a business goes there), or anywhere else. Leaves the page on /app/business/.
  */
 export async function saveBusinessDetails(page: Page, details: { name: string; line1?: string; city?: string; email?: string }) {
-  if (!new URL(page.url()).pathname.startsWith('/setup/')) await page.goto('/setup/?next=%2Fbusiness%2F');
+  if (!new URL(page.url()).pathname.startsWith('/app/setup/')) await page.goto('/app/setup/?next=%2Fapp%2Fbusiness%2F');
   await completeSetup(page, { gst: 'unregistered', ...details });
-  await expect(page).toHaveURL(/\/business\/$/);
+  await expect(page).toHaveURL(/\/app\/business\/$/);
   await expect(page.getByRole('heading', { name: 'This business' })).toBeVisible();
 }
 

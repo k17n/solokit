@@ -5,13 +5,12 @@ import type { ReactNode } from 'react';
 import { AppPlatform } from '../platform/AppPlatform';
 import { WorkspacesProvider } from './WorkspaceProvider';
 
-/** Pages that use a Business. The home page and the privacy page read and create nothing. */
+/** Pages that use a Business: the app, under /app/. The site's pages (home, privacy, tool landing pages) read and create nothing. */
 export function usesBusiness(pathname: string | null): boolean {
-  if (pathname === null) return false;
-  return pathname.startsWith('/tools/') || ['/app', '/business', '/setup'].some((page) => pathname === page || pathname.startsWith(`${page}/`));
+  return pathname !== null && (pathname === '/app' || pathname.startsWith('/app/'));
 }
 
-/** Wraps the whole page, header and footer included, so the Business switcher in the header and the tool below share one list of Businesses. */
+/** Wraps the whole page, the app shell included, so the Business switcher in the shell and the page below share one list of Businesses. */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <AppPlatform>

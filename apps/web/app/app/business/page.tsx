@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { PageShell } from '../../src/components/PageShell';
-import { BusinessPageLoader } from '../../src/business/BusinessPageLoader';
+import { PageShell } from '../../../src/components/PageShell';
+import { BusinessPageLoader } from '../../../src/business/BusinessPageLoader';
 
 export const metadata: Metadata = {
   title: 'Your business',
@@ -14,6 +14,7 @@ export default function BusinessRoute() {
       title="Your business"
       lede="The details every tool uses, your backups and your other businesses. Everything stays on this device."
       wide
+      compact
     >
       <BusinessPageLoader />
     </PageShell>

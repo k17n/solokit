@@ -65,8 +65,8 @@ describe('BusinessSwitcher', () => {
     expect(buttons.map((button) => button.textContent)).toEqual(['My businessCurrent', 'Studio Two']);
     expect(buttons[0]).toHaveAttribute('aria-current', 'true');
     expect(buttons[1]).not.toHaveAttribute('aria-current');
-    expect(within(group).getByRole('link', { name: '+ Add a business' })).toHaveAttribute('href', '/business/#add');
-    expect(within(group).getByRole('link', { name: 'Manage businesses' })).toHaveAttribute('href', '/business/#businesses');
+    expect(within(group).getByRole('link', { name: '+ Add a business' })).toHaveAttribute('href', '/app/business/#add');
+    expect(within(group).getByRole('link', { name: 'Manage businesses' })).toHaveAttribute('href', '/app/business/#businesses');
   });
 
   it('focuses the current business on open, and the arrow keys, Home and End move through the items', async () => {

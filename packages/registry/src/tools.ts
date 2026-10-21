@@ -9,6 +9,8 @@ export interface ToolDefinition {
   category: ToolCategory;
   status: ToolStatus;
   featured?: boolean;
+  /** A short name for the app's navigation, such as "Invoices". Ready tools need one. */
+  navLabel?: string;
 }
 
 export const TOOL_CATEGORY_LABELS: Record<ToolCategory, string> = {
@@ -29,6 +31,7 @@ const TOOLS: readonly ToolDefinition[] = [
     category: 'money',
     status: 'available',
     featured: true,
+    navLabel: 'Invoices',
   },
   {
     slug: 'rate-calculator',
@@ -46,6 +49,7 @@ const TOOLS: readonly ToolDefinition[] = [
       'Make a mutual or one-way NDA, or a freelance services agreement, in plain English. Answer a few questions, check a summary of your choices, and download a PDF, an editable Word file, or a review pack to send to your lawyer. A template, not legal advice.',
     category: 'clients',
     status: 'available',
+    navLabel: 'Agreements',
   },
   {
     slug: 'time-tracker',

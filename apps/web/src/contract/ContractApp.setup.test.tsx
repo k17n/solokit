@@ -13,7 +13,7 @@ import { NOW, fakeExporter } from './testSetup';
 
 vi.mock('../setup/navigate', () => ({ navigate: vi.fn() }));
 
-const SETUP = '/setup/?next=%2Ftools%2Fcontract%2F';
+const SETUP = '/app/setup/?next=%2Fapp%2Fcontract%2F';
 
 function renderContract(store: DataStore) {
   render(

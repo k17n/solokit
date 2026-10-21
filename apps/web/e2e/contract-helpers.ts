@@ -103,7 +103,7 @@ export async function expectEditorOpen(page: Page, heading: RegExp) {
  * own tests in business.spec.ts and onboarding.spec.ts).
  */
 export async function gotoContract(page: Page) {
-  await page.goto('/tools/contract/');
+  await page.goto('/app/contract/');
   const setup = page.getByRole('heading', { level: 2, name: 'Tax registration' });
   const agreements = page.getByRole('button', { name: 'Agreements', exact: true });
   await setup.or(agreements).first().waitFor();

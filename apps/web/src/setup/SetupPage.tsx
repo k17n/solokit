@@ -11,6 +11,7 @@ import { emptyProfileForm, profileToForm } from '../business/profileFormState';
 import { useProfileSaver } from '../business/useProfileSaver';
 import { useInvoiceStorage } from '../invoice/useInvoiceStorage';
 import { useStorage } from '../workspace/WorkspaceProvider';
+import { BUSINESS_PATH } from '../paths';
 import { AFTER_FIRST_SETUP, isToolPath, readSetupQuery, returnLabel, type SetupStep } from './links';
 import { navigate } from './navigate';
 import styles from './SetupPage.module.css';
@@ -39,7 +40,7 @@ export function SetupPage() {
   const afterRestore = useRef(false);
   const saveBusiness = useProfileSaver(storage);
 
-  const destination = query.next ?? (mode === 'edit' ? '/business/' : AFTER_FIRST_SETUP);
+  const destination = query.next ?? (mode === 'edit' ? BUSINESS_PATH : AFTER_FIRST_SETUP);
 
   useEffect(() => {
     if (!storage) return;

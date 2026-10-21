@@ -122,9 +122,9 @@ test.describe('backup and restore', () => {
     const fresh = await browser.newContext();
     try {
       const other = await fresh.newPage();
-      await other.goto('http://localhost:4180/tools/invoice/');
+      await other.goto('http://localhost:4180/app/invoice/');
       // A new device is sent to setup, which offers to restore instead and then goes on to the tool.
-      await expect(other).toHaveURL(/\/setup\/\?next=%2Ftools%2Finvoice%2F$/);
+      await expect(other).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2Finvoice%2F$/);
       await other.getByRole('button', { name: /restore a backup/i }).click();
 
       await other.getByLabel('Backup file').setInputFiles(backupPath);
@@ -150,7 +150,7 @@ test.describe('backup and restore', () => {
     await page.getByLabel('Backup file').setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":"world"}') });
     await expect(page.getByText(/not a SoloKit backup/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^Yes, replace/ })).toHaveCount(0);
-    await page.goto('/business/');
+    await page.goto('/app/business/');
     await expect(page.locator('#details dl')).toContainText('Asha Rao Consulting');
     expect(testInfo.errors).toEqual([]);
   });

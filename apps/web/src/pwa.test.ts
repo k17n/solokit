@@ -19,7 +19,7 @@ function pngSize(path: string): [number, number] {
 describe('web manifest', () => {
   it('describes an installable standalone app', () => {
     expect(manifest.name).toBe('SoloKit');
-    expect(manifest.start_url).toBe('/');
+    expect(manifest.start_url).toBe('/app/');
     expect(manifest.display).toBe('standalone');
   });
 

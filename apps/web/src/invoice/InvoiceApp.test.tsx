@@ -53,8 +53,8 @@ describe('InvoiceApp before the business is set up', () => {
   it('waits for storage, then sends the person to setup, to come back here', async () => {
     renderApp();
     expect(screen.getByText('Opening your invoices…')).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Go to setup' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Finvoice%2F');
-    expect(navigate).toHaveBeenCalledWith('/setup/?next=%2Ftools%2Finvoice%2F', { replace: true });
+    expect(await screen.findByRole('link', { name: 'Go to setup' })).toHaveAttribute('href', '/app/setup/?next=%2Fapp%2Finvoice%2F');
+    expect(navigate).toHaveBeenCalledWith('/app/setup/?next=%2Fapp%2Finvoice%2F', { replace: true });
     expect(screen.queryByRole('button', { name: 'Documents' })).not.toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe('InvoiceApp before the business is set up', () => {
     const store = createMemoryStore();
     await createInvoiceStorage(store).profile.save(makeSeller({ email: undefined }));
     renderApp(store);
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/setup/?next=%2Ftools%2Finvoice%2F', { replace: true }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/setup/?next=%2Fapp%2Finvoice%2F', { replace: true }));
     expect(screen.queryByRole('navigation', { name: 'Invoice tool' })).not.toBeInTheDocument();
   });
 });
@@ -90,7 +90,7 @@ describe('InvoiceApp with a saved profile', () => {
     const store = createMemoryStore();
     await seedProfile(store);
     renderApp(store);
-    expect(await screen.findByRole('link', { name: 'Business details' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Finvoice%2F');
+    expect(await screen.findByRole('link', { name: 'Business details' })).toHaveAttribute('href', '/app/setup/?next=%2Fapp%2Finvoice%2F');
     expect(navigate).not.toHaveBeenCalled();
   });
 

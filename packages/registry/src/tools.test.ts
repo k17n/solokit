@@ -37,6 +37,10 @@ describe('tool registry', () => {
     }
   });
 
+  it('gives every ready tool a short name for the app navigation', () => {
+    for (const tool of getAvailableTools()) expect(tool.navLabel?.trim()).toBeTruthy();
+  });
+
   it('looks tools up by slug', () => {
     expect(getToolBySlug('invoice')?.name).toBe('Invoice generator');
     expect(getToolBySlug('nope')).toBeUndefined();

@@ -43,8 +43,8 @@ export async function completeSetup(page: Page, details: SetupDetails = {}) {
 
 /** Opens the invoice tool for a new Business: through setup and back, ready on the Documents tab. */
 export async function onboardInvoice(page: Page, details: SetupDetails = {}) {
-  await page.goto('/tools/invoice/');
+  await page.goto('/app/invoice/');
   await completeSetup(page, details);
-  await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+  await expect(page).toHaveURL(/\/app\/invoice\/$/);
   await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
 }
