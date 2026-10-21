@@ -239,6 +239,7 @@ describe('InvoiceEditor: clients and exports', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: 'Client is outside India (export)' }));
     expect(screen.getByText(/If you have a Letter of Undertaking \(LUT\)/)).toBeInTheDocument();
     expect(screen.getByText(/Your profile has no LUT number/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'business details' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Finvoice%2F&step=defaults');
   });
 
   it('does not warn about the LUT when the profile has one', async () => {
@@ -271,7 +272,7 @@ describe('InvoiceEditor: problems the form cannot show', () => {
     await fillFirstItem();
     await userEvent.click(screen.getByRole('button', { name: 'Issue invoice' }));
     expect(await screen.findByText(/^Profile: UDYAM number looks like/)).toBeInTheDocument();
-    expect(screen.getByText(/in the Profile tab/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'business details' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Finvoice%2F&step=details');
     await waitFor(() => expect(screen.getByText(/Fix 1 thing before you issue/).closest('[tabindex="-1"]')).toHaveFocus());
   });
 

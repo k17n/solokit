@@ -5,6 +5,8 @@ import { type BusinessProfile } from '@solokit/profile';
 import { CheckboxField, Notice, SelectField, TextAreaField, TextField } from '@solokit/ui';
 import { taxApplies, type EditorState } from './editorModel';
 import { selectableStates } from '../business/profileFormState';
+import { toolHref } from '@solokit/registry';
+import { setupHref } from '../setup/links';
 
 export interface DetailsSectionProps {
   state: EditorState;
@@ -75,7 +77,7 @@ export function DetailsSection({ state, onChange, profile, themes, errors, numbe
         />
         {state.isExport && regular && !profile.lutNumber?.trim() ? (
           <Notice tone="warning">
-            Your profile has no LUT number. The invoice will say it is supplied under a Letter of Undertaking without naming one. Add the number in the Profile tab, or check with your CA whether IGST applies.
+            Your profile has no LUT number. The invoice will say it is supplied under a Letter of Undertaking without naming one. Add it in your <a href={setupHref(toolHref('invoice'), 'defaults')}>business details</a> (save a draft first), or check with your CA whether IGST applies.
           </Notice>
         ) : null}
         {state.isExport ? (

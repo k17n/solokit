@@ -75,3 +75,20 @@ export function missingFields(profile: BusinessProfile | undefined, toolId: Prof
     return profile === undefined || !isFilled(answered(profile, requirement.path));
   });
 }
+
+/**
+ * Every required field that any tool needs and the profile does not have yet, once each, in the order to ask. Setup asks
+ * for all of them in one go, so a person fills their details in once and no tool has to ask again.
+ */
+export function missingForSetup(profile: BusinessProfile | undefined): ProfileRequirement[] {
+  const seen = new Set<string>();
+  const missing: ProfileRequirement[] = [];
+  for (const tool of Object.keys(PROFILE_REQUIREMENTS) as ProfileToolId[]) {
+    for (const requirement of missingFields(profile, tool)) {
+      if (seen.has(requirement.path)) continue;
+      seen.add(requirement.path);
+      missing.push(requirement);
+    }
+  }
+  return missing;
+}

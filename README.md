@@ -8,8 +8,9 @@ Free, local-first tools for freelancers, consultants and solopreneurs. Everythin
 - Done: invoice editor with live PDF preview, issuing, PDF download, and the invoice list (kind badge and filter, duplicate, cancel).
 - Done: invoice themes (six presets, your own colours and font, default and per-invoice choice) and the backup and restore screens (unencrypted JSON file, reminder after 30 days, restore on a fresh device).
 - Done: quotations and proforma invoices inside the invoice tool, each with its own number series (tax invoices keep theirs), a validity date on quotations, and Convert to invoice. A quotation is an estimate, not a tax invoice, and carries no tax-invoice wording.
-- Done: contract and NDA generator at /tools/contract/. Mutual and one-way NDAs and a freelance services agreement, a numbered editor (parties, key terms, optional clauses, jurisdiction and stamp duty note, review), PDF, editable Word and a Review pack for a lawyer, final/reopen, backups that carry agreements. Your details come from the shared business profile and saved clients; a new Business is asked only for name, address and email, and you can skip that and type them. A template, not legal advice.
-- Done: Business workspaces at /business/. Each Business is a separate local database (the existing data became the first one); the site header has a switcher, and Your business holds the details every tool shares (name, address, tax ids, logo, payments, defaults), brand colours suggested from the logo with a one-click brand theme, backup and restore per Business (restore as a new Business is the default when the device has data), and rename, archive and delete (delete erases a Business from this device only, after typing its name). Each tool asks only for the profile fields it needs and does not have yet. See `docs/superpowers/plans/2026-10-17-workspaces.md`.
+- Done: contract and NDA generator at /tools/contract/. Mutual and one-way NDAs and a freelance services agreement, a numbered editor (parties, key terms, optional clauses, jurisdiction and stamp duty note, review), PDF, editable Word and a Review pack for a lawyer, final/reopen, backups that carry agreements. Your details come from the shared business profile (entered once in the business setup) and saved clients. A template, not legal advice.
+- Done: Business workspaces at /business/. Each Business is a separate local database (the existing data became the first one); the site header has a switcher, and Your business holds the details every tool shares (name, address, tax ids, logo, payments, defaults), brand colours suggested from the logo with a one-click brand theme, backup and restore per Business (restore as a new Business is the default when the device has data), and rename, archive and delete (delete erases a Business from this device only, after typing its name). See `docs/superpowers/plans/2026-10-17-workspaces.md`.
+- Done: one business setup before any tool, at /setup/. Five steps (tax registration, business details, logo and brand colours, payment details, invoice defaults) ask once for everything every tool needs; a tool opened before setup sends people there and setup brings them back. Tools have no profile form of their own: their Business details link, and the Change links on Your business, open the same steps for editing and return to where they came from.
 - Next: more tools and countries.
 
 ## Analytics and hosting
@@ -31,7 +32,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) before sending a pull request.
 
 ## Layout
 
-- `apps/web` the website (Next.js, static export, installable PWA)
+- `apps/web` the website (Next.js, static export, installable PWA); `src/setup/` is the business setup every tool sends people to
 - `packages/core` country-agnostic primitives (integer-paise money, amount in words, invoice numbering)
 - `packages/tax-engines` `TaxEngine` interface, country list, India GST engine
 - `packages/ui` design tokens and shared components (header, footer, buttons, form fields, radio cards, notices)

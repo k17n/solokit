@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { missingFields, type BusinessProfile } from '@solokit/profile';
+import { missingForSetup, type BusinessProfile } from '@solokit/profile';
+import { toolHref } from '@solokit/registry';
 import type { ContractKind } from '@solokit/tool-contract';
-import { Notice } from '@solokit/ui';
+import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
-import { Onboarding } from '../business/Onboarding';
-import { rememberSetupSkipped, wasSetupSkipped } from '../business/setupSkip';
-import { useProfileSaver } from '../business/useProfileSaver';
-import { useStorage } from '../workspace/WorkspaceProvider';
+import { setupHref } from '../setup/links';
+import { SetupRequired } from '../setup/SetupRequired';
 import { ContractEditor } from './ContractEditor';
 import { ContractList } from './ContractList';
 import { ContractViewer } from './ContractViewer';
@@ -22,6 +21,8 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Agreements', target: { name: 'list' }, current: ['list', 'new', 'edit', 'view'] },
   { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
 ];
+
+const HOME = toolHref('contract');
 
 export function ContractApp({ exporter, now }: { exporter?: ContractExporter; now?: () => Date } = {}) {
   const { contracts, invoice, store, ready, persistent } = useContractStorage(now);
@@ -39,60 +40,45 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
   const onDirtyChange = useCallback((dirty: boolean) => setEditorDirty(dirty), []);
   /** The Business's shared profile: undefined while it is being read, null when there is none. */
   const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
-  /** The person chose to go on without filling in their details (or they could not be read). */
-  const [skipped, setSkipped] = useState(false);
-  const saveBusiness = useProfileSaver(invoice);
-  const businessId = useStorage().workspace?.id ?? 'local';
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (!invoice) return;
     let cancelled = false;
-    Promise.all([invoice.profile.get(), contracts?.list() ?? Promise.resolve([])]).then(
-      ([found, agreements]) => {
-        if (cancelled) return;
-        setProfile(found ?? null);
-        // Someone who already has agreements, or who skipped before, is not stopped at the door.
-        if (agreements.length > 0 || wasSetupSkipped('contract', businessId)) setSkipped(true);
+    setLoadFailed(false);
+    invoice.profile.get().then(
+      (found) => {
+        if (!cancelled) setProfile(found ?? null);
       },
       (error: unknown) => {
-        // Asking for details again could overwrite ones that merely failed to load, so go on without asking.
+        // Sending the person to setup could overwrite details that merely failed to load, so say so instead.
         console.error('Could not read the saved profile', error);
-        if (!cancelled) {
-          setProfile(null);
-          setSkipped(true);
-        }
+        if (!cancelled) setLoadFailed(true);
       },
     );
     return () => {
       cancelled = true;
     };
-  }, [invoice, contracts, businessId, restoreCount]);
+  }, [invoice, restoreCount, loadAttempt]);
 
-  if (!ready || !contracts || !invoice || profile === undefined) return <p>Opening your agreements…</p>;
-
-  // First use of the tool: ask only for the details agreements need that this Business has not given yet.
-  if (!skipped && missingFields(profile ?? undefined, 'contract').length > 0) {
+  if (loadFailed) {
     return (
       <div className={styles.app}>
-        {!persistent ? (
-          <Notice tone="danger" title="Your browser is not saving data">
-            What you enter will be lost when you close this tab. Use a normal browser window so your work is kept.
-          </Notice>
-        ) : null}
-        <Onboarding
-          tool="contract"
-          profile={profile ?? undefined}
-          onSkip={() => {
-            rememberSetupSkipped('contract', businessId);
-            setSkipped(true);
-          }}
-          onDone={async (next) => {
-            setProfile(await saveBusiness(next, profile));
-          }}
-        />
+        <Notice tone="danger" title="Your saved details could not be opened">
+          Your browser could not read what was saved on this device. Reload the page. If it keeps happening, your data may be damaged.
+        </Notice>
+        <div>
+          <Button onClick={() => setLoadAttempt((count) => count + 1)}>Try again</Button>
+        </div>
       </div>
     );
   }
+
+  if (!ready || !contracts || !invoice || profile === undefined) return <p>Opening your agreements…</p>;
+
+  // The business details are entered once, on the setup page, before any tool is used. It brings the person back here.
+  if (profile === null || missingForSetup(profile).length > 0) return <SetupRequired returnTo={HOME} />;
 
   /** Go to a tab, unless the editor holds unsaved changes: then the editor asks first, as it does for its own Back button. */
   function goTo(target: View) {
@@ -113,15 +99,20 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
           What you enter will be lost when you close this tab. Use a normal browser window so your work is kept, or download a backup from the Backup &amp; restore tab before you leave.
         </Notice>
       ) : null}
-      <nav aria-label="Contract tool">
-        <div className={styles.tabs}>
-          {TABS.map((tab) => (
-            <button key={tab.label} type="button" aria-current={tab.current.includes(view.name) ? 'page' : undefined} className={styles.tab} onClick={() => goTo(tab.target)}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+      <div className={styles.toolbar}>
+        <nav aria-label="Contract tool">
+          <div className={styles.tabs}>
+            {TABS.map((tab) => (
+              <button key={tab.label} type="button" aria-current={tab.current.includes(view.name) ? 'page' : undefined} className={styles.tab} onClick={() => goTo(tab.target)}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+        <a className={styles.detailsLink} href={setupHref(HOME)}>
+          Business details
+        </a>
+      </div>
       <p className={styles.disclaimer}>
         <strong>Template, not legal advice.</strong> Have it reviewed before you sign. Everything stays on your device.
       </p>

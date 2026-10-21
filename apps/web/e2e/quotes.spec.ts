@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Download, type Page } from '@playwright/test';
 import { startDocument } from './helpers';
+import { onboardInvoice } from './setup-helpers';
 
 async function pdfText(download: Download): Promise<string> {
   const path = await download.path();
@@ -21,15 +22,7 @@ async function pdfText(download: Download): Promise<string> {
 const squash = (text: string) => text.replace(/\s+/g, '');
 
 async function onboardRegular(page: Page) {
-  await page.goto('/tools/invoice/');
-  await page.getByRole('radio', { name: /Regular GST registration/ }).check();
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByLabel('Business or personal name').fill('Asha Rao Consulting');
-  await page.getByLabel('GSTIN').fill('27AABCT3518Q1ZW');
-  await page.getByLabel('Address line 1').fill('12 Linking Road');
-  await page.getByLabel('City').fill('Mumbai');
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+  await onboardInvoice(page, { gst: 'regular' });
 }
 
 async function downloadPdf(page: Page): Promise<{ filename: string; text: string }> {

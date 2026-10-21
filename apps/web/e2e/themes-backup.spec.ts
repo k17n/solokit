@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
 import { expect, test, type Download, type Page } from '@playwright/test';
 import { startDocument } from './helpers';
+import { onboardInvoice } from './setup-helpers';
 
 const shots = 'e2e-screenshots';
 const squash = (text: string) => text.replace(/\s+/g, '');
@@ -41,14 +42,7 @@ async function pdfBytes(download: Download): Promise<Buffer> {
 }
 
 async function onboard(page: Page) {
-  await page.goto('/tools/invoice/');
-  await page.getByRole('radio', { name: /Not registered for GST/ }).check();
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByLabel('Business or personal name').fill('Asha Rao Consulting');
-  await page.getByLabel('Address line 1').fill('4 Park Street');
-  await page.getByLabel('City').fill('Kolkata');
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+  await onboardInvoice(page);
 }
 
 async function fillInvoice(page: Page) {
@@ -129,7 +123,8 @@ test.describe('backup and restore', () => {
     try {
       const other = await fresh.newPage();
       await other.goto('http://localhost:4180/tools/invoice/');
-      await expect(other.getByRole('heading', { name: 'Set up your business' })).toBeVisible();
+      // A new device is sent to setup, which offers to restore instead and then goes on to the tool.
+      await expect(other).toHaveURL(/\/setup\/\?next=%2Ftools%2Finvoice%2F$/);
       await other.getByRole('button', { name: /restore a backup/i }).click();
 
       await other.getByLabel('Backup file').setInputFiles(backupPath);
@@ -155,8 +150,8 @@ test.describe('backup and restore', () => {
     await page.getByLabel('Backup file').setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('{"hello":"world"}') });
     await expect(page.getByText(/not a SoloKit backup/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^Yes, replace/ })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Profile' }).click();
-    await expect(page.getByLabel('Business or personal name')).toHaveValue('Asha Rao Consulting');
+    await page.goto('/business/');
+    await expect(page.locator('#details dl')).toContainText('Asha Rao Consulting');
     expect(testInfo.errors).toEqual([]);
   });
 });

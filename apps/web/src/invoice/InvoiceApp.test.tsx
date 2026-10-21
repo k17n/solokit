@@ -4,18 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
 import { createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
+import { navigate } from '../setup/navigate';
 import { StoreProvider } from '../store/StoreProvider';
 import { InvoiceApp } from './InvoiceApp';
 
+vi.mock('../setup/navigate', () => ({ navigate: vi.fn() }));
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.mocked(navigate).mockClear();
   // @ts-expect-error remove the stub between tests
   delete navigator.storage;
 });
 
-function renderApp(store: DataStore = createMemoryStore()) {
+function renderApp(store: DataStore = createMemoryStore(), { persistent = true } = {}) {
   render(
-    <StoreProvider factory={() => store}>
+    <StoreProvider factory={() => store} persistent={persistent}>
       <InvoiceApp />
     </StoreProvider>,
   );
@@ -45,27 +49,21 @@ async function seedProfile(store: DataStore) {
   await storage.settings.update({ onboarded: true });
 }
 
-describe('InvoiceApp first run', () => {
-  it('waits for storage, then shows onboarding with no tabs', async () => {
+describe('InvoiceApp before the business is set up', () => {
+  it('waits for storage, then sends the person to setup, to come back here', async () => {
     renderApp();
     expect(screen.getByText('Opening your invoices…')).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Go to setup' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Finvoice%2F');
+    expect(navigate).toHaveBeenCalledWith('/setup/?next=%2Ftools%2Finvoice%2F', { replace: true });
     expect(screen.queryByRole('button', { name: 'Documents' })).not.toBeInTheDocument();
   });
 
-  it('saves the profile and opens the tool when onboarding is finished', async () => {
-    const store = renderApp();
-    await screen.findByRole('heading', { name: 'Set up your business' });
-    await userEvent.click(screen.getByRole('radio', { name: /Not registered for GST/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Ravi Kumar');
-    await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
-    await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
-    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
-    const storage = createInvoiceStorage(store);
-    expect((await storage.profile.get())?.name).toBe('Ravi Kumar');
-    expect((await storage.settings.get()).onboarded).toBe(true);
+  it('also sends a business to setup when a detail another tool needs is missing', async () => {
+    const store = createMemoryStore();
+    await createInvoiceStorage(store).profile.save(makeSeller({ email: undefined }));
+    renderApp(store);
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/setup/?next=%2Ftools%2Finvoice%2F', { replace: true }));
+    expect(screen.queryByRole('navigation', { name: 'Invoice tool' })).not.toBeInTheDocument();
   });
 });
 
@@ -79,37 +77,21 @@ describe('InvoiceApp with a saved profile', () => {
     expect(screen.queryByRole('heading', { name: 'Set up your business' })).not.toBeInTheDocument();
   });
 
-  it('shows the saved profile in the Profile tab and saves changes', async () => {
+  it('warns when the browser is not keeping data between visits', async () => {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    renderApp(store, { persistent: false });
+    expect(await screen.findByText('Your browser is not saving data')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('normal browser window');
+    expect(screen.getByRole('alert')).toHaveTextContent(/Backup & restore tab/);
+  });
+
+  it('offers the business details on the setup page, coming back to this tool', async () => {
     const store = createMemoryStore();
     await seedProfile(store);
     renderApp(store);
-    await userEvent.click(await screen.findByRole('button', { name: 'Profile' }));
-    const name = screen.getByLabelText('Business or personal name');
-    expect(name).toHaveValue('Asha Rao Consulting');
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Asha Rao Advisory');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('Saved')).toBeInTheDocument();
-    expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Asha Rao Advisory');
-  });
-
-  it('warns when the browser is not keeping data between visits', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    render(
-      <StoreProvider
-        factory={() => {
-          throw new Error('blocked');
-        }}
-      >
-        <InvoiceApp />
-      </StoreProvider>,
-    );
-    const notice = await screen.findByText('Your browser is not saving data');
-    expect(notice).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('normal browser window');
-    // First run has no Backup & restore tab yet, so the warning must not send people there.
-    expect(screen.getByRole('alert')).not.toHaveTextContent(/Backup & restore tab/);
-    expect(screen.getByRole('alert')).toHaveTextContent(/restore from a backup/);
+    expect(await screen.findByRole('link', { name: 'Business details' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Finvoice%2F');
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('does not warn when storage works', async () => {
@@ -129,36 +111,6 @@ describe('InvoiceApp with a saved profile', () => {
     await screen.findByRole('navigation', { name: 'Invoice tool' });
     await waitFor(() => expect(persist).toHaveBeenCalledTimes(1));
   });
-
-  it('clears the Saved notice when a later save fails', async () => {
-    const { store, failures } = flakyStore();
-    await seedProfile(store);
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    renderApp(store);
-    await userEvent.click(await screen.findByRole('button', { name: 'Profile' }));
-    const name = screen.getByLabelText('Business or personal name');
-    await userEvent.type(name, ' Ltd');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('Saved')).toBeInTheDocument();
-    failures.put = () => true;
-    await userEvent.type(screen.getByLabelText('Business or personal name'), ' and Co');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('Your profile could not be saved. Please try again.')).toBeInTheDocument();
-    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
-  });
-
-  it('shows the saved, normalised values after saving', async () => {
-    const store = createMemoryStore();
-    await seedProfile(store);
-    renderApp(store);
-    await userEvent.click(await screen.findByRole('button', { name: 'Profile' }));
-    const pan = screen.getByLabelText('PAN');
-    await userEvent.clear(pan);
-    await userEvent.type(pan, '  aapfu0939f  ');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('Saved')).toBeInTheDocument();
-    expect(screen.getByLabelText('PAN')).toHaveValue('AAPFU0939F');
-  });
 });
 
 describe('InvoiceApp when storage misbehaves', () => {
@@ -175,23 +127,6 @@ describe('InvoiceApp when storage misbehaves', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
     expect(screen.queryByText('Your saved details could not be opened')).not.toBeInTheDocument();
-  });
-
-  it('still finishes onboarding when only the onboarded flag cannot be saved', async () => {
-    const { store, failures } = flakyStore();
-    failures.put = (collection) => collection === 'settings';
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    renderApp(store);
-    await screen.findByRole('heading', { name: 'Set up your business' });
-    await userEvent.click(screen.getByRole('radio', { name: /Not registered for GST/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Ravi Kumar');
-    await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
-    await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
-    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
-    expect(error).toHaveBeenCalled();
-    expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Ravi Kumar');
   });
 });
 
@@ -222,10 +157,10 @@ describe('InvoiceApp: invoices', () => {
     await userEvent.click(within(await screen.findByRole('group', { name: 'Choose a document type' })).getByRole('button', { name }));
   }
 
-  it('shows the documents list first, with four tabs and no tab for creating', async () => {
+  it('shows the documents list first, with three tabs and no tab for creating or for the profile', async () => {
     await openApp();
     const nav = within(screen.getByRole('navigation', { name: 'Invoice tool' }));
-    expect(nav.getAllByRole('button').map((button) => button.textContent)).toEqual(['Documents', 'Themes', 'Backup & restore', 'Profile']);
+    expect(nav.getAllByRole('button').map((button) => button.textContent)).toEqual(['Documents', 'Themes', 'Backup & restore']);
     expect(nav.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
     expect(await screen.findByRole('heading', { name: 'Start your first document' })).toBeInTheDocument();
   });
@@ -337,7 +272,7 @@ describe('InvoiceApp: themes and backup tabs', () => {
     expect(await screen.findByRole('button', { name: 'Download backup' })).toBeInTheDocument();
   });
 
-  it('shows the restored profile after a restore without reloading', async () => {
+  it('stays in the tool after a restore that brings a complete profile', async () => {
     const other = createMemoryStore();
     await createInvoiceStorage(other).profile.save(makeSeller({ name: 'Restored Co' }));
     const { createBackup } = await import('@solokit/tool-invoice');
@@ -350,61 +285,8 @@ describe('InvoiceApp: themes and backup tabs', () => {
     await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
     await screen.findByText(/Backup restored/);
-    await userEvent.click(screen.getByRole('button', { name: 'Profile' }));
-    expect(screen.getByLabelText('Business or personal name')).toHaveValue('Restored Co');
-  });
-});
-
-describe('InvoiceApp: restoring on a new device', () => {
-  it('offers to restore a backup instead of setting up, and opens the tool with the restored data', async () => {
-    const other = createMemoryStore();
-    const source = createInvoiceStorage(other);
-    await source.profile.save(makeSeller({ name: 'Moved Co' }));
-    await source.invoices.save(makeInvoice({ id: 'moved', number: '2026-27/0042' }));
-    const { createBackup } = await import('@solokit/tool-invoice');
-    const { json } = await createBackup(other);
-
-    renderApp();
-    await screen.findByRole('heading', { name: 'Set up your business' });
-    await userEvent.click(screen.getByRole('button', { name: /restore a backup/i }));
-    expect(screen.queryByRole('button', { name: 'Download backup' })).not.toBeInTheDocument();
-    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
-    expect(await screen.findByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
-    expect(await screen.findByText('2026-27/0042')).toBeInTheDocument();
-  });
-
-  it('shows a Backup restored message with focus on it after a first-run restore', async () => {
-    const other = createMemoryStore();
-    await createInvoiceStorage(other).profile.save(makeSeller({ name: 'Moved Co' }));
-    const { createBackup } = await import('@solokit/tool-invoice');
-    const { json } = await createBackup(other);
-
-    renderApp();
-    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
-    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
-    const message = await screen.findByText('Backup restored');
-    await waitFor(() => expect(document.activeElement).toContainElement(message));
-    expect(message.closest('[role="status"]')).not.toBeNull();
-  });
-
-  it('asks the user to complete setup when the restored backup has no profile', async () => {
-    const { createBackup } = await import('@solokit/tool-invoice');
-    const { json } = await createBackup(createMemoryStore());
-
-    renderApp();
-    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
-    await userEvent.upload(await screen.findByLabelText('Backup file'), new File([json], 'b.json', { type: 'application/json' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Yes, replace my data' }));
-    expect(await screen.findByText(/no business profile. Complete setup/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
-  });
-
-  it('goes back to setup', async () => {
-    renderApp();
-    await userEvent.click(await screen.findByRole('button', { name: /restore a backup/i }));
-    await userEvent.click(screen.getByRole('button', { name: 'Back to setup' }));
-    expect(screen.getByRole('heading', { name: 'Set up your business' })).toBeInTheDocument();
+    expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Restored Co');
+    expect(screen.getByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
   });
 });

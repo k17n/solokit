@@ -1,20 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { missingFields, type BusinessProfile } from '@solokit/profile';
-import { Notice } from '@solokit/ui';
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { missingForSetup, type BusinessProfile } from '@solokit/profile';
+import { getStateByCode } from '@solokit/tax-engines';
+import { Button, Notice } from '@solokit/ui';
 import { ProSlot } from '../platform/ProSlot';
 import { useShowUpsell } from '../platform/PlatformProvider';
 import { useInvoiceStorage } from '../invoice/useInvoiceStorage';
 import { WorkspaceStore, useWorkspaces } from '../workspace/WorkspaceProvider';
 import { AddBusiness } from './AddBusiness';
 import { BackupScreen } from './BackupScreen';
-import { BrandThemeCard } from './BrandThemeCard';
 import { ManageBusinesses } from './ManageBusinesses';
-import { ProfileForm } from './ProfileForm';
-import { emptyProfileForm, profileToForm } from './profileFormState';
-import { TOOL_LABELS } from './usage';
-import { useProfileSaver } from './useProfileSaver';
+import { GST_STATUS_OPTIONS, STEP_INFO } from './ProfileForm';
+import { SETUP_STEPS, setupHref, type SetupStep } from '../setup/links';
+import { navigate } from '../setup/navigate';
 import styles from './BusinessPage.module.css';
 
 type Hash = '' | 'add' | 'details' | 'backup' | 'businesses';
@@ -64,7 +63,8 @@ export function BusinessPage({ now }: BusinessPageProps = {}) {
 
   if (!ready) return <p>Opening your businesses…</p>;
 
-  if (hash === 'add') return <AddBusiness onCreated={leaveAdd} onCancel={leaveAdd} />;
+  // A new, empty Business goes straight to setup; one restored from a backup already has its details.
+  if (hash === 'add') return <AddBusiness onCreated={() => navigate(setupHref('/business/'))} onRestored={leaveAdd} onCancel={leaveAdd} />;
 
   return (
     <div className={styles.page}>
@@ -106,11 +106,6 @@ function CurrentBusiness({ now }: BusinessPageProps) {
   const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [saved, setSaved] = useState(false);
-  /** Changes when the form should start again from what is saved: after a save or after the data was reloaded. */
-  const [formKey, setFormKey] = useState(0);
-  const savedRef = useRef<HTMLParagraphElement>(null);
-  const saveBusiness = useProfileSaver(storage);
 
   useEffect(() => {
     if (!storage) return;
@@ -118,10 +113,7 @@ function CurrentBusiness({ now }: BusinessPageProps) {
     setLoadFailed(false);
     storage.profile.get().then(
       (found) => {
-        if (!cancelled) {
-          setProfile(found ?? null);
-          setFormKey((count) => count + 1);
-        }
+        if (!cancelled) setProfile(found ?? null);
       },
       (error: unknown) => {
         console.error('Could not read the saved profile', error);
@@ -133,10 +125,6 @@ function CurrentBusiness({ now }: BusinessPageProps) {
     };
   }, [storage, attempt]);
 
-  useEffect(() => {
-    if (saved) savedRef.current?.focus();
-  }, [saved]);
-
   if (loadFailed) {
     return (
       <Notice tone="danger" title="Your saved details could not be opened">
@@ -146,9 +134,7 @@ function CurrentBusiness({ now }: BusinessPageProps) {
   }
   if (!ready || !storage || !store || !current || profile === undefined) return <p>Opening your business…</p>;
 
-  const fresh = profile === null;
-  const initial = fresh ? { ...emptyProfileForm('unregistered'), gstUnconfirmed: true, name: current.name } : profileToForm(profile);
-  const gaps = profile ? missingFields(profile, 'invoice').length + missingFields(profile, 'contract').length : 0;
+  const complete = profile !== null && missingForSetup(profile).length === 0;
 
   return (
     <>
@@ -159,46 +145,108 @@ function CurrentBusiness({ now }: BusinessPageProps) {
       ) : null}
 
       <section id="details" className={styles.section} aria-labelledby={`${detailsId}-title`}>
-        <div>
-          <h2 id={`${detailsId}-title`} tabIndex={-1} className={styles.heading}>
-            {fresh ? `Set up ${current.name}` : 'This business'}
-          </h2>
-          <p className={styles.lede}>
-            {fresh ? (
-              <>
-                Tell SoloKit about <strong>{current.name}</strong> once. {Object.values(TOOL_LABELS).join(' and ')} fill themselves in from it.
-              </>
-            ) : (
-              <>
-                You are working in <strong>{current.name}</strong>. These details belong to this business only, and every tool that needs them reads them from here.
-              </>
-            )}
-          </p>
+        <div className={styles.detailsHead}>
+          <div>
+            <h2 id={`${detailsId}-title`} tabIndex={-1} className={styles.heading}>
+              {complete ? 'This business' : `Set up ${current.name}`}
+            </h2>
+            <p className={styles.lede}>
+              {complete ? (
+                <>
+                  You are working in <strong>{current.name}</strong>. Every tool reads these details from here.
+                </>
+              ) : (
+                <>
+                  Tell SoloKit about <strong>{current.name}</strong> once, and every tool fills itself in from it. It takes about two minutes.
+                </>
+              )}
+            </p>
+          </div>
+          {complete ? (
+            <Button variant="secondary" href={setupHref('/business/')}>
+              Edit details
+            </Button>
+          ) : null}
         </div>
-        {saved ? (
-          <p role="status" tabIndex={-1} ref={savedRef} className={styles.saved}>
-            Saved. {gaps > 0 ? 'Some tools may still ask for a detail or two when you open them.' : 'Every tool can use these details now.'}
-          </p>
-        ) : null}
-        <ProfileForm
-          key={formKey}
-          idPrefix="business"
-          initial={initial}
-          submitLabel={fresh ? 'Save and continue' : 'Save changes'}
-          brandThemeSlot={(draftBrand) => (profile ? <BrandThemeCard storage={storage} profile={profile} draftBrand={draftBrand} onChanged={setProfile} /> : null)}
-          onSave={async (next) => {
-            setSaved(false);
-            const savedProfile = await saveBusiness(next, profile);
-            setProfile(savedProfile);
-            setSaved(true);
-            setFormKey((count) => count + 1);
-          }}
-        />
+        {complete ? (
+          <ProfileSummary profile={profile} />
+        ) : (
+          <div>
+            <Button href={setupHref('/business/')}>{profile ? 'Finish setup' : 'Set up this business'}</Button>
+          </div>
+        )}
       </section>
 
       <section id="backup" className={styles.section}>
         <BackupScreen store={store} onRestored={() => setAttempt((count) => count + 1)} {...(now ? { now } : {})} />
       </section>
     </>
+  );
+}
+
+const joined = (...parts: (string | undefined)[]) => parts.map((part) => part?.trim()).filter(Boolean).join(', ');
+
+/** The last four digits only, so the page can be shown on a shared screen. */
+const masked = (account: string) => `ending ${account.trim().slice(-4)}`;
+
+/** What each setup step holds, in a line or two, for the summary. */
+function summaryOf(profile: BusinessProfile, step: SetupStep): ReactNode {
+  switch (step) {
+    case 'tax': {
+      const status = GST_STATUS_OPTIONS.find((option) => option.value === profile.gstStatus)?.label ?? 'Not chosen';
+      return profile.gstin ? `${status} · GSTIN ${profile.gstin}` : status;
+    }
+    case 'details': {
+      const state = profile.address.stateCode ? getStateByCode(profile.address.stateCode)?.name : undefined;
+      return (
+        <>
+          <strong>{profile.name}</strong>
+          <br />
+          {joined(profile.address.line1, profile.address.line2, profile.address.city, profile.address.postalCode, state)}
+          <br />
+          {joined(profile.email, profile.phone)}
+        </>
+      );
+    }
+    case 'brand': {
+      const colours = Object.values(profile.brand ?? {}).filter(Boolean) as string[];
+      if (!profile.logoDataUrl && colours.length === 0) return 'Not added';
+      return (
+        <span className={styles.brandLine}>
+          {profile.logoDataUrl ? 'Logo added' : 'No logo'}
+          {colours.map((colour) => (
+            <span key={colour} className={styles.swatch} style={{ background: colour }} title={colour} />
+          ))}
+        </span>
+      );
+    }
+    case 'payments': {
+      const bank = profile.bank?.accountNumber ? `${profile.bank.bankName || 'Bank'} account ${masked(profile.bank.accountNumber)}` : undefined;
+      const upi = profile.upiId ? `UPI ${profile.upiId}` : undefined;
+      return joined(bank, upi) || 'Not added';
+    }
+    case 'defaults':
+      return profile.invoicePrefix ? `Invoice numbers start with ${profile.invoicePrefix}` : 'Standard numbering';
+    default:
+      return null;
+  }
+}
+
+/** The saved details at a glance, each with a link that opens that step of setup and comes back here. */
+function ProfileSummary({ profile }: { profile: BusinessProfile }) {
+  return (
+    <dl className={styles.summary}>
+      {SETUP_STEPS.map((step) => (
+        <div key={step} className={styles.summaryRow}>
+          <dt>{STEP_INFO[step].title}</dt>
+          <dd>{summaryOf(profile, step)}</dd>
+          <dd className={styles.summaryAction}>
+            <a href={setupHref('/business/', step)} aria-label={`Change ${STEP_INFO[step].title.toLowerCase()}`}>
+              Change
+            </a>
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }

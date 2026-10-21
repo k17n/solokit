@@ -65,10 +65,10 @@ describe('ContractEditor: sections', () => {
     expect(screen.queryByText('Save your details once')).not.toBeInTheDocument();
   });
 
-  it('points to the Your business page when there is no profile yet', async () => {
+  it('points to the business setup, coming back here, when there is no profile yet', async () => {
     await setup({ profile: false });
     expect(screen.getByText('Save your details once')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Your business' })).toHaveAttribute('href', '/business/');
+    expect(screen.getByRole('link', { name: 'business details' })).toHaveAttribute('href', '/setup/?next=%2Ftools%2Fcontract%2F');
     expect(screen.queryByText(/invoice tool/)).not.toBeInTheDocument();
     expect(party(1).getByLabelText('First Party: full name')).toHaveValue('');
   });

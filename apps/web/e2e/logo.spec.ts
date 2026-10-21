@@ -1,19 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
+import { onboardInvoice } from './setup-helpers';
 
-async function openProfileTab(page: Page) {
-  await page.goto('/tools/invoice/');
-  await page.getByRole('radio', { name: /Not registered for GST/ }).check();
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByLabel('Business or personal name').fill('Ravi Kumar Design');
-  await page.getByLabel('Address line 1').fill('4 Park Street');
-  await page.getByLabel('City').fill('Kolkata');
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-  await page.getByRole('button', { name: 'Profile' }).click();
+/** Sets up a business, then opens the logo step of setup for editing. */
+async function openLogoStep(page: Page) {
+  await onboardInvoice(page, { name: 'Ravi Kumar Design' });
+  await page.goto('/setup/?step=brand');
+  await expect(page.getByRole('heading', { level: 2, name: 'Logo and brand colours' })).toBeVisible();
 }
 
 test.describe('logo upload in a real browser', () => {
   test('a PNG, a viewBox-only SVG and a wrong file type', async ({ page }) => {
-    await openProfileTab(page);
+    await openLogoStep(page);
     const logo = page.locator('img[alt="Your logo"]');
     const input = page.locator('input[type="file"]');
 

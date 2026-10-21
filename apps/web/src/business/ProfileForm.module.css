@@ -13,12 +13,6 @@
   border: 0;
 }
 
-.legend {
-  margin-bottom: 0.25rem;
-  padding: 0;
-  font-size: 1.0625rem;
-  font-weight: 500;
-}
 
 .pair {
   display: grid;
@@ -53,4 +47,142 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 0.8125rem;
+}
+
+.wizard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.stepsNav {
+  min-width: 0;
+}
+
+@media (min-width: 64rem) {
+  .wizard {
+    grid-template-columns: 15rem minmax(0, 46rem);
+    gap: 3rem;
+  }
+
+  .stepsNav {
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
+.steps {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  /* The offsets of the steps are measured from the list, to scroll the open one into sight. */
+  position: relative;
+}
+
+/* On a phone the list scrolls sideways; only the open step says it is optional, to keep it short. */
+@media (max-width: 63.99rem) {
+  .stepButton:not([aria-current='step']) .stepOptional {
+    display: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  .steps {
+    flex-direction: column;
+    overflow: visible;
+  }
+}
+
+.stepButton {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  font: 500 0.875rem/1.2 var(--ds-ff);
+  color: var(--ds-text-2);
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.stepButton:hover:not(:disabled) {
+  color: var(--ds-text);
+  background: var(--ds-input);
+}
+
+.stepButton:disabled {
+  color: var(--ds-text-3);
+  cursor: default;
+}
+
+.stepButton[aria-current='step'] {
+  color: var(--ds-text);
+  background: var(--ds-input);
+}
+
+.stepNumber {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--ds-border-strong);
+  border-radius: 999px;
+}
+
+.stepButton[aria-current='step'] .stepNumber {
+  color: var(--ds-cta-fg);
+  background: var(--ds-cta-bg);
+  border-color: var(--ds-cta-bg);
+}
+
+.stepNumber[data-done] {
+  color: var(--ds-success-text);
+  background: var(--ds-success-bg);
+  border-color: transparent;
+}
+
+.stepName {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.stepOptional {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--ds-text-3);
+}
+
+.stepHead {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.stepCount {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ds-text-2);
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.stepLede {
+  margin: 0;
+  color: var(--ds-text-2);
 }

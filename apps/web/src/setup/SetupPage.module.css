@@ -1,0 +1,21 @@
+.page {
+  display: grid;
+  gap: 1.75rem;
+  min-width: 0;
+}
+
+.intro {
+  display: grid;
+  gap: 1rem;
+  max-width: 46rem;
+  color: var(--ds-text-2);
+}
+
+.intro p {
+  margin: 0;
+}
+
+.cancel {
+  font-size: 0.875rem;
+  color: var(--ds-text-2);
+}

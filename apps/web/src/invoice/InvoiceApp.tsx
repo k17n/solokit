@@ -1,51 +1,41 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { InvoiceKind } from '@solokit/tool-invoice';
-import { missingFields, type BusinessProfile } from '@solokit/profile';
+import { missingForSetup, type BusinessProfile } from '@solokit/profile';
+import { toolHref } from '@solokit/registry';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
+import { setupHref } from '../setup/links';
+import { SetupRequired } from '../setup/SetupRequired';
 import { InvoiceEditor } from './InvoiceEditor';
 import { InvoiceList } from './InvoiceList';
 import { InvoiceViewer } from './InvoiceViewer';
-import { Onboarding } from '../business/Onboarding';
 import { ThemesScreen } from './ThemesScreen';
-import { ProfileForm } from '../business/ProfileForm';
-import { profileToForm } from '../business/profileFormState';
-import { useProfileSaver } from '../business/useProfileSaver';
 import { requestPersistentStorage } from './persist';
 import type { PdfRenderer } from './usePdfPreview';
 import { useInvoiceStorage } from './useInvoiceStorage';
 import styles from './InvoiceApp.module.css';
 
-type View = { name: 'list' } | { name: 'new'; kind: InvoiceKind } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'profile' } | { name: 'themes' } | { name: 'backup' };
+type View = { name: 'list' } | { name: 'new'; kind: InvoiceKind } | { name: 'edit'; id: string } | { name: 'view'; id: string } | { name: 'themes' } | { name: 'backup' };
 
 const TABS: { label: string; target: View; current: View['name'][] }[] = [
   { label: 'Documents', target: { name: 'list' }, current: ['list', 'view', 'new', 'edit'] },
   { label: 'Themes', target: { name: 'themes' }, current: ['themes'] },
   { label: 'Backup & restore', target: { name: 'backup' }, current: ['backup'] },
-  { label: 'Profile', target: { name: 'profile' }, current: ['profile'] },
 ];
+
+const HOME = toolHref('invoice');
 
 export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
   const { storage, store, ready, persistent } = useInvoiceStorage();
   const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
   const [view, setView] = useState<View>({ name: 'list' });
-  const [savedNotice, setSavedNotice] = useState(false);
-  const [saveCount, setSaveCount] = useState(0);
   /** Changes every time a new document is started, so the editor starts fresh even when it is already open. */
   const [newCount, setNewCount] = useState(0);
-  const [restoring, setRestoring] = useState(false);
-  /** Shown after a restore from the first-run screen, because that screen is gone by then. */
-  const [restoredNotice, setRestoredNotice] = useState<{ hasProfile: boolean } | null>(null);
-  const restoredRef = useRef<HTMLDivElement>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const asked = useRef(false);
-
-  useEffect(() => {
-    if (restoredNotice) restoredRef.current?.focus();
-  }, [restoredNotice]);
 
   useEffect(() => {
     if (!storage) return;
@@ -73,16 +63,6 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     }
   }, [ready, persistent, profile]);
 
-  const saveBusiness = useProfileSaver(storage);
-  const saveProfile = useCallback(
-    async (next: BusinessProfile) => {
-      const saved = await saveBusiness(next, profile);
-      setRestoredNotice(null);
-      setProfile(saved);
-    },
-    [saveBusiness, profile],
-  );
-
   if (loadFailed && profile === undefined) {
     return (
       <div className={styles.app}>
@@ -106,87 +86,36 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
 
   if (!ready || !storage || profile === undefined) return <p>Opening your invoices…</p>;
 
-  const storageWarning = !persistent ? (
-    <Notice tone="danger" title="Your browser is not saving data">
-      {profile === null
-        ? 'What you enter, or restore from a backup, will be lost when you close this tab. Use a normal browser window so your work is kept.'
-        : 'What you enter will be lost when you close this tab. Use a normal browser window so your work is kept, or download a backup from the Backup & restore tab before you leave.'}
-    </Notice>
-  ) : null;
-  const restoredBanner = restoredNotice ? (
-    <div ref={restoredRef} tabIndex={-1}>
-      <Notice tone="info" title="Backup restored">
-        {restoredNotice.hasProfile
-          ? 'Your invoices, clients, themes and settings are back on this device.'
-          : 'The backup had no business profile. Complete setup below to start using SoloKit.'}
-      </Notice>
-    </div>
-  ) : null;
-
-  // Nothing saved yet, or a profile that another tool started and the invoice tool still needs more of (the GST status, say).
-  const setupFields = profile === null ? [] : missingFields(profile, 'invoice');
-  if (profile === null || setupFields.length > 0) {
-    return (
-      <div className={styles.app}>
-        {storageWarning}
-        {restoredBanner}
-        {restoring && store ? (
-          <>
-            <div>
-              <Button variant="ghost" onClick={() => setRestoring(false)}>
-                Back to setup
-              </Button>
-            </div>
-            <BackupScreen
-              store={store}
-              restoreOnly
-              onRestored={(summary) => {
-                setRestoredNotice({ hasProfile: summary.hasProfile });
-                setRestoring(false);
-                setLoadAttempt((attempt) => attempt + 1);
-              }}
-              {...(now ? { now } : {})}
-            />
-          </>
-        ) : (
-          <>
-            <Onboarding tool="invoice" profile={profile ?? undefined} onDone={saveProfile} />
-            {profile === null ? (
-              <div>
-                <Button variant="ghost" onClick={() => setRestoring(true)}>
-                  Already use SoloKit? Restore a backup
-                </Button>
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
-    );
-  }
+  // The business details are entered once, on the setup page, before any tool is used. It brings the person back here.
+  if (profile === null || missingForSetup(profile).length > 0) return <SetupRequired returnTo={HOME} />;
 
   return (
     <div className={styles.app}>
-      {storageWarning}
-      {restoredBanner}
-      <nav aria-label="Invoice tool">
-        <div className={styles.tabs}>
-          {TABS.map((tab) => (
-            <button
-              key={tab.label}
-              type="button"
-              aria-current={tab.current.includes(view.name) ? 'page' : undefined}
-              className={styles.tab}
-              onClick={() => {
-                setView(tab.target);
-                setSavedNotice(false);
-                setRestoredNotice(null);
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+      {!persistent ? (
+        <Notice tone="danger" title="Your browser is not saving data">
+          What you enter will be lost when you close this tab. Use a normal browser window so your work is kept, or download a backup from the Backup &amp; restore tab before you leave.
+        </Notice>
+      ) : null}
+      <div className={styles.toolbar}>
+        <nav aria-label="Invoice tool">
+          <div className={styles.tabs}>
+            {TABS.map((tab) => (
+              <button
+                key={tab.label}
+                type="button"
+                aria-current={tab.current.includes(view.name) ? 'page' : undefined}
+                className={styles.tab}
+                onClick={() => setView(tab.target)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+        <a className={styles.detailsLink} href={setupHref(HOME)}>
+          Business details
+        </a>
+      </div>
       <div className={styles.panel}>
         {view.name === 'list' ? (
           <InvoiceList
@@ -230,25 +159,6 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
         {view.name === 'themes' ? <ThemesScreen storage={storage} profile={profile} onProfileChanged={setProfile} {...(renderPdf ? { renderPdf } : {})} {...(now ? { now } : {})} /> : null}
         {view.name === 'backup' && store ? (
           <BackupScreen store={store} onRestored={() => setLoadAttempt((attempt) => attempt + 1)} {...(now ? { now } : {})} />
-        ) : null}
-        {view.name === 'profile' ? (
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <p>
-              This is your business profile. The contract tool uses it too, and the <a href="/business/">Your business</a> page has the same details with backups and your other businesses.
-            </p>
-            {savedNotice ? <Notice tone="info">Saved</Notice> : null}
-            <ProfileForm
-              key={saveCount}
-              initial={profileToForm(profile)}
-              submitLabel="Save changes"
-              onSave={async (next) => {
-                setSavedNotice(false);
-                await saveProfile(next);
-                setSavedNotice(true);
-                setSaveCount((count) => count + 1);
-              }}
-            />
-          </div>
         ) : null}
       </div>
     </div>

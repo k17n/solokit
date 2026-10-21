@@ -7,7 +7,8 @@ import { WorkspacesProvider } from './WorkspaceProvider';
 
 /** Pages that use a Business. The home page and the privacy page read and create nothing. */
 export function usesBusiness(pathname: string | null): boolean {
-  return pathname !== null && (pathname.startsWith('/tools/') || pathname === '/business' || pathname.startsWith('/business/'));
+  if (pathname === null) return false;
+  return pathname.startsWith('/tools/') || ['/business', '/setup'].some((page) => pathname === page || pathname.startsWith(`${page}/`));
 }
 
 /** Wraps the whole page, header and footer included, so the Business switcher in the header and the tool below share one list of Businesses. */

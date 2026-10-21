@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Download, type Page } from '@playwright/test';
 import { startDocument } from './helpers';
+import { onboardInvoice } from './setup-helpers';
 
 const shots = 'test-results';
 
@@ -23,24 +24,7 @@ async function pdfText(download: Download): Promise<string> {
 const squash = (text: string) => text.replace(/\s+/g, '');
 
 async function onboard(page: Page, kind: 'regular' | 'unregistered') {
-  await page.goto('/tools/invoice/');
-  if (kind === 'regular') {
-    await page.getByRole('radio', { name: /Regular GST registration/ }).check();
-  } else {
-    await page.getByRole('radio', { name: /Not registered for GST/ }).check();
-  }
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByLabel('Business or personal name').fill('Asha Rao Consulting');
-  if (kind === 'regular') {
-    await page.getByLabel('GSTIN').fill('27AABCT3518Q1ZW');
-    await page.getByLabel('Address line 1').fill('12 Linking Road');
-    await page.getByLabel('City').fill('Mumbai');
-  } else {
-    await page.getByLabel('Address line 1').fill('4 Park Street');
-    await page.getByLabel('City').fill('Kolkata');
-  }
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+  await onboardInvoice(page, { gst: kind });
 }
 
 async function fillClient(page: Page, client: { name: string; line1: string; city: string; state?: string; country?: string }) {

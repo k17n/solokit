@@ -9,8 +9,10 @@ import { readText } from './files';
 import styles from './AddBusiness.module.css';
 
 export interface AddBusinessProps {
-  /** Called once the new Business exists and is the current one. */
+  /** Called once a new, empty Business exists and is the current one. Its details are still to be set up. */
   onCreated: (workspace: Workspace) => void;
+  /** Called once a Business restored from a backup exists and is the current one. Default: `onCreated`. */
+  onRestored?: (workspace: Workspace) => void;
   onCancel: () => void;
 }
 
@@ -23,7 +25,7 @@ interface Chosen {
 const plural = (count: number, one: string) => `${count} ${count === 1 ? one : `${one}s`}`;
 
 /** A new Business: a name first, then the same setup as any other. A backup file can start a Business instead. */
-export function AddBusiness({ onCreated, onCancel }: AddBusinessProps) {
+export function AddBusiness({ onCreated, onRestored = onCreated, onCancel }: AddBusinessProps) {
   const { create, switchTo, manager, registryPersistent } = useWorkspaces();
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -87,7 +89,7 @@ export function AddBusiness({ onCreated, onCancel }: AddBusinessProps) {
     try {
       const created = await restoreIntoNewWorkspace(manager, chosen.text, restoreName.trim() ? { name: restoreName } : {});
       await switchTo(created.id);
-      onCreated(created);
+      onRestored(created);
     } catch (error) {
       console.error('Could not restore the backup into a new business', error);
       setProblem(error instanceof StorageError || error instanceof Error ? error.message : 'The backup could not be restored. Nothing was changed.');

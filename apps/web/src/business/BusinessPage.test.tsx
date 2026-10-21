@@ -4,9 +4,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type WorkspaceManager } from '@solokit/storage';
 import { createBackup, createInvoiceStorage } from '@solokit/tool-invoice';
 import { makeInvoice, makeSeller } from '@solokit/tool-invoice/testing';
+import { navigate } from '../setup/navigate';
 import { WorkspacesProvider, useWorkspaces, type WorkspacesState } from '../workspace/WorkspaceProvider';
 import { BusinessPage } from './BusinessPage';
 import { makeManager } from './testWorkspaces';
+
+vi.mock('../setup/navigate', () => ({ navigate: vi.fn() }));
+
+const SETUP = '/setup/?next=%2Fbusiness%2F';
 
 let latest: WorkspacesState;
 
@@ -26,6 +31,7 @@ function renderPage(manager: WorkspaceManager) {
 
 afterEach(() => {
   window.location.hash = '';
+  vi.mocked(navigate).mockClear();
   vi.restoreAllMocks();
 });
 
@@ -36,57 +42,37 @@ async function seed(manager: WorkspaceManager, id: string, profile = makeSeller(
 }
 
 describe('BusinessPage', () => {
-  it('asks a new business to set itself up, prefilled with its name, and renames the business to the name typed', async () => {
+  it('sends a new business to the setup page, which comes back here', async () => {
     const { manager } = makeManager();
     renderPage(manager);
     expect(await screen.findByRole('heading', { name: 'Set up My business' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Business or personal name')).toHaveValue('My business');
-    await userEvent.click(screen.getByRole('radio', { name: /Not registered for GST/ }));
-    await userEvent.clear(screen.getByLabelText('Business or personal name'));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Terra Studio');
-    await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
-    await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
-    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByText(/^Saved\./)).toBeInTheDocument();
-    await waitFor(() => expect(latest.current?.name).toBe('Terra Studio'));
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'This business' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Set up this business' })).toHaveAttribute('href', SETUP);
+    expect(screen.queryByLabelText('Business or personal name')).not.toBeInTheDocument();
   });
 
-  it('shows the saved details, tags each section with the tools that use it, and leaves a deliberate business name alone', async () => {
+  it('offers to finish setup when a detail some tool needs is missing', async () => {
     const { manager } = makeManager();
-    await manager.list();
-    await manager.rename('default', 'Front desk');
-    await seed(manager, 'default', makeSeller({ name: 'Asha Rao Consulting' }));
+    await seed(manager, 'default', makeSeller({ email: undefined }));
     renderPage(manager);
-    expect(await screen.findByLabelText('Business or personal name')).toHaveValue('Asha Rao Consulting');
-    expect(screen.getByRole('group', { name: 'Payment details' })).not.toHaveTextContent('Contracts');
-    expect(screen.getByRole('group', { name: 'Business details' })).toHaveTextContent('Contracts');
-    await userEvent.clear(screen.getByLabelText('Business or personal name'));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Asha Rao Advisory');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await screen.findByText(/^Saved\./);
-    expect(latest.current?.name).toBe('Front desk');
-    expect((await createInvoiceStorage(await manager.openStore('default')).profile.get())?.name).toBe('Asha Rao Advisory');
+    expect(await screen.findByRole('link', { name: 'Finish setup' })).toHaveAttribute('href', SETUP);
   });
 
-  it('keeps the link to the brand theme when the form is saved again', async () => {
+  it('summarises the saved details, with a link to change each part on the setup page', async () => {
     const { manager } = makeManager();
-    const storage = await seed(manager, 'default', makeSeller({ brand: { primary: '#7C2D12' }, brandSource: 'manual', brandTheme: { themeId: 't1', signature: 's' } }));
+    await seed(manager, 'default', makeSeller({ name: 'Asha Rao Consulting', brand: { primary: '#7C2D12' }, brandSource: 'manual' }));
     renderPage(manager);
-    await userEvent.type(await screen.findByLabelText('Phone'), '9999999999');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await screen.findByText(/^Saved\./);
-    expect((await storage.profile.get())?.brandTheme).toEqual({ themeId: 't1', signature: 's' });
-  });
-
-  it('offers the brand theme under the brand colours, and makes it', async () => {
-    const { manager } = makeManager();
-    const storage = await seed(manager, 'default', makeSeller({ brand: { primary: '#7C2D12' }, brandSource: 'manual' }));
-    renderPage(manager);
-    await userEvent.click(await screen.findByRole('button', { name: 'Create a Brand theme' }));
-    expect(await screen.findByText(/Created the theme "Asha Rao Consulting brand"/)).toBeInTheDocument();
-    expect((await storage.themes.list()).map((theme) => theme.name)).toEqual(['Asha Rao Consulting brand']);
+    expect(await screen.findByRole('heading', { name: 'This business' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Edit details' })).toHaveAttribute('href', SETUP);
+    const summary = screen.getByText('Asha Rao Consulting').closest('dl')!;
+    expect(summary).toHaveTextContent('Regular GST registration · GSTIN 27AAPFU0939F1ZV');
+    expect(summary).toHaveTextContent('Asha Rao Consulting');
+    expect(summary).toHaveTextContent('12 Linking Road, Mumbai, 400050, Maharashtra');
+    expect(summary).toHaveTextContent('HDFC Bank account ending 9012, UPI asha@okhdfc');
+    // Only the end of the account number, in case the page is on a shared screen.
+    expect(summary).not.toHaveTextContent('123456789012');
+    expect(screen.getByRole('link', { name: 'Change getting paid' })).toHaveAttribute('href', `${SETUP}&step=payments`);
+    expect(screen.getByRole('link', { name: 'Change logo and brand colours' })).toHaveAttribute('href', `${SETUP}&step=brand`);
+    expect(screen.queryByLabelText('Business or personal name')).not.toBeInTheDocument();
   });
 
   it('has the backup section for this business, naming it', async () => {
@@ -154,16 +140,16 @@ describe('BusinessPage', () => {
     expect(window.location.hash).toBe('');
   });
 
-  it('adds a business from the flow and shows its own, empty, setup', async () => {
+  it('adds a business from the flow and sends it to its own setup', async () => {
     const { manager } = makeManager();
     await seed(manager, 'default');
     window.location.hash = '#add';
     renderPage(manager);
     await userEvent.type(await screen.findByLabelText(/Business name/), 'Studio Two');
     await userEvent.click(screen.getByRole('button', { name: 'Create business' }));
-    expect(await screen.findByRole('heading', { name: 'Set up Studio Two' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Business or personal name')).toHaveValue('Studio Two');
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(SETUP));
     expect(latest.current?.name).toBe('Studio Two');
+    expect(latest.current?.nameInSync).toBe(true);
   });
 
   it('reacts to the hash changing while open', async () => {
@@ -176,43 +162,5 @@ describe('BusinessPage', () => {
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
     expect(await screen.findByRole('heading', { name: 'Add a business' })).toBeInTheDocument();
-  });
-
-  it('a business added with a custom name keeps following the profile name while it is in step, until it is renamed on purpose', async () => {
-    const { manager } = makeManager();
-    await seed(manager, 'default');
-    window.location.hash = '#add';
-    renderPage(manager);
-    await userEvent.type(await screen.findByLabelText(/Business name/), 'Studio Two');
-    await userEvent.click(screen.getByRole('button', { name: 'Create business' }));
-    await screen.findByRole('heading', { name: 'Set up Studio Two' });
-    expect(latest.current?.nameInSync).toBe(true);
-
-    // First save of the setup step: the profile name differs from the suggestion.
-    await userEvent.click(screen.getByRole('radio', { name: /Not registered for GST/ }));
-    await userEvent.clear(screen.getByLabelText('Business or personal name'));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Studio Two Design');
-    await userEvent.type(screen.getByLabelText('Address line 1'), '4 Park Street');
-    await userEvent.type(screen.getByLabelText('City'), 'Kolkata');
-    await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    await waitFor(() => expect(latest.current?.name).toBe('Studio Two Design'));
-
-    // A later edit of the profile name is followed too.
-    await userEvent.clear(await screen.findByLabelText('Business or personal name'));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Studio Two Design LLP');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(latest.current?.name).toBe('Studio Two Design LLP'));
-    expect(latest.current?.nameInSync).toBe(true);
-
-    // Renaming it on purpose ends the following.
-    await act(async () => {
-      await latest.rename(latest.current!.id, 'Front desk');
-    });
-    expect(latest.current?.nameInSync).toBe(false);
-    await userEvent.clear(await screen.findByLabelText('Business or personal name'));
-    await userEvent.type(screen.getByLabelText('Business or personal name'), 'Something else');
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await screen.findByText(/^Saved./);
-    expect(latest.current?.name).toBe('Front desk');
   });
 });

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
 import { expect, type Download, type Page } from '@playwright/test';
+import { completeSetup } from './setup-helpers';
 
 /** Every flate-compressed stream in a PDF, decompressed and joined, so drawing colours can be looked for. */
 export function pdfContent(data: Buffer): string {
@@ -55,15 +56,15 @@ export async function makeLogoPng(page: Page): Promise<Buffer> {
   return Buffer.from(base64, 'base64');
 }
 
-/** Sets up the current Business on /business/ with an unregistered seller. Leaves the page on /business/. */
-export async function saveBusinessDetails(page: Page, details: { name: string; line1?: string; city?: string; email?: string; gst?: boolean }) {
-  if (details.gst !== false) await page.getByRole('radio', { name: /Not registered for GST/ }).check();
-  await page.getByLabel('Business or personal name').fill(details.name);
-  await page.getByLabel('Address line 1').fill(details.line1 ?? '4 Park Street');
-  await page.getByLabel('City', { exact: true }).fill(details.city ?? 'Kolkata');
-  if (details.email) await page.getByLabel('Email', { exact: true }).fill(details.email);
-  await page.getByRole('button', { name: /^Save (and continue|changes)$/ }).click();
-  await expect(page.getByText(/^Saved\./)).toBeVisible();
+/**
+ * Sets up the current Business through the setup page and comes back to /business/. Starts from wherever the page is:
+ * already on the setup page (adding a business goes there), or anywhere else. Leaves the page on /business/.
+ */
+export async function saveBusinessDetails(page: Page, details: { name: string; line1?: string; city?: string; email?: string }) {
+  if (!new URL(page.url()).pathname.startsWith('/setup/')) await page.goto('/setup/?next=%2Fbusiness%2F');
+  await completeSetup(page, { gst: 'unregistered', ...details });
+  await expect(page).toHaveURL(/\/business\/$/);
+  await expect(page.getByRole('heading', { name: 'This business' })).toBeVisible();
 }
 
 export async function openSwitcher(page: Page) {
