@@ -282,6 +282,8 @@ test.describe('several businesses', () => {
     await page.goto('/app/business/#add');
     await page.getByLabel('Business name').fill('Doomed Co');
     await page.getByRole('button', { name: 'Create business' }).click();
+    // A new business goes to its own setup; wait for that page before filling it in.
+    await expect(page).toHaveURL(/\/app\/setup\//);
     await saveBusinessDetails(page, { name: 'Doomed Co' });
     await page.goto('/app/invoice/');
     await startDocument(page, 'Invoice');

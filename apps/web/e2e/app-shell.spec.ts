@@ -18,7 +18,8 @@ test.describe('the app under /app/', () => {
 
     // Unsaved work in an editor: the app asks first.
     await nav.getByRole('link', { name: 'Invoices' }).click();
-    await startDocument(page, 'Tax invoice');
+    // An unregistered seller (the default in onboardInvoice) makes plain invoices.
+    await startDocument(page, 'Invoice');
     await page.getByLabel('Client name').fill('Half typed');
     await nav.getByRole('link', { name: 'Home' }).click();
     const dialog = page.getByRole('alertdialog', { name: 'Leave this page?' });
