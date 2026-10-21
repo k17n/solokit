@@ -1,9 +1,32 @@
 import { expect, test } from '@playwright/test';
-import { continueTo, onStep } from './setup-helpers';
+import { completeSetup, continueTo, onStep } from './setup-helpers';
 
 const shots = 'e2e-screenshots';
 
 test.describe('first run: the business setup before any tool', () => {
+  test('Get started on the home page runs the setup, then lists the tools to open', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('main').getByRole('link', { name: 'Get started' }).click();
+    await expect(page).toHaveURL(/\/setup\/\?next=%2Fapp%2F%3Fwelcome%3D1$/);
+    await expect(page.getByText(/When you finish, you will see the tools you can use/)).toBeVisible();
+    await completeSetup(page, { name: 'Meera Iyer Studio' });
+
+    await expect(page).toHaveURL(/\/app\/\?welcome=1$/);
+    await expect(page.getByText('Meera Iyer Studio is set up')).toBeVisible();
+    const ready = page.getByRole('region', { name: 'Ready to use' });
+    await expect(ready.getByRole('link')).toHaveCount(2);
+    await page.screenshot({ path: `${shots}/app-home.png`, fullPage: true });
+
+    // Get started again, as a returning visitor: straight to the tools, no setup and no welcome.
+    await page.goto('/');
+    await page.getByRole('banner').getByRole('link', { name: 'Get started' }).click();
+    await expect(page).toHaveURL(/\/app\/$/);
+    await expect(page.getByText('Meera Iyer Studio is set up')).toHaveCount(0);
+    await ready.getByRole('link', { name: /Invoice generator/ }).click();
+    await expect(page).toHaveURL(/\/tools\/invoice\/$/);
+    await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+  });
+
   test('a new visitor is sent from the tool to setup, sets up an unregistered business step by step, and is brought back', async ({ page }) => {
     await page.goto('/tools/invoice/');
     await expect(page).toHaveURL(/\/setup\/\?next=%2Ftools%2Finvoice%2F$/);
@@ -62,7 +85,7 @@ test.describe('first run: the business setup before any tool', () => {
     await continueTo(page, 'Getting paid');
     await continueTo(page, 'Invoice defaults');
     await page.getByRole('button', { name: 'Finish setup' }).click();
-    await expect(page).toHaveURL(/\/#tools$/);
+    await expect(page).toHaveURL(/\/app\/\?welcome=1$/);
 
     await page.goto('/business/');
     await expect(page.locator('#details dl')).toContainText('GSTIN 27AAPFU0939F1ZV');

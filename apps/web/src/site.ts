@@ -8,8 +8,9 @@ export const HEADER_PROPS: SiteHeaderProps = {
     { label: 'Your business', href: '/business/' },
     { label: 'Privacy', href: '/privacy/' },
   ],
-  // Several tools share the site, so the call to action does not name one.
-  cta: { label: 'Open a tool', href: '/#tools' },
+  // Several tools share the site, so the call to action does not name one: it opens the app home, which runs the
+  // business setup first for a new visitor and then lists the tools.
+  cta: { label: 'Get started', href: '/app/' },
 };
 
 export function getFooterProps(): SiteFooterProps {

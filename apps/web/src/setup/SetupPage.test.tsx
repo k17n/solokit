@@ -87,12 +87,12 @@ describe('SetupPage: the first time', () => {
     expect((await storage.settings.get()).onboarded).toBe(true);
   });
 
-  it('goes to the tools when it was opened on its own', async () => {
+  it('goes to the app home, welcoming the person, when it was opened on its own', async () => {
     at('/setup/');
     renderSetup();
     await walkThrough();
     await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/#tools'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/?welcome=1'));
   });
 
   it('never sends people to another site after setup', async () => {
@@ -100,7 +100,7 @@ describe('SetupPage: the first time', () => {
     renderSetup();
     await walkThrough();
     await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/#tools'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/?welcome=1'));
   });
 
   it('starts the name with the business name, and renames the business to the name typed', async () => {

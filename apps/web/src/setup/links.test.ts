@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readSetupQuery, returnLabel, safeReturnPath, setupHref } from './links';
+import { isToolPath, readSetupQuery, returnLabel, safeReturnPath, setupHref } from './links';
 
 describe('setup links', () => {
   it('builds the setup address with where to come back to and a step', () => {
@@ -25,6 +25,14 @@ describe('setup links', () => {
     expect(returnLabel('/tools/invoice/')).toBe('Invoice generator');
     expect(returnLabel('/tools/contract/')).toBe('Contract and NDA generator');
     expect(returnLabel('/business/')).toBe('Your business');
+    expect(returnLabel('/app/')).toBe('your tools');
+    expect(returnLabel('/app/?welcome=1')).toBe('your tools');
     expect(returnLabel('/privacy/')).toBe('where you were');
+  });
+
+  it('tells tools apart from other pages', () => {
+    expect(isToolPath('/tools/invoice/')).toBe(true);
+    expect(isToolPath('/app/')).toBe(false);
+    expect(isToolPath('/business/')).toBe(false);
   });
 });

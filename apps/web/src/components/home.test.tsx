@@ -7,7 +7,7 @@ describe('Home page', () => {
   it('leads with the promise and the main call to action', () => {
     render(<Home />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Paperwork for one-person businesses.');
-    expect(screen.getByRole('link', { name: 'Create an invoice' })).toHaveAttribute('href', '/tools/invoice/');
+    expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/app/');
     expect(screen.getByRole('link', { name: 'See all tools' })).toHaveAttribute('href', '/#tools');
   });
 

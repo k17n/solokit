@@ -1,4 +1,4 @@
-import { toolHref } from '@solokit/registry';
+import { APP_HOME } from '../setup/links';
 import { AppFrame } from './AppFrame';
 import { TrustStrip } from './TrustStrip';
 import styles from './Hero.module.css';
@@ -29,8 +29,9 @@ export function Hero() {
           device.
         </p>
         <div className={styles.actions}>
-          <a className={`${styles.pill} ${styles.solid}`} href={toolHref('invoice')}>
-            Create an invoice
+          {/* The app home sends a new visitor through the one-time business setup first, then lists the tools. */}
+          <a className={`${styles.pill} ${styles.solid}`} href={APP_HOME}>
+            Get started
           </a>
           <a className={`${styles.pill} ${styles.outline}`} href="/#tools">
             See all tools

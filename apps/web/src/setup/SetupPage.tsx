@@ -11,7 +11,7 @@ import { emptyProfileForm, profileToForm } from '../business/profileFormState';
 import { useProfileSaver } from '../business/useProfileSaver';
 import { useInvoiceStorage } from '../invoice/useInvoiceStorage';
 import { useStorage } from '../workspace/WorkspaceProvider';
-import { readSetupQuery, returnLabel, type SetupStep } from './links';
+import { AFTER_FIRST_SETUP, isToolPath, readSetupQuery, returnLabel, type SetupStep } from './links';
 import { navigate } from './navigate';
 import styles from './SetupPage.module.css';
 
@@ -39,7 +39,7 @@ export function SetupPage() {
   const afterRestore = useRef(false);
   const saveBusiness = useProfileSaver(storage);
 
-  const destination = query.next ?? (mode === 'edit' ? '/business/' : '/#tools');
+  const destination = query.next ?? (mode === 'edit' ? '/business/' : AFTER_FIRST_SETUP);
 
   useEffect(() => {
     if (!storage) return;
@@ -53,7 +53,7 @@ export function SetupPage() {
         setMode(isComplete(loaded) ? 'edit' : 'setup');
         if (afterRestore.current) {
           afterRestore.current = false;
-          if (isComplete(loaded)) navigate(query.next ?? '/#tools');
+          if (isComplete(loaded)) navigate(query.next ?? AFTER_FIRST_SETUP);
           else setRestoredIncomplete(true);
         }
       },
@@ -129,13 +129,14 @@ export function SetupPage() {
         {mode === 'setup' ? (
           <>
             <p>
-              {label ? (
+              {label && query.next && isToolPath(query.next) ? (
                 <>
                   Before you open the <strong>{label}</strong>, tell SoloKit about your business.{' '}
                 </>
               ) : null}
               You do this once: every tool reads these details, so none of them asks again. It takes about two minutes, and
               everything stays on this device.
+              {query.next && isToolPath(query.next) ? null : ' When you finish, you will see the tools you can use.'}
             </p>
             {profile === null ? (
               <div>

@@ -160,3 +160,33 @@ Cloudflare Web Analytics only counts page views, so most of these need a privacy
 - Share of first-run visitors who finish setup.
 - Share of issued invoices later marked paid (once paid status exists).
 - Return visits per week per device.
+
+## Update: setup first, then the app (2026-10-21)
+
+Done on this branch:
+- One business setup before any tool, at `/setup/`, in five steps (tax registration, business details, then optional logo and brand colours, payment details, invoice defaults). Tools no longer have their own profile form.
+- "Get started" (home page hero and header) opens `/app/`, the app home. A new visitor is sent through setup first and lands back on `/app/` with a welcome; a returning visitor goes straight there. The app home shows the business, what is saved in each ready tool, a backup reminder, and the tools coming soon.
+
+## Site or SPA: recommendation
+
+Keep two halves, and make the second one a proper app:
+
+| | Marketing site | The app |
+|---|---|---|
+| Pages | `/`, `/privacy/`, one landing page per tool (`/tools/invoice/` content for search) | `/app/` and everything under it |
+| Rendering | Static HTML, indexed by search engines | Client-rendered, `noindex`, works offline |
+| Chrome | Big hero, marketing footer | Compact app shell: sidebar or top bar with Home, Invoices, Agreements, Business, and the business switcher; slim footer |
+| Navigation | Normal page loads | Client-side routes inside one shell, so the database, providers and switcher stay open and moving between tools is instant |
+
+Why not one or the other:
+- **Everything as one SPA** hurts the pages people find through search ("GST invoice generator free"): they need real HTML with content, fast first paint and no JavaScript wall. It also makes the first visit heavier.
+- **Everything as separate pages (today)** reopens IndexedDB and every provider on each page load, cannot keep state between tools, and makes each tool page do two jobs at once: landing page (large hero, marketing footer) and workspace. The Back button and refresh also lose the place inside a tool, because list, editor and viewer are not URLs.
+
+How to get there from here, in small steps:
+1. **Done:** `/app/` as the app home behind "Get started".
+2. Move the tools into the app as routes, `/app/invoices/` and `/app/agreements/`, inside a shared app layout (`app/app/layout.tsx`) with the compact shell. Next.js keeps the layout mounted on client navigation, so providers and the database stay open.
+3. Give each view a URL that works with the static export: `/app/invoices/?doc=<id>&mode=edit`, `/app/invoices/new/?kind=quote`. Back, refresh and bookmarks then work.
+4. Turn `/tools/invoice/` and `/tools/contract/` back into landing pages for search: what the tool does, screenshots, FAQ, and an "Open in SoloKit" button into `/app/`. Old links into the tools keep working by forwarding to the app route.
+5. Move `/setup/` and `/business/` under the app shell as well (`/app/setup/`, `/app/business/`), so the whole signed-in-feeling experience shares one frame.
+
+This keeps search traffic, gives a fast app feel, and fits the current static export and offline service worker without a server.
