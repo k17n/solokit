@@ -339,7 +339,7 @@ test.describe('several businesses', () => {
     await summary.getByRole('button', { name: 'Restore as a new business' }).click();
     await expect(page.getByText('Backup restored as a new business')).toBeVisible();
     await page.getByRole('region', { name: 'Restore from a backup' }).getByRole('button', { name: 'Switch to Source Co (restored)' }).click();
-    await expect(page.getByRole('banner').getByRole('button', { name: 'Business Source Co (restored)' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: 'Business Source Co (restored)' })).toBeVisible();
 
     // Two businesses now: the copy is told apart by its name.
     await openSwitcher(page);

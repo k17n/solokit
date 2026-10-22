@@ -49,6 +49,8 @@ test.describe('the app under /app/', () => {
     await expect(page).toHaveURL(/\/app\/invoice\/$/);
     await expect(page.getByRole('heading', { name: 'New quotation' })).toBeVisible();
     await page.getByLabel('Client name').fill('Northwind');
+    await page.getByLabel('Description').first().fill('Website redesign');
+    await page.getByLabel(/^Rate \(/).first().fill('45000');
     await page.getByRole('button', { name: 'Save draft' }).click();
     await expect(page.getByText('Draft saved')).toBeVisible();
 
@@ -66,6 +68,7 @@ test.describe('the app under /app/', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'New mutual NDA' })).toBeVisible();
     await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Home' }).click();
     await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Invoices' }).click();
+    await expect(page.getByRole('button', { name: 'Documents' })).toBeVisible();
     await page.keyboard.press('Control+k');
     await expect(page).toHaveURL(/\/app\/#search$/);
     await expect(page.getByRole('searchbox', { name: 'Search tools and actions' })).toBeFocused();
