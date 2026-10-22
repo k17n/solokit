@@ -217,3 +217,8 @@
   color: var(--ds-text-2);
   border-top: 1px solid var(--ds-border);
 }
+
+/* The header's "How it works" links here; leave room for the sticky header. */
+.section {
+  scroll-margin-top: 4rem;
+}

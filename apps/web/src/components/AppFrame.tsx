@@ -2,7 +2,7 @@ import { ReceiptDemo } from './ReceiptDemo';
 import { ToolIcon } from './ToolIcon';
 import styles from './AppFrame.module.css';
 
-const NAV = ['Home', 'Invoices', 'Quotations', 'Agreements'] as const;
+const NAV = ['Home', 'Invoices', 'Agreements', 'Your business'] as const;
 const TOOLS = [
   { slug: 'invoice', label: 'Invoices', soon: false },
   { slug: 'contract', label: 'Contracts', soon: false },
@@ -30,7 +30,7 @@ export function AppFrame() {
             <span className={styles.caret}>⌄</span>
           </div>
           <div className={styles.quick}>
-            <span>Quick actions</span>
+            <span>Search tools</span>
             <kbd>⌘K</kbd>
           </div>
           <ul className={styles.nav}>

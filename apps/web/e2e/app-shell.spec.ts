@@ -30,7 +30,45 @@ test.describe('the app under /app/', () => {
     await nav.getByRole('link', { name: 'Home' }).click();
     await dialog.getByRole('button', { name: 'Leave without saving' }).click();
     await expect(page).toHaveURL(/\/app\/$/);
-    await expect(page.getByRole('region', { name: 'Ready to use' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Quick actions' })).toBeVisible();
+  });
+
+  test('the home searches tools and actions, starts documents, and lists them as recent', async ({ page }) => {
+    await onboardInvoice(page);
+    await page.goto('/app/');
+    await expect(page.getByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening), Asha Rao Consulting$/ })).toBeVisible();
+    await page.screenshot({ path: 'e2e-screenshots/app-home.png', fullPage: true });
+
+    // "/" focuses the search; Enter opens the best match.
+    await page.keyboard.press('/');
+    const search = page.getByRole('searchbox', { name: 'Search tools and actions' });
+    await expect(search).toBeFocused();
+    await search.fill('quotation');
+    await expect(page.getByRole('region', { name: 'Results for “quotation”' }).getByRole('link').first()).toContainText('New quotation');
+    await search.press('Enter');
+    await expect(page).toHaveURL(/\/app\/invoice\/$/);
+    await expect(page.getByRole('heading', { name: 'New quotation' })).toBeVisible();
+    await page.getByLabel('Client name').fill('Northwind');
+    await page.getByRole('button', { name: 'Save draft' }).click();
+    await expect(page.getByText('Draft saved')).toBeVisible();
+
+    // Back home: the draft is in Recent, and opens in the editor.
+    await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Home' }).click();
+    const recent = page.getByRole('region', { name: 'Recent' });
+    await expect(recent.getByRole('link')).toHaveCount(1);
+    await recent.getByRole('link').click();
+    await expect(page.getByRole('heading', { name: 'Edit draft' })).toBeVisible();
+    await expect(page.getByLabel('Client name')).toHaveValue('Northwind');
+
+    // A quick action starts a new agreement; Ctrl+K from a tool comes back to the search.
+    await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Home' }).click();
+    await page.getByRole('region', { name: 'Quick actions' }).getByRole('link', { name: /New mutual NDA/ }).click();
+    await expect(page.getByRole('heading', { level: 2, name: 'New mutual NDA' })).toBeVisible();
+    await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Home' }).click();
+    await page.getByRole('navigation', { name: 'App' }).getByRole('link', { name: 'Invoices' }).click();
+    await page.keyboard.press('Control+k');
+    await expect(page).toHaveURL(/\/app\/#search$/);
+    await expect(page.getByRole('searchbox', { name: 'Search tools and actions' })).toBeFocused();
   });
 
   test('old addresses forward into the app, and the tool landing pages open it', async ({ page }) => {
@@ -56,9 +94,19 @@ test.describe('the app under /app/', () => {
     await onboardInvoice(page);
     for (const path of ['/app/', '/app/contract/', '/app/business/']) {
       await page.goto(path);
-      await expect(page.getByRole('navigation', { name: 'App' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'App' })).toBeHidden();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     }
     await page.screenshot({ path: 'e2e-screenshots/app-shell-mobile.png', fullPage: true });
+
+    // The sidebar is a drawer behind Menu; a page closes it.
+    await page.getByRole('button', { name: 'Menu' }).click();
+    const nav = page.getByRole('navigation', { name: 'App' });
+    await expect(nav).toBeVisible();
+    await page.screenshot({ path: 'e2e-screenshots/app-shell-mobile-menu.png' });
+    await nav.getByRole('link', { name: 'Agreements' }).click();
+    await expect(page).toHaveURL(/\/app\/contract\/$/);
+    await expect(nav).toBeHidden();
   });
 });

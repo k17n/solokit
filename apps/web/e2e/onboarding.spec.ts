@@ -13,7 +13,7 @@ test.describe('first run: the business setup before any tool', () => {
 
     await expect(page).toHaveURL(/\/app\/\?welcome=1$/);
     await expect(page.getByText('Meera Iyer Studio is set up')).toBeVisible();
-    const ready = page.getByRole('region', { name: 'Ready to use' });
+    const ready = page.getByRole('region', { name: 'Your tools' });
     await expect(ready.getByRole('link')).toHaveCount(2);
     await page.screenshot({ path: `${shots}/app-home.png`, fullPage: true });
 

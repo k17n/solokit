@@ -6,6 +6,7 @@ import { missingForSetup, type BusinessProfile } from '@solokit/profile';
 import { toolAppHref } from '../paths';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
+import { takeDeepLink } from '../app-shell/deepLinks';
 import { setupHref } from '../setup/links';
 import { SetupRequired } from '../setup/SetupRequired';
 import { InvoiceEditor } from './InvoiceEditor';
@@ -27,6 +28,8 @@ const TABS: { label: string; target: View; current: View['name'][] }[] = [
 
 const HOME = toolAppHref('invoice');
 
+const KINDS: readonly string[] = ['invoice', 'quote', 'proforma'] satisfies InvoiceKind[];
+
 export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: () => Date } = {}) {
   const { storage, store, ready, persistent } = useInvoiceStorage();
   const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
@@ -36,6 +39,8 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const asked = useRef(false);
+  const linked = useRef(false);
+  const setUp = profile !== undefined && profile !== null && missingForSetup(profile).length === 0;
 
   useEffect(() => {
     if (!storage) return;
@@ -63,6 +68,26 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
     }
   }, [ready, persistent, profile]);
 
+  // A link from the app home: start a new document of a kind, or open a saved one. Read once, when the tool is ready.
+  useEffect(() => {
+    if (!storage || !setUp || linked.current) return;
+    linked.current = true;
+    const link = takeDeepLink();
+    if (link.new && KINDS.includes(link.new)) {
+      setNewCount((count) => count + 1);
+      setView({ name: 'new', kind: link.new as InvoiceKind });
+      return;
+    }
+    const id = link.doc;
+    if (!id) return;
+    storage.invoices.get(id).then(
+      (found) => {
+        if (found) setView(found.status === 'draft' ? { name: 'edit', id } : { name: 'view', id });
+      },
+      (error: unknown) => console.error('Could not open the linked document', error),
+    );
+  }, [storage, setUp]);
+
   if (loadFailed && profile === undefined) {
     return (
       <div className={styles.app}>
@@ -87,7 +112,8 @@ export function InvoiceApp({ renderPdf, now }: { renderPdf?: PdfRenderer; now?: 
   if (!ready || !storage || profile === undefined) return <p>Opening your invoices…</p>;
 
   // The business details are entered once, on the setup page, before any tool is used. It brings the person back here.
-  if (profile === null || missingForSetup(profile).length > 0) return <SetupRequired returnTo={HOME} />;
+  // Keeps a deep link (?new=, ?doc=) so it still works after setup.
+  if (profile === null || !setUp) return <SetupRequired returnTo={`${HOME}${window.location.search}`} />;
 
   return (
     <div className={styles.app}>

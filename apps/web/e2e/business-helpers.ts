@@ -67,8 +67,11 @@ export async function saveBusinessDetails(page: Page, details: { name: string; l
   await expect(page.getByRole('heading', { name: 'This business' })).toBeVisible();
 }
 
+/** The business switcher in the app's sidebar. On a phone the sidebar is a drawer, so this opens the Menu first. */
 export async function openSwitcher(page: Page) {
-  const trigger = page.getByRole('banner').getByRole('button', { name: /^Business\b/ });
+  const menu = page.getByRole('button', { name: 'Menu' });
+  if (await menu.isVisible()) await menu.click();
+  const trigger = page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business\b/ });
   await trigger.click();
   return trigger;
 }

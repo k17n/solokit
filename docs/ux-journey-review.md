@@ -192,3 +192,10 @@ How to get there from here, in small steps:
 Why a path and not a subdomain (`app.trysolokit.com`): everything is stored in the browser per origin, so a subdomain would start every existing user with an empty app unless their data is migrated across. Revisit only if the marketing site moves to another stack or accounts and server sync arrive.
 
 This keeps search traffic, gives a fast app feel, and fits the current static export and offline service worker without a server.
+
+## Update: website and SaaS app (2026-10-22)
+
+- `/` is the website only: its header has Tools, How it works, Privacy and Get started, and nothing that reads a business.
+- `/app/` is a SaaS-style app with a sidebar (business switcher, search with Ctrl/⌘+K, Home, Invoices, Agreements, Your business, coming soon) that becomes a drawer behind Menu on phones.
+- The app home is a dashboard: a greeting, a search for tools and actions, quick actions that start a document, the five latest documents, the tools with what is saved in each, and the backup reminder.
+- Tools open at a screen from a link (`?new=<kind>`, `?doc=<id>`), which the home's actions and Recent list use. This is the first part of step 3 above (URLs for every view); edit and view screens still do not change the address as you move inside a tool.

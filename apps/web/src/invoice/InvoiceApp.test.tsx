@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryStore, type DataStore } from '@solokit/storage';
@@ -288,5 +288,42 @@ describe('InvoiceApp: themes and backup tabs', () => {
     expect((await createInvoiceStorage(store).profile.get())?.name).toBe('Restored Co');
     expect(screen.getByRole('navigation', { name: 'Invoice tool' })).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('InvoiceApp: links from the app home', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  async function openAt(url: string, invoices: ReturnType<typeof makeInvoice>[] = []) {
+    const store = createMemoryStore();
+    await seedProfile(store);
+    for (const invoice of invoices) await createInvoiceStorage(store).invoices.save(invoice);
+    window.history.replaceState(null, '', url);
+    renderApp(store);
+  }
+
+  it('starts a new document of the kind in ?new=, then takes it out of the address', async () => {
+    await openAt('/app/invoice/?new=quote');
+    expect(await screen.findByRole('heading', { name: 'New quotation' })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+
+  it('opens a draft from ?doc= in the editor, and an issued one in the viewer', async () => {
+    await openAt('/app/invoice/?doc=d1', [makeInvoice({ id: 'd1', number: '2026-27/0005', status: 'draft' })]);
+    expect(await screen.findByRole('heading', { name: 'Edit draft' })).toBeInTheDocument();
+    cleanup();
+    await openAt('/app/invoice/?doc=i1', [makeInvoice({ id: 'i1', status: 'issued' })]);
+    expect(await screen.findByRole('heading', { name: '2026-27/0001' })).toBeInTheDocument();
+  });
+
+  it('shows the list for a kind or a document it does not know', async () => {
+    await openAt('/app/invoice/?new=receipt&doc=missing');
+    expect(await screen.findByRole('heading', { name: 'Start your first document' })).toBeInTheDocument();
+  });
+
+  it('keeps the link through setup', async () => {
+    window.history.replaceState(null, '', '/app/invoice/?new=quote');
+    renderApp();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/app/setup/?next=%2Fapp%2Finvoice%2F%3Fnew%3Dquote', { replace: true }));
   });
 });

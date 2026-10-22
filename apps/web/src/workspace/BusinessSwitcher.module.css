@@ -167,3 +167,26 @@
     max-width: none;
   }
 }
+
+/* In the app's sidebar: the full width of the sidebar, and the menu opens below it towards the page. */
+.wrap[data-placement='sidebar'] {
+  position: relative;
+  display: block;
+}
+
+.wrap[data-placement='sidebar'] .trigger {
+  justify-content: flex-start;
+  width: 100%;
+  max-width: none;
+  border-radius: 0.6rem;
+}
+
+.wrap[data-placement='sidebar'] .name {
+  flex: 1;
+  text-align: left;
+}
+
+.wrap[data-placement='sidebar'] .panel {
+  right: auto;
+  left: 0;
+}

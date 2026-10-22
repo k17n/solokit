@@ -73,3 +73,26 @@ describe('the contract tool and the business setup', () => {
     expect(await screen.findByRole('navigation', { name: 'Contract tool' })).toBeInTheDocument();
   });
 });
+
+describe('the contract tool and links from the app home', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('starts a new agreement of the kind in ?new=, and opens a saved one from ?doc=', async () => {
+    const store = createMemoryStore();
+    await createInvoiceStorage(store).profile.save(makeSeller());
+    await createContractStorage(store, { now: () => NOW }).save(makeContract('nda-mutual', { id: 'c1', title: 'Old NDA' }));
+    window.history.replaceState(null, '', '/app/contract/?new=services');
+    renderContract(store);
+    expect(await screen.findByRole('heading', { level: 2, name: /^New freelance services agreement/i })).toBeInTheDocument();
+    expect(window.location.search).toBe('');
+  });
+
+  it('opens a draft agreement from ?doc= in the editor', async () => {
+    const store = createMemoryStore();
+    await createInvoiceStorage(store).profile.save(makeSeller());
+    await createContractStorage(store, { now: () => NOW }).save(makeContract('nda-mutual', { id: 'c1', title: 'Old NDA' }));
+    window.history.replaceState(null, '', '/app/contract/?doc=c1');
+    renderContract(store);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Edit draft' })).toBeInTheDocument();
+  });
+});

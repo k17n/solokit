@@ -97,7 +97,7 @@ test.describe('an existing user keeps everything', () => {
     await expect(page.getByRole('button', { name: 'Documents', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('listitem').filter({ hasText: '2026-27/0001' })).toBeVisible();
     await expect(page).toHaveURL(/\/app\/invoice\/$/);
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business Legacy Studio/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business Legacy Studio/ })).toBeVisible();
 
     // The old database is still the one in use; only the small list of businesses was added.
     expect(await databaseNames(page)).toEqual(['solokit', 'solokit-workspaces']);
@@ -107,7 +107,7 @@ test.describe('an existing user keeps everything', () => {
     await expect(page.locator('#details dl')).toContainText('legacy@example.com');
 
     await page.reload();
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business Legacy Studio/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business Legacy Studio/ })).toBeVisible();
     expect(problems).toEqual([]);
   });
 });
@@ -122,7 +122,7 @@ test.describe('the business page: logo, brand colours and a brand theme', () => 
 
     const accent = await brandedBusiness(page, 'Terra Studio');
     // The switcher follows the name typed into the profile, because the business still had its placeholder name.
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business Terra Studio/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business Terra Studio/ })).toBeVisible();
 
     // The logo's colours were read by the browser itself, from a real image.
     const swatches = page.getByRole('list', { name: 'Colours found in your logo' }).getByRole('listitem');
@@ -211,12 +211,12 @@ test.describe('several businesses', () => {
     await page.getByRole('button', { name: 'Create business' }).click();
     // A new business goes straight to its own setup, and comes back to Your business.
     await expect(page).toHaveURL(/\/app\/setup\/\?next=%2Fapp%2Fbusiness%2F$/);
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business Second Co/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business Second Co/ })).toBeVisible();
     await saveBusinessDetails(page, { name: 'Second Co', line1: '9 Hill Road', city: 'Pune' });
 
     // Separate data: the invoice list of the second business is empty.
     await page.goto('/app/invoice/');
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business Second Co/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business Second Co/ })).toBeVisible();
     await expect(page.getByRole('listitem').filter({ hasText: number })).toHaveCount(0);
     await page.goto('/app/business/');
     await expect(page.locator('#details dl')).toContainText('9 Hill Road');
@@ -237,7 +237,7 @@ test.describe('several businesses', () => {
 
     // The choice is remembered across a reload; Escape closes the menu and returns focus.
     await page.reload();
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business First Co/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business First Co/ })).toBeVisible();
     const again = await openSwitcher(page);
     await page.keyboard.press('Escape');
     await expect(again).toBeFocused();
@@ -309,7 +309,7 @@ test.describe('several businesses', () => {
     await expect(page.getByText('Deleted "Doomed Co" from this device. Now showing another business.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Your businesses' })).toBeFocused();
     await expect(list.getByText('Doomed Co')).toHaveCount(0);
-    await expect(page.getByRole('banner').getByRole('button', { name: /^Business Keep Co/ })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'SoloKit app' }).getByRole('button', { name: /^Business Keep Co/ })).toBeVisible();
 
     // The data is really gone from the browser, and the last business cannot be deleted.
     expect((await databaseNames(page)).filter((name) => name.startsWith('solokit-ws-'))).toEqual([]);

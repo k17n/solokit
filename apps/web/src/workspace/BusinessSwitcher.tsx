@@ -12,7 +12,7 @@ import styles from './BusinessSwitcher.module.css';
  * through it, the arrow keys are a shortcut, Escape closes it and gives focus back to the button. A polite live region
  * says "Now working in <name>" whenever the current Business changes, however that came about.
  */
-export function BusinessSwitcher() {
+export function BusinessSwitcher({ placement = 'header' }: { placement?: 'header' | 'sidebar' } = {}) {
   const { ready, workspaces, current } = useWorkspaces();
   const switchTo = useGuardedSwitch();
   const [open, setOpen] = useState(false);
@@ -88,7 +88,7 @@ export function BusinessSwitcher() {
   }
 
   return (
-    <div className={styles.wrap} ref={wrapRef} onKeyDown={onKeyDown} onBlur={onBlur}>
+    <div className={styles.wrap} data-placement={placement} ref={wrapRef} onKeyDown={onKeyDown} onBlur={onBlur}>
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>

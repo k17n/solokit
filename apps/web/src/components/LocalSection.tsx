@@ -70,7 +70,7 @@ const POINTS = [
 
 export function LocalSection() {
   return (
-    <section aria-labelledby="local-heading" className={`container ${styles.section}`}>
+    <section id="local" aria-labelledby="local-heading" className={`container ${styles.section}`}>
       <p className={styles.eyebrow}>Local-first</p>
       <h2 id="local-heading" className={styles.heading}>
         Built to stay out of your way

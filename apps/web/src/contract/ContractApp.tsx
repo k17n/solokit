@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { missingForSetup, type BusinessProfile } from '@solokit/profile';
 import { toolAppHref } from '../paths';
-import type { ContractKind } from '@solokit/tool-contract';
+import { CONTRACT_KINDS, type ContractKind } from '@solokit/tool-contract';
 import { Button, Notice } from '@solokit/ui';
 import { BackupScreen } from '../business/BackupScreen';
+import { takeDeepLink } from '../app-shell/deepLinks';
 import { setupHref } from '../setup/links';
 import { SetupRequired } from '../setup/SetupRequired';
 import { ContractEditor } from './ContractEditor';
@@ -42,6 +43,8 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
   const [profile, setProfile] = useState<BusinessProfile | null | undefined>(undefined);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const linked = useRef(false);
+  const setUp = profile !== undefined && profile !== null && missingForSetup(profile).length === 0;
 
   useEffect(() => {
     if (!invoice) return;
@@ -62,6 +65,26 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
     };
   }, [invoice, restoreCount, loadAttempt]);
 
+  // A link from the app home: start a new agreement of a kind, or open a saved one. Read once, when the tool is ready.
+  useEffect(() => {
+    if (!contracts || !setUp || linked.current) return;
+    linked.current = true;
+    const link = takeDeepLink();
+    if (link.new && (CONTRACT_KINDS as readonly string[]).includes(link.new)) {
+      setNewCount((count) => count + 1);
+      setView({ name: 'new', kind: link.new as ContractKind });
+      return;
+    }
+    const id = link.doc;
+    if (!id) return;
+    contracts.get(id).then(
+      (found) => {
+        if (found) setView(found.status === 'draft' ? { name: 'edit', id } : { name: 'view', id });
+      },
+      (error: unknown) => console.error('Could not open the linked agreement', error),
+    );
+  }, [contracts, setUp]);
+
   if (loadFailed) {
     return (
       <div className={styles.app}>
@@ -78,7 +101,8 @@ export function ContractApp({ exporter, now }: { exporter?: ContractExporter; no
   if (!ready || !contracts || !invoice || profile === undefined) return <p>Opening your agreements…</p>;
 
   // The business details are entered once, on the setup page, before any tool is used. It brings the person back here.
-  if (profile === null || missingForSetup(profile).length > 0) return <SetupRequired returnTo={HOME} />;
+  // Keeps a deep link (?new=, ?doc=) so it still works after setup.
+  if (profile === null || !setUp) return <SetupRequired returnTo={`${HOME}${window.location.search}`} />;
 
   /** Go to a tab, unless the editor holds unsaved changes: then the editor asks first, as it does for its own Back button. */
   function goTo(target: View) {
