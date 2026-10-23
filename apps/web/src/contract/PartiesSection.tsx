@@ -2,7 +2,7 @@
 
 import { ROLE_LABELS, STAMP_DUTY_STATES, type Contract, type Party, type PartyRole } from '@solokit/tool-contract';
 import { Button, Notice, RadioCards, SelectField, TextField } from '@solokit/ui';
-import { fillParty, updateParty, type PartyChoice } from './editorModel';
+import { fillParty, matchingChoice, updateParty, type PartyChoice } from './editorModel';
 import { Disclosure } from './Disclosure';
 import styles from './sections.module.css';
 import { toolAppHref } from '../paths';
@@ -66,7 +66,7 @@ function PartyFields({
           label={`Fill in the ${label} from saved details`}
           hint="Copies the name, address and email. You can still change anything."
           placeholder="Choose…"
-          value=""
+          value={matchingChoice(party, choices)?.id ?? ''}
           options={choices.map((choice) => ({ value: choice.id, label: choice.label }))}
           onChange={(event) => {
             const choice = choices.find((candidate) => candidate.id === event.target.value);

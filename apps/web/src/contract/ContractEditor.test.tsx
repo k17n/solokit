@@ -75,9 +75,20 @@ describe('ContractEditor: sections', () => {
 
   it('fills a party from a saved client', async () => {
     await setup({ seed: async ({ invoice }) => void (await invoice.clients.save(makeClient({ id: 'c9', name: 'Acme Co', email: 'hello@acme.example' }))) });
-    await userEvent.selectOptions(party(2).getByLabelText('Fill in the Second Party from saved details'), 'Acme Co');
+    const select = party(2).getByLabelText('Fill in the Second Party from saved details');
+    await userEvent.selectOptions(select, 'Acme Co');
     expect(party(2).getByLabelText('Second Party: full name')).toHaveValue('Acme Co');
     expect(party(2).getByLabelText('Email for notices')).toHaveValue('hello@acme.example');
+    // The list keeps showing who the party was filled from, until the details are changed.
+    expect(select).toHaveDisplayValue('Acme Co');
+    await userEvent.type(party(2).getByLabelText('Second Party: full name'), ' Ltd');
+    expect(select).toHaveDisplayValue('Choose…');
+  });
+
+  it('shows the business profile as chosen for the side it filled in on its own', async () => {
+    await setup();
+    expect(party(1).getByLabelText('Fill in the First Party from saved details')).toHaveDisplayValue(/^My business profile/);
+    expect(party(2).getByLabelText('Fill in the Second Party from saved details')).toHaveDisplayValue('Choose…');
   });
 
   it('asks for the purpose of an NDA and tucks the defaulted settings away', async () => {
