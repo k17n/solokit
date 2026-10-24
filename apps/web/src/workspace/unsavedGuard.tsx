@@ -11,16 +11,35 @@ interface GuardEntry {
   save?: (() => Promise<boolean>) | undefined;
 }
 
+/** What is about to replace the screen, for the prompt's wording: switching to another Business, or going to another page. */
+export type LeaveAction = 'switch' | 'leave';
+
 interface GuardApi {
   register(id: string, read: () => GuardEntry): () => void;
-  confirmLeave(): Promise<boolean>;
+  confirmLeave(action?: LeaveAction): Promise<boolean>;
 }
+
+const WORDS: Record<LeaveAction, { title: string; save: string; go: string; failed: string }> = {
+  switch: {
+    title: 'Switch anyway?',
+    save: 'Save draft and switch',
+    go: 'Switch without saving',
+    failed: 'The draft could not be saved, so nothing was switched. Try again, or switch without saving.',
+  },
+  leave: {
+    title: 'Leave this page?',
+    save: 'Save draft and leave',
+    go: 'Leave without saving',
+    failed: 'The draft could not be saved, so you are still here. Try again, or leave without saving.',
+  },
+};
 
 const GuardContext = createContext<GuardApi | null>(null);
 
 interface Prompt {
   resolve: (proceed: boolean) => void;
   canSave: boolean;
+  action: LeaveAction;
 }
 
 /**
@@ -42,12 +61,12 @@ export function UnsavedGuardProvider({ children }: { children: ReactNode }) {
           if (entries.current.get(id) === read) entries.current.delete(id);
         };
       },
-      confirmLeave() {
+      confirmLeave(action = 'switch') {
         const dirty = [...entries.current.values()].map((read) => read()).filter((entry) => entry.dirty);
         if (dirty.length === 0) return Promise.resolve(true);
         // A second request replaces a prompt that is still open: the first one stays where it is.
         promptRef.current?.resolve(false);
-        return new Promise<boolean>((resolve) => setPrompt({ resolve, canSave: dirty.every((entry) => entry.save !== undefined) }));
+        return new Promise<boolean>((resolve) => setPrompt({ resolve, canSave: dirty.every((entry) => entry.save !== undefined), action }));
       },
     }),
     [],
@@ -73,12 +92,13 @@ export function UnsavedGuardProvider({ children }: { children: ReactNode }) {
   return (
     <GuardContext.Provider value={api}>
       {children}
-      {prompt ? <UnsavedPrompt canSave={prompt.canSave} onAnswer={answer} onSave={saveAll} /> : null}
+      {prompt ? <UnsavedPrompt canSave={prompt.canSave} action={prompt.action} onAnswer={answer} onSave={saveAll} /> : null}
     </GuardContext.Provider>
   );
 }
 
-function UnsavedPrompt({ canSave, onAnswer, onSave }: { canSave: boolean; onAnswer: (proceed: boolean) => void; onSave: () => Promise<boolean> }) {
+function UnsavedPrompt({ canSave, action, onAnswer, onSave }: { canSave: boolean; action: LeaveAction; onAnswer: (proceed: boolean) => void; onSave: () => Promise<boolean> }) {
+  const words = WORDS[action];
   const titleId = useId();
   const textRef = useRef<HTMLParagraphElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -129,24 +149,24 @@ function UnsavedPrompt({ canSave, onAnswer, onSave }: { canSave: boolean; onAnsw
     <div className={styles.backdrop}>
       <div ref={boxRef} className={styles.box} role="alertdialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={onKeyDown}>
         <h2 id={titleId} className={styles.title}>
-          Switch anyway?
+          {words.title}
         </h2>
         <p ref={textRef} tabIndex={-1} className={styles.text}>
           Unsaved changes will be lost.
         </p>
         {failed ? (
           <p role="alert" className={styles.problem}>
-            The draft could not be saved, so nothing was switched. Try again, or switch without saving.
+            {words.failed}
           </p>
         ) : null}
         <div className={styles.actions}>
           {canSave ? (
             <Button disabled={saving} onClick={() => void saveAndSwitch()}>
-              Save draft and switch
+              {words.save}
             </Button>
           ) : null}
           <Button variant="secondary" disabled={saving} onClick={() => onAnswer(true)}>
-            Switch without saving
+            {words.go}
           </Button>
           <Button variant="ghost" disabled={saving} onClick={() => onAnswer(false)}>
             Stay
@@ -169,7 +189,7 @@ export function useUnsavedGuard(id: string, dirty: boolean, save?: () => Promise
 }
 
 /** Resolves true when it is fine to replace what is on screen: nothing is unsaved, or the person chose to go on. */
-export function useConfirmLeave(): () => Promise<boolean> {
+export function useConfirmLeave(): (action?: LeaveAction) => Promise<boolean> {
   const api = useContext(GuardContext);
-  return useCallback(() => api?.confirmLeave() ?? Promise.resolve(true), [api]);
+  return useCallback((action?: LeaveAction) => api?.confirmLeave(action) ?? Promise.resolve(true), [api]);
 }

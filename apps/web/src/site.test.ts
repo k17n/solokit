@@ -3,10 +3,13 @@ import { IN_RULES_AS_OF } from '@solokit/tax-engines';
 import { HEADER_PROPS, getFooterProps } from './site';
 
 describe('site config', () => {
-  it('points the header call to action at the list of tools, not at one of them', () => {
-    expect(HEADER_PROPS.cta).toEqual({ label: 'Open a tool', href: '/#tools' });
-    expect(HEADER_PROPS.links.map((link) => link.label)).toEqual(['Tools', 'Your business', 'Privacy']);
-    expect(HEADER_PROPS.links.find((link) => link.label === 'Your business')?.href).toBe('/business/');
+  it('keeps the website header about the website, with Get started into the app', () => {
+    expect(HEADER_PROPS.cta).toEqual({ label: 'Get started', href: '/app/' });
+    expect(HEADER_PROPS.links).toEqual([
+      { label: 'Tools', href: '/#tools' },
+      { label: 'How it works', href: '/#local' },
+      { label: 'Privacy', href: '/privacy/' },
+    ]);
   });
 
   it('builds footer tool links from the registry', () => {
@@ -29,7 +32,7 @@ describe('site config', () => {
   it('offers project links to pages that exist', () => {
     expect(getFooterProps().projectLinks).toEqual([
       { label: 'Home', href: '/' },
-      { label: 'Your business', href: '/business/' },
+      { label: 'Open SoloKit', href: '/app/' },
       { label: 'Privacy', href: '/privacy/' },
     ]);
   });

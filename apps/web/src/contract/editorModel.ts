@@ -159,6 +159,18 @@ const stateNameOf = (stateCode: string | undefined): string | undefined => {
   return name && isKnownState(name) ? name : undefined;
 };
 
+const same = (a: string | undefined, b: string | undefined) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+
+/**
+ * The saved business or client whose details a party has now, so the "Fill in from saved details" list can show it.
+ * The name must match, and the email too when the saved one has an email. Once the person changes those, nothing
+ * matches and the list goes back to "Choose…". The first match wins when two saved entries share a name.
+ */
+export function matchingChoice(party: Party, choices: readonly PartyChoice[]): PartyChoice | undefined {
+  if (party.name.trim() === '') return undefined;
+  return choices.find((choice) => same(choice.source.name, party.name) && (!choice.source.email || same(choice.source.email, party.email)));
+}
+
 /** Fills a party's business details, keeping the signatory and the company number the user may already have typed. */
 export function fillParty(contract: Contract, index: number, source: PartyChoice['source']): Contract {
   const current = contract.parties[index];

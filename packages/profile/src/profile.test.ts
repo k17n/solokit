@@ -4,7 +4,7 @@ import { migrateProfile } from './migrate';
 import { PROFILE_SCHEMA_VERSION } from './model';
 import { normaliseProfile } from './normalise';
 import { createProfileRepository } from './repository';
-import { missingFields } from './requirements';
+import { missingFields, missingForSetup } from './requirements';
 import { makeProfile } from './testing';
 import { validateProfile } from './validation';
 
@@ -137,5 +137,26 @@ describe('missingFields', () => {
     const profile = makeProfile({ phone: '  ' });
     expect(missingFields(profile, 'contract')).toEqual([]);
     expect(paths(missingFields(profile, 'contract', { includeRecommended: true }))).toEqual(['phone']);
+  });
+});
+
+describe('missingForSetup', () => {
+  const paths = (list: { path: string }[]) => list.map((item) => item.path);
+
+  it('asks a brand new person for what every tool needs, each field once', () => {
+    expect(paths(missingForSetup(undefined))).toEqual(['name', 'gstStatus', 'address.line1', 'address.city', 'address.country', 'email']);
+  });
+
+  it('adds GSTIN and state once the person is GST registered', () => {
+    const profile = makeProfile({ gstin: undefined, address: { line1: 'x', city: 'y', country: 'India' } });
+    expect(paths(missingForSetup(profile))).toEqual(['address.stateCode', 'gstin']);
+  });
+
+  it('finds nothing missing in a complete profile', () => {
+    expect(missingForSetup(makeProfile())).toEqual([]);
+  });
+
+  it('still asks an invoice user for the email agreements need', () => {
+    expect(paths(missingForSetup(makeProfile({ email: undefined })))).toEqual(['email']);
   });
 });

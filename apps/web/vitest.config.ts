@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
+    // What next.config.ts's trailingSlash sets at build time, so next/link writes the same hrefs in tests as on the site.
+    env: { __NEXT_TRAILING_SLASH: 'true' },
     include: ['src/**/*.test.{ts,tsx}'],
     // The editor tests render large forms. On a busy machine (other packages' tests run alongside) a test needs far more
     // than vitest's 5 seconds, and a slow test is not a broken one.

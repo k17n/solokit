@@ -249,7 +249,7 @@ export function ThemesScreen({ storage, profile, onProfileChanged, renderPdf = d
   return (
     <div className={styles.screen}>
       <div>
-        <h2 style={{ fontSize: '1.8rem' }}>Themes</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>Themes</h2>
         <p className={styles.lede}>
           Pick a starting point, change its colours and font, and watch the sample invoice update. The six presets cannot be changed, but you can save your own version. New invoices use your default theme, and you can choose another on any invoice.
         </p>
@@ -296,7 +296,7 @@ export function ThemesScreen({ storage, profile, onProfileChanged, renderPdf = d
               void (isMine ? saveChanges() : saveNew());
             }}
           >
-            <h3 style={{ fontSize: '1.25rem' }}>{isMine ? 'Edit your theme' : `Start from ${selected.name}`}</h3>
+            <h3 style={{ fontSize: '1.0625rem' }}>{isMine ? 'Edit your theme' : `Start from ${selected.name}`}</h3>
             <p className={styles.hint}>
               Layout: {selected.layout.charAt(0).toUpperCase() + selected.layout.slice(1)}. The layout comes with the preset and cannot be changed.
             </p>
@@ -407,7 +407,7 @@ export function ThemesScreen({ storage, profile, onProfileChanged, renderPdf = d
         </div>
 
         <section className={styles.preview} aria-labelledby="theme-preview-heading">
-          <h3 id="theme-preview-heading" style={{ fontSize: '1.25rem' }}>
+          <h3 id="theme-preview-heading" style={{ fontSize: '1.0625rem' }}>
             Preview
           </h3>
           <PdfPreview state={preview} filename="sample-invoice.pdf" onRetry={preview.retry} placeholder="Choose a theme to see the preview." />

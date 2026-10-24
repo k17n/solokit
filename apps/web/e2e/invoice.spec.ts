@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Download, type Page } from '@playwright/test';
 import { startDocument } from './helpers';
+import { onboardInvoice } from './setup-helpers';
 
 const shots = 'test-results';
 
@@ -23,24 +24,7 @@ async function pdfText(download: Download): Promise<string> {
 const squash = (text: string) => text.replace(/\s+/g, '');
 
 async function onboard(page: Page, kind: 'regular' | 'unregistered') {
-  await page.goto('/tools/invoice/');
-  if (kind === 'regular') {
-    await page.getByRole('radio', { name: /Regular GST registration/ }).check();
-  } else {
-    await page.getByRole('radio', { name: /Not registered for GST/ }).check();
-  }
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByLabel('Business or personal name').fill('Asha Rao Consulting');
-  if (kind === 'regular') {
-    await page.getByLabel('GSTIN').fill('27AABCT3518Q1ZW');
-    await page.getByLabel('Address line 1').fill('12 Linking Road');
-    await page.getByLabel('City').fill('Mumbai');
-  } else {
-    await page.getByLabel('Address line 1').fill('4 Park Street');
-    await page.getByLabel('City').fill('Kolkata');
-  }
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+  await onboardInvoice(page, { gst: kind });
 }
 
 async function fillClient(page: Page, client: { name: string; line1: string; city: string; state?: string; country?: string }) {
@@ -156,7 +140,7 @@ test.describe('invoices in a real browser', () => {
   test('an invoice can be created, issued and downloaded offline', async ({ page, context }) => {
     await page.goto('/');
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     for (let i = 0; i < 5; i++) {
       if (await page.evaluate(() => navigator.serviceWorker.controller !== null)) break;
       await page.reload();
@@ -164,7 +148,7 @@ test.describe('invoices in a real browser', () => {
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await onboard(page, 'unregistered');
     await context.setOffline(true);
-    await page.goto('/tools/invoice/');
+    await page.goto('/app/invoice/');
     await startDocument(page, 'Invoice');
     await fillClient(page, { name: 'Local Client', line1: '9 Lake Road', city: 'Kolkata' });
     await fillItem(page, { description: 'Design work', quantity: '2', rate: '2500' });

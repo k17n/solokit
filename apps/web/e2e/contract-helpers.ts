@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, type Download, type Locator, type Page } from '@playwright/test';
 import JSZip from 'jszip';
+import { completeSetup } from './setup-helpers';
 
 export async function pdfText(download: Download): Promise<string> {
   const path = await download.path();
@@ -97,13 +98,17 @@ export async function expectEditorOpen(page: Page, heading: RegExp) {
 }
 
 /**
- * Opens the contract tool the way a returning user sees it. A brand new Business is first asked for its details; these
- * tests are about agreements, so they skip that step (it has its own tests in business.spec.ts).
+ * Opens the contract tool the way a returning user sees it. A brand new Business is first sent to the business setup,
+ * which brings it back here; these tests are about agreements, so they go through it with the defaults (setup has its
+ * own tests in business.spec.ts and onboarding.spec.ts).
  */
 export async function gotoContract(page: Page) {
-  await page.goto('/tools/contract/');
-  const setup = page.getByRole('heading', { name: 'Set up your business' });
+  await page.goto('/app/contract/');
+  const setup = page.getByRole('heading', { level: 2, name: 'Tax registration' });
   const agreements = page.getByRole('button', { name: 'Agreements', exact: true });
   await setup.or(agreements).first().waitFor();
-  if (await setup.count()) await page.getByRole('button', { name: 'Skip for now' }).click();
+  if (await setup.count()) {
+    await completeSetup(page);
+    await agreements.waitFor();
+  }
 }

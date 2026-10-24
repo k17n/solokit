@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import PrivacyPage from '../app/privacy/page';
+import PrivacyPage from '../app/(site)/privacy/page';
 
 describe('privacy page', () => {
   it('explains where data lives and what that means', () => {

@@ -310,7 +310,7 @@ export function ContractEditor({ storage, invoice, contractId, initialKind = 'nd
   return (
     <div className={styles.editor}>
       <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>{contractId ? 'Edit draft' : `New ${kindName.toLowerCase()}`}</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>{contractId ? 'Edit draft' : `New ${kindName.toLowerCase()}`}</h2>
         <Button variant="secondary" onClick={() => (dirty ? setConfirming('leave') : onBack())}>
           Back to agreements
         </Button>

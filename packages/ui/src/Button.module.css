@@ -1,68 +1,66 @@
+/* Pill buttons: solid ink (white in dark) for the main action, outlined for the rest. */
 .button {
-  --btn-bg: var(--accent);
-  --btn-fg: var(--ink);
+  --btn-bg: var(--ds-cta-bg);
+  --btn-fg: var(--ds-cta-fg);
+  --btn-border: var(--ds-cta-bg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-height: 2.75rem;
-  padding: 0.65rem 1.25rem;
-  font: 600 1rem/1 var(--ff-sans);
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 1.1rem;
+  font: 500 0.875rem/1 var(--ds-ff);
   letter-spacing: -0.005em;
   text-decoration: none;
+  white-space: nowrap;
   color: var(--btn-fg);
   background: var(--btn-bg);
-  border: 1.5px solid var(--edge);
-  border-radius: var(--radius-m);
-  box-shadow: 0 3px 0 var(--edge);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
   cursor: pointer;
   transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease,
-    background-color 0.12s ease;
+    transform 0.15s var(--ds-ease),
+    opacity 0.15s var(--ds-ease),
+    border-color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
 }
 
 .button:hover {
-  transform: translateY(1px);
-  box-shadow: 0 2px 0 var(--edge);
+  transform: translateY(-1px);
 }
 
 .button:active {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 var(--edge);
+  transform: none;
+}
+
+.primary:hover {
+  opacity: 0.88;
 }
 
 .secondary {
-  --btn-bg: var(--surface);
-  --btn-fg: var(--text);
+  --btn-bg: var(--ds-chip-bg);
+  --btn-fg: var(--ds-text);
+  --btn-border: var(--ds-border-strong);
+}
+
+.secondary:hover {
+  --btn-border: var(--ds-text-2);
 }
 
 .ghost {
   --btn-bg: transparent;
-  --btn-fg: var(--text);
-  border-color: transparent;
-  box-shadow: none;
+  --btn-fg: var(--ds-text);
+  --btn-border: transparent;
 }
 
 .ghost:hover {
-  background: var(--surface-2);
+  --btn-bg: var(--ds-active);
   transform: none;
-  box-shadow: none;
-}
-
-.ghost:active {
-  transform: none;
-  box-shadow: none;
 }
 
 .button:disabled,
 .button[aria-disabled='true'] {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 0 3px 0 var(--edge);
-}
-
-.ghost:disabled {
-  box-shadow: none;
 }

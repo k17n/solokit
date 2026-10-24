@@ -1,23 +1,20 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.5rem;
-  font: 500 0.75rem/1.2 var(--ff-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 0.12rem 0.5rem;
+  font: 500 0.6875rem/1.4 var(--ds-ff);
   white-space: nowrap;
-  color: var(--text);
-  border: 1px solid var(--border);
+  color: var(--ds-text-2);
+  background: var(--ds-active);
   border-radius: 999px;
 }
 
 .badge[data-tone='success'] {
-  color: var(--accent-text);
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--ds-success-text);
+  background: var(--ds-success-bg);
 }
 
 .badge[data-tone='soon'] {
-  border-color: color-mix(in srgb, var(--amber) 70%, transparent);
-  background: color-mix(in srgb, var(--amber) 22%, transparent);
+  color: var(--ds-text-2);
+  background: var(--ds-active);
 }

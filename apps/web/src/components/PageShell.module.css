@@ -7,22 +7,23 @@
 }
 
 .eyebrow {
-  margin-bottom: 1rem;
-  font: 500 0.8rem/1 var(--ff-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent-text);
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ds-text-2);
 }
 
 .title {
-  font-size: clamp(2.4rem, 6vw, 4.2rem);
-  font-weight: 800;
+  font-size: clamp(2.2rem, 5.4vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
 }
 
 .lede {
-  margin-top: 1rem;
-  font-size: 1.2rem;
-  color: var(--text-muted);
+  margin-top: 0.9rem;
+  font-size: clamp(1rem, 1.6vw, 1.0625rem);
+  color: var(--ds-text-2);
 }
 
 .body {
@@ -31,21 +32,57 @@
 }
 
 .body h2 {
-  margin: 2.25rem 0 0.6rem;
-  font-size: 1.5rem;
-  font-weight: 700;
+  margin: 2.25rem 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .body p + p {
-  margin-top: 0.9rem;
+  margin-top: 0.8rem;
 }
 
-.body a {
-  text-decoration-color: var(--amber);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
+.body p,
+.body li {
+  color: var(--ds-text-2);
+}
+
+.body strong {
+  color: var(--ds-text);
+  font-weight: 500;
+}
+
+/* inline links in running text; navigation and buttons style their own anchors */
+.body :is(p, li) a {
+  color: var(--ds-link);
+  text-decoration-color: color-mix(in srgb, var(--ds-link) 40%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .wide {
   max-width: none;
+}
+
+.compact {
+  padding-top: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.compact .eyebrow {
+  margin-bottom: 0.4rem;
+}
+
+.compact .title {
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.compact .lede {
+  margin-top: 0.4rem;
+  font-size: 0.9375rem;
+}
+
+.compact .body {
+  margin-top: 1.5rem;
 }

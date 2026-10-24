@@ -32,28 +32,29 @@
   align-items: center;
   gap: 0.45rem;
   min-height: 2.25rem;
-  padding: 0.25rem 0.75rem 0.25rem 0.3rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text);
+  padding: 0.25rem 0.8rem 0.25rem 0.3rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ds-text);
   text-decoration: none;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
+  background: var(--ds-chip-bg);
+  border: 1px solid var(--ds-border-strong);
   border-radius: 999px;
+  transition: border-color 0.15s var(--ds-ease);
 }
 
 .steps a:hover {
-  border-color: var(--edge);
+  border-color: var(--ds-text-2);
 }
 
 .stepNum {
   display: inline-grid;
   place-items: center;
-  width: 1.65rem;
-  height: 1.65rem;
-  font: 700 0.85rem/1 var(--ff-mono);
-  color: var(--bg);
-  background: var(--edge);
+  width: 1.5rem;
+  height: 1.5rem;
+  font: 500 0.75rem/1 var(--ds-ff);
+  color: var(--ds-cta-fg);
+  background: var(--ds-cta-bg);
   border-radius: 999px;
 }
 
@@ -62,7 +63,7 @@
   gap: 1.1rem;
   min-width: 0;
   padding-top: 1.5rem;
-  border-top: 1.5px solid var(--border);
+  border-top: 1px solid var(--border);
   scroll-margin-top: 5rem;
 }
 
@@ -75,13 +76,13 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
 .sectionTitle .stepNum {
   width: 2.1rem;
   height: 2.1rem;
-  font-size: 1rem;
+  font-size: 0.875rem;
 }
 
 .sectionLead {
@@ -100,7 +101,7 @@
 }
 
 .subhead {
-  font-size: 1.25rem;
+  font-size: 1.0625rem;
 }
 
 .preview {
@@ -118,15 +119,17 @@
 
 .bar {
   position: sticky;
-  bottom: 0;
+  bottom: 0.75rem;
   z-index: 5;
   display: grid;
   gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  background: var(--surface);
-  border: 1.5px solid var(--edge);
-  border-radius: var(--radius-m);
-  box-shadow: 0 -6px 18px -10px rgb(11 27 58 / 0.4);
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, var(--ds-surface) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-frame);
+  box-shadow: 0 16px 40px -20px rgb(0 0 0 / 0.35);
 }
 
 .barActions {

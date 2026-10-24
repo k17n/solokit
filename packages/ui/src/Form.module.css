@@ -1,31 +1,38 @@
 .field {
   display: grid;
   align-content: start;
-  gap: 0.35rem;
+  gap: 0.4rem;
   min-width: 0;
 }
 
 .label {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ds-text);
 }
 
 .label[data-required]::after {
   content: ' *';
-  color: var(--text-muted);
+  color: var(--ds-text-3);
 }
 
+/* rico inputs: filled grey, no visible border until hover or focus */
 .input,
 .select,
 .textarea {
   width: 100%;
   min-width: 0;
-  padding: 0.6rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.75rem;
   font: inherit;
-  color: var(--text);
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-s);
+  font-size: 0.875rem;
+  color: var(--ds-text);
+  background: var(--ds-input);
+  border: 1px solid transparent;
+  border-radius: var(--ds-r-chip);
+  transition:
+    border-color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
 }
 
 .textarea {
@@ -36,13 +43,16 @@
 .input:hover,
 .select:hover,
 .textarea:hover {
-  border-color: var(--text-muted);
+  border-color: var(--ds-border-strong);
 }
 
 .input:focus-visible,
 .select:focus-visible,
 .textarea:focus-visible {
-  border-color: var(--edge);
+  outline: 3px solid color-mix(in srgb, var(--ds-text) 12%, transparent);
+  outline-offset: 0;
+  background: var(--ds-bg);
+  border-color: var(--ds-text-2);
 }
 
 .input[aria-invalid='true'],
@@ -52,13 +62,13 @@
 }
 
 .hint {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  font-size: 0.8125rem;
+  color: var(--ds-text-2);
 }
 
 .error {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--danger);
 }
 
@@ -70,14 +80,15 @@
 }
 
 .checkbox input {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1rem;
+  height: 1rem;
   margin-top: 0.2rem;
-  accent-color: var(--emerald);
+  accent-color: var(--ds-text);
 }
 
 .checkbox label {
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .checkbox .hint {
@@ -86,7 +97,7 @@
 
 .cards {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.5rem;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -95,72 +106,81 @@
 
 .legend {
   padding: 0;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
+  margin-bottom: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .card {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.1rem 0.75rem;
-  padding: 0.85rem 1rem;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
+  gap: 0.1rem 0.7rem;
+  padding: 0.8rem 0.95rem;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
   cursor: pointer;
+  transition:
+    border-color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
+}
+
+.card:hover {
+  border-color: var(--ds-text-3);
 }
 
 .card:has(input:checked) {
-  border-color: var(--edge);
-  box-shadow: 3px 3px 0 var(--edge);
+  border-color: var(--ds-text);
+  box-shadow: inset 0 0 0 1px var(--ds-text);
 }
 
 .card input {
   grid-row: 1 / span 2;
-  margin-top: 0.25rem;
-  accent-color: var(--emerald);
+  margin-top: 0.2rem;
+  accent-color: var(--ds-text);
 }
 
 .cardLabel {
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .tag {
   margin-left: 0.5rem;
-  padding: 0.05rem 0.45rem;
-  font-size: 0.72rem;
-  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
   vertical-align: 0.1em;
-  color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  color: var(--ds-text-2);
+  background: var(--ds-active);
   border-radius: 999px;
 }
 
 .cardDescription {
-  font-size: 0.92rem;
-  color: var(--text-muted);
+  font-size: 0.8125rem;
+  color: var(--ds-text-2);
 }
 
 .notice {
   display: grid;
   gap: 0.2rem;
-  padding: 0.85rem 1rem;
-  background: var(--surface-2);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
+  padding: 0.8rem 1rem;
+  font-size: 0.875rem;
+  background: var(--ds-sidebar);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
 }
 
 .notice[data-tone='warning'] {
   background: var(--warning-bg);
-  border-color: color-mix(in srgb, var(--amber) 70%, transparent);
+  border-color: color-mix(in srgb, #e5a000 45%, transparent);
 }
 
 .notice[data-tone='danger'] {
   background: var(--danger-bg);
-  border-color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
 }
 
 .noticeTitle {
-  font-weight: 700;
+  font-weight: 500;
 }

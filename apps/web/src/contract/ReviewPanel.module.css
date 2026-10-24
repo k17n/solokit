@@ -8,19 +8,19 @@
   gap: 0.6rem;
   padding: 1rem 1.1rem;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
 }
 
 .card h4 {
   margin: 0;
-  font: 700 1.1rem/1.2 var(--ff-display);
+  font: 500 1rem/1.2 var(--ds-ff);
 }
 
 .lead {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .rows {
@@ -42,7 +42,7 @@
 }
 
 .row dt {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .row dd {
@@ -53,7 +53,7 @@
 
 .note {
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.8125rem;
 }
 
 .list {
@@ -64,7 +64,7 @@
 }
 
 .topic {
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .ref {
@@ -84,5 +84,5 @@
 
 .card > summary {
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
 }

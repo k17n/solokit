@@ -65,19 +65,30 @@ describe('ContractEditor: sections', () => {
     expect(screen.queryByText('Save your details once')).not.toBeInTheDocument();
   });
 
-  it('points to the Your business page when there is no profile yet', async () => {
+  it('points to the business setup, coming back here, when there is no profile yet', async () => {
     await setup({ profile: false });
     expect(screen.getByText('Save your details once')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Your business' })).toHaveAttribute('href', '/business/');
+    expect(screen.getByRole('link', { name: 'business details' })).toHaveAttribute('href', '/app/setup/?next=%2Fapp%2Fcontract%2F');
     expect(screen.queryByText(/invoice tool/)).not.toBeInTheDocument();
     expect(party(1).getByLabelText('First Party: full name')).toHaveValue('');
   });
 
   it('fills a party from a saved client', async () => {
     await setup({ seed: async ({ invoice }) => void (await invoice.clients.save(makeClient({ id: 'c9', name: 'Acme Co', email: 'hello@acme.example' }))) });
-    await userEvent.selectOptions(party(2).getByLabelText('Fill in the Second Party from saved details'), 'Acme Co');
+    const select = party(2).getByLabelText('Fill in the Second Party from saved details');
+    await userEvent.selectOptions(select, 'Acme Co');
     expect(party(2).getByLabelText('Second Party: full name')).toHaveValue('Acme Co');
     expect(party(2).getByLabelText('Email for notices')).toHaveValue('hello@acme.example');
+    // The list keeps showing who the party was filled from, until the details are changed.
+    expect(select).toHaveDisplayValue('Acme Co');
+    await userEvent.type(party(2).getByLabelText('Second Party: full name'), ' Ltd');
+    expect(select).toHaveDisplayValue('Choose…');
+  });
+
+  it('shows the business profile as chosen for the side it filled in on its own', async () => {
+    await setup();
+    expect(party(1).getByLabelText('Fill in the First Party from saved details')).toHaveDisplayValue(/^My business profile/);
+    expect(party(2).getByLabelText('Fill in the Second Party from saved details')).toHaveDisplayValue('Choose…');
   });
 
   it('asks for the purpose of an NDA and tucks the defaulted settings away', async () => {

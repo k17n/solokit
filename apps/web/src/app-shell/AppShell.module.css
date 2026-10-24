@@ -1,0 +1,259 @@
+/* A sidebar and the page beside it on a wide screen; a top bar with a drawer on a phone. */
+.shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  font-family: var(--ds-ff);
+}
+
+@media (min-width: 56rem) {
+  .shell {
+    grid-template-columns: 15.5rem minmax(0, 1fr);
+  }
+}
+
+/* top bar: phones only */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0 1rem;
+  background: color-mix(in srgb, var(--ds-bg) 85%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--ds-border);
+}
+
+@media (min-width: 56rem) {
+  .topbar {
+    display: none;
+  }
+}
+
+.menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.7rem;
+  font: 500 0.8125rem/1 var(--ds-ff);
+  color: var(--ds-text);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+/* sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.9rem 0.75rem 1rem;
+  font-size: 0.875rem;
+  background: var(--ds-sidebar);
+  border-right: 1px solid var(--ds-border);
+}
+
+@media (min-width: 56rem) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+}
+
+/* On a phone the sidebar is a drawer: off screen, and out of the tab order, until the menu opens it. */
+@media (max-width: 55.99rem) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(18rem, 86vw);
+    overflow-y: auto;
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform 0.2s var(--ds-ease),
+      visibility 0.2s;
+    box-shadow: 0 0 32px rgb(0 0 0 / 0.18);
+  }
+
+  .sidebar[data-open] {
+    visibility: visible;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgb(0 0 0 / 0.35);
+}
+
+@media (min-width: 56rem) {
+  .backdrop {
+    display: none;
+  }
+}
+
+.brand {
+  padding: 0.15rem 0.4rem 0.6rem;
+}
+
+.switcher {
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.35rem;
+  padding: 0.45rem 0.6rem;
+  font: 400 0.8125rem/1.2 var(--ds-ff);
+  color: var(--ds-text-2);
+  text-align: left;
+  background: var(--ds-bg);
+  border: 1px solid var(--ds-border);
+  border-radius: 0.6rem;
+  cursor: pointer;
+}
+
+.search:hover {
+  color: var(--ds-text);
+  border-color: var(--ds-border-strong);
+}
+
+.search span {
+  flex: 1;
+}
+
+.search kbd {
+  font: 500 0.6875rem/1 var(--ds-ff);
+  color: var(--ds-text-3);
+}
+
+.nav {
+  display: grid;
+}
+
+.navList {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.55rem;
+  font-weight: 500;
+  color: var(--ds-text-2);
+  text-decoration: none;
+  border-radius: 0.55rem;
+  transition:
+    color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
+}
+
+.navLink:hover {
+  color: var(--ds-text);
+  background: var(--ds-active);
+}
+
+.navLink[aria-current='page'] {
+  color: var(--ds-text);
+  background: var(--ds-active);
+  box-shadow: inset 0 0 0 1px var(--ds-border);
+}
+
+.label {
+  margin: 1rem 0 0.3rem;
+  padding-inline: 0.55rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ds-text-3);
+}
+
+.soon {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.55rem;
+  color: var(--ds-text-3);
+}
+
+.sideFoot {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding: 0.9rem 0.55rem 0;
+  font-size: 0.75rem;
+  color: var(--ds-text-2);
+  border-top: 1px solid var(--ds-border);
+}
+
+.saved {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  background: var(--ds-success);
+  border-radius: 999px;
+}
+
+.footLinks {
+  display: flex;
+  gap: 1rem;
+}
+
+.footLinks a {
+  color: var(--ds-text-2);
+}
+
+.footLinks a:hover {
+  color: var(--ds-text);
+}
+
+.main {
+  min-width: 0;
+  padding-bottom: 4rem;
+}
+
+/* The page's own container is centred in the space beside the sidebar. */
+.main :global(.container) {
+  max-width: 72rem;
+}
+
+.glyph {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

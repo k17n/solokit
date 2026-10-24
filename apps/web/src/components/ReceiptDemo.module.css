@@ -1,127 +1,166 @@
 .receipt {
-  position: relative;
   width: 100%;
-  max-width: 30rem;
-  margin-inline: auto;
-  padding: 1.5rem 1.5rem 2.25rem;
-  background-color: var(--surface);
-  background-image: var(--grain);
-  border: 1.5px solid var(--edge);
-  border-bottom: none;
-  border-radius: var(--radius-m) var(--radius-m) 0 0;
-  box-shadow: var(--shadow-card);
-  animation: print 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
-/* torn paper edge hanging below the card */
-.receipt::after {
-  content: '';
-  position: absolute;
-  inset: 100% -1.5px auto -1.5px;
-  height: 10px;
-  background-color: var(--surface);
-  background-image: var(--grain);
-  -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%;
-  mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 16px 100%;
-}
-
-@keyframes print {
-  from {
-    clip-path: inset(0 0 100% 0);
-    transform: translateY(-6px);
-  }
-  to {
-    clip-path: inset(0 0 -20px 0);
-    transform: none;
-  }
-}
-
+/* title + status pill, then a muted description: rico's page header */
 .head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.9rem;
-  border-bottom: 1.5px dashed var(--border);
-}
-
-.stamp {
-  padding: 0.2rem 0.55rem;
-  font: 600 0.72rem/1.2 var(--ff-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-  border: 1.5px solid currentColor;
-  border-radius: var(--radius-s);
-  transform: rotate(-3deg);
+  gap: 0.6rem;
 }
 
 .title {
-  font-size: 0.85rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.status {
+  padding: 0.12rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ds-success-text);
+  background: var(--ds-success-bg);
+  border-radius: 999px;
+}
+
+.desc {
+  margin-top: 0.25rem;
+  color: var(--ds-text-2);
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 40rem) {
+  .form {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
 }
 
 .label {
   display: block;
-  margin-bottom: 0.35rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ds-text-2);
 }
 
 .field {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.4rem;
-  padding-bottom: 0.3rem;
-  border-bottom: 2px solid var(--edge);
+  height: 2.5rem;
+  padding-inline: 0.75rem;
+  background: var(--ds-input);
+  border: 1px solid transparent;
+  border-radius: var(--ds-r-chip);
+  transition:
+    border-color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
+}
+
+.field:focus-within {
+  background: var(--ds-bg);
+  border-color: var(--ds-text-2);
+  outline: 3px solid color-mix(in srgb, var(--ds-text) 12%, transparent);
+  outline-offset: 0;
 }
 
 .symbol {
-  font-size: 1.6rem;
-  color: var(--text-muted);
+  font-family: var(--ds-ff);
+  color: var(--ds-text-3);
 }
 
 .input {
   width: 100%;
   min-width: 0;
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--text);
+  font-family: var(--ds-ff);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ds-text);
   background: transparent;
   border: 0;
   outline: none;
 }
 
-.field:focus-within {
-  border-bottom-color: var(--accent);
-  outline: 3px solid var(--edge);
-  outline-offset: 6px;
-  border-radius: 2px;
-}
-
 .supply {
-  display: grid;
-  gap: 0.4rem;
-  margin: 1.1rem 0 1.25rem;
+  min-width: 0;
+  margin: 0;
   padding: 0;
   border: 0;
 }
 
-.choice {
+/* the two radios read as a segmented control */
+.segmented {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
+  padding: 3px;
+  background: var(--ds-input);
+  border-radius: calc(var(--ds-r-chip) + 2px);
+}
+
+.choice {
+  position: relative;
+  flex: 1;
   cursor: pointer;
 }
 
 .choice input {
-  accent-color: var(--emerald);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.choice span {
+  display: block;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--ds-text-2);
+  border-radius: var(--ds-r-chip);
+  transition:
+    color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
+}
+
+.choice:hover span {
+  color: var(--ds-text);
+}
+
+.choice input:checked + span {
+  color: var(--ds-text);
+  background: var(--ds-surface);
+  box-shadow:
+    0 0 0 1px var(--ds-border),
+    0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.choice input:focus-visible + span {
+  outline: 2px solid var(--ds-text);
+  outline-offset: 1px;
+}
+
+/* key-value table card */
+.result {
+  margin-top: 1.25rem;
 }
 
 .rows {
   margin: 0;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
 }
 
 .row {
@@ -129,41 +168,51 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 0.15rem 1rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px dotted var(--border);
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid var(--ds-border);
+}
+
+.row:first-child {
+  border-top: 0;
 }
 
 .row dt {
-  color: var(--text-muted);
+  color: var(--ds-text-2);
 }
 
 .row dd {
   margin: 0;
+  font-family: var(--ds-ff);
+  color: var(--ds-text);
 }
 
 .total {
-  margin-top: 0.4rem;
-  border-bottom: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  background: var(--ds-sidebar);
+  border-radius: 0 0 var(--ds-r-card) var(--ds-r-card);
 }
 
 .total dt {
-  color: var(--text);
+  color: var(--ds-text);
+  font-weight: 500;
 }
 
 .total dd {
-  padding-inline: 0.35rem;
-  background: linear-gradient(transparent 55%, color-mix(in srgb, var(--amber) 55%, transparent) 55% 92%, transparent 92%);
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
 }
 
 .words {
-  margin-top: 0.9rem;
-  font-style: italic;
-  color: var(--text-muted);
+  margin-top: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--ds-text-2);
 }
 
 .hint {
-  padding: 1rem 0;
-  color: var(--text-muted);
+  padding: 1.25rem 0.9rem;
+  color: var(--ds-text-2);
+  background: var(--ds-surface);
+  border: 1px dashed var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
 }

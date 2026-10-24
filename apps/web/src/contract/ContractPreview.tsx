@@ -53,7 +53,7 @@ export function ContractPreview({ state, placeholder }: ContractPreviewProps) {
         <iframe
           title="Agreement preview"
           src={state.url}
-          style={{ width: '100%', height: '75vh', minHeight: '30rem', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-s)', background: '#fff' }}
+          style={{ width: '100%', height: '75vh', minHeight: '30rem', border: '1px solid var(--ds-border-strong)', borderRadius: 'var(--ds-r-card)', background: '#fff' }}
         />
       )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>

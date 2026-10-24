@@ -6,33 +6,33 @@
 .trigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   max-width: 14rem;
-  min-height: 2.5rem;
-  padding: 0.35rem 0.8rem;
-  font: 600 0.95rem/1.1 var(--ff-sans);
-  color: var(--text);
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
+  min-height: 2.25rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.35rem;
+  font: 500 0.8125rem/1.1 var(--ds-ff);
+  color: var(--ds-text);
+  background: var(--ds-chip-bg);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: 999px;
   cursor: pointer;
 }
 
 .trigger:hover {
-  border-color: var(--text-muted);
+  border-color: var(--ds-text-2);
 }
 
 .trigger[aria-expanded='true'] {
-  border-color: var(--edge);
-  box-shadow: 0 2px 0 var(--edge);
+  border-color: var(--ds-text);
 }
 
 .caption {
   flex: none;
-  font: 500 0.7rem/1 var(--ff-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  padding: 0.2rem 0.45rem;
+  font: 500 0.6875rem/1 var(--ds-ff);
+  color: var(--ds-text-2);
+  background: var(--ds-active);
+  border-radius: 999px;
 }
 
 .name {
@@ -52,15 +52,15 @@
   right: 0;
   z-index: 60;
   display: grid;
-  gap: 0.5rem;
+  gap: 0.4rem;
   width: max-content;
   min-width: 16rem;
   max-width: min(24rem, calc(100vw - 2rem));
-  padding: 0.5rem;
-  background: var(--surface);
-  border: 1.5px solid var(--edge);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow-card);
+  padding: 0.4rem;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-frame);
+  box-shadow: 0 16px 40px -16px rgb(0 0 0 / 0.3);
 }
 
 .list {
@@ -77,23 +77,22 @@
   justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.6rem 0.75rem;
-  font: 600 0.98rem/1.2 var(--ff-sans);
+  padding: 0.5rem 0.65rem;
+  font: 500 0.8125rem/1.25 var(--ds-ff);
   text-align: left;
-  color: var(--text);
+  color: var(--ds-text);
   background: transparent;
-  border: 1.5px solid transparent;
-  border-radius: var(--radius-s);
+  border: 0;
+  border-radius: var(--ds-r-chip);
   cursor: pointer;
 }
 
 .item:hover {
-  background: var(--surface-2);
+  background: var(--ds-active);
 }
 
 .item[aria-current='true'] {
-  border-color: var(--edge);
-  background: var(--surface-2);
+  background: var(--ds-active);
 }
 
 .itemName {
@@ -103,37 +102,36 @@
 
 .here {
   flex: none;
-  font: 500 0.7rem/1 var(--ff-mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent-text);
+  font: 500 0.6875rem/1 var(--ds-ff);
+  color: var(--ds-success-text);
 }
 
 .links {
   display: grid;
-  gap: 0.1rem;
+  gap: 1px;
   padding-top: 0.4rem;
-  border-top: 1.5px solid var(--border);
+  border-top: 1px solid var(--ds-border);
 }
 
 .links a {
-  padding: 0.55rem 0.75rem;
-  font-weight: 600;
-  color: var(--text);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ds-text-2);
   text-decoration: none;
-  border-radius: var(--radius-s);
+  border-radius: var(--ds-r-chip);
 }
 
 .links a:hover {
-  background: var(--surface-2);
-  text-decoration: underline;
+  color: var(--ds-text);
+  background: var(--ds-active);
 }
 
 .problem {
   margin: 0;
   padding: 0.4rem 0.75rem;
   color: var(--danger);
-  font-size: 0.9rem;
+  font-size: 0.8125rem;
 }
 
 @media (max-width: 40rem) {
@@ -168,4 +166,27 @@
     width: auto;
     max-width: none;
   }
+}
+
+/* In the app's sidebar: the full width of the sidebar, and the menu opens below it towards the page. */
+.wrap[data-placement='sidebar'] {
+  position: relative;
+  display: block;
+}
+
+.wrap[data-placement='sidebar'] .trigger {
+  justify-content: flex-start;
+  width: 100%;
+  max-width: none;
+  border-radius: 0.6rem;
+}
+
+.wrap[data-placement='sidebar'] .name {
+  flex: 1;
+  text-align: left;
+}
+
+.wrap[data-placement='sidebar'] .panel {
+  right: auto;
+  left: 0;
 }

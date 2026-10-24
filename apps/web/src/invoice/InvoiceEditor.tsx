@@ -18,6 +18,8 @@ import { useUnsavedGuard } from '../workspace/unsavedGuard';
 import { TotalsPanel } from './TotalsPanel';
 import { defaultPdfRenderer, usePdfPreview, type PdfRenderer } from './usePdfPreview';
 import styles from './InvoiceEditor.module.css';
+import { toolAppHref } from '../paths';
+import { setupHref } from '../setup/links';
 
 export interface InvoiceEditorProps {
   storage: InvoiceStorage;
@@ -270,7 +272,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
   return (
     <div className={styles.editor}>
       <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>{isNew ? `New ${name.toLowerCase()}` : 'Edit draft'}</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>{isNew ? `New ${name.toLowerCase()}` : 'Edit draft'}</h2>
         <Button variant="secondary" onClick={onBack}>
           Back to documents
         </Button>
@@ -311,7 +313,11 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
                     <li key={`${issue.path}-${issue.message}`}>{issue.message}</li>
                   ))}
                 </ul>
-                {profileIssues ? <p>Fix the items marked Profile in the Profile tab, then come back to this invoice.</p> : null}
+                {profileIssues ? (
+                  <p>
+                    Save a draft, then fix the items marked Profile in your <a href={setupHref(toolAppHref('invoice'), 'details')}>business details</a>. You come back here when they are saved.
+                  </p>
+                ) : null}
               </Notice>
             </div>
           ) : null}
@@ -390,7 +396,7 @@ export function InvoiceEditor({ storage, profile, invoiceId, initialKind = 'invo
           <TotalsPanel document={totalsDocument} />
           <section className={styles.preview} aria-labelledby="preview-heading">
             <div className={styles.header}>
-              <h3 id="preview-heading" style={{ fontSize: '1.25rem' }}>
+              <h3 id="preview-heading" style={{ fontSize: '1.0625rem' }}>
                 Preview
               </h3>
               <Button variant="secondary" onClick={() => setShowPreview((shown) => !shown)}>

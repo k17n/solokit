@@ -53,13 +53,10 @@ describe('ContractApp', () => {
   });
 
   it('warns when the browser cannot keep data', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const store = createMemoryStore();
+    await createInvoiceStorage(store).profile.save(makeSeller());
     render(
-      <StoreProvider
-        factory={() => {
-          throw new Error('blocked');
-        }}
-      >
+      <StoreProvider factory={() => store} persistent={false}>
         <ContractApp />
       </StoreProvider>,
     );

@@ -8,6 +8,7 @@ import {
   fieldHint,
   fieldLabel,
   fillParty,
+  matchingChoice,
   optionalClauses,
   parseVariableText,
   setClauseIncluded,
@@ -102,6 +103,23 @@ describe('editing helpers', () => {
     expect(filled.parties[0]).toMatchObject({ name: 'Asha Rao Consulting', email: 'asha@example.com', signatoryName: 'Asha Rao', signatoryTitle: 'Proprietor', role: 'freelancer' });
     expect(filled.parties[0]!.address).toMatchObject({ city: 'Mumbai', state: 'Maharashtra' });
     expect(filled.parties[1]).toEqual(typed.parties[1]);
+  });
+
+  it('knows which saved entry a party was filled from, until its details are changed', () => {
+    const address = { line1: '12 Linking Road', city: 'Mumbai', country: 'India' };
+    const choices = [
+      { id: 'profile', label: 'My business profile (Asha Rao Consulting)', source: { name: 'Asha Rao Consulting', email: 'asha@example.com', address } },
+      { id: 'client-1', label: 'Northwind', source: { name: 'Northwind', address } },
+    ];
+    const filled = fillParty(draft('services'), 0, choices[0]!.source);
+    expect(matchingChoice(filled.parties[0]!, choices)?.id).toBe('profile');
+    // Case and spaces do not matter; a different email or name does.
+    expect(matchingChoice(updateParty(filled, 0, { name: '  asha rao consulting ' }).parties[0]!, choices)?.id).toBe('profile');
+    expect(matchingChoice(updateParty(filled, 0, { email: 'other@example.com' }).parties[0]!, choices)).toBeUndefined();
+    expect(matchingChoice(updateParty(filled, 0, { name: 'Asha Rao LLP' }).parties[0]!, choices)).toBeUndefined();
+    // A saved client without an email matches on the name alone; an empty party matches nothing.
+    expect(matchingChoice(fillParty(draft('services'), 1, choices[1]!.source).parties[1]!, choices)?.id).toBe('client-1');
+    expect(matchingChoice(draft('services').parties[1]!, choices)).toBeUndefined();
   });
 
   it('suggests a name from the kind and the other party', () => {

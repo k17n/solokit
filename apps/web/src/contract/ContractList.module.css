@@ -10,10 +10,10 @@
   display: grid;
   gap: 0.75rem;
   padding: 1rem 1.1rem;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-left: 6px solid var(--k-line);
-  border-radius: var(--radius-m);
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
+  transition: border-color 0.15s var(--ds-ease);
 }
 
 .top {
@@ -27,9 +27,8 @@
 .title {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-family: var(--ff-display);
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 500;
   line-height: 1.25;
 }
 
@@ -73,9 +72,10 @@
 .linkButton {
   padding: 0;
   font: inherit;
-  font-weight: 700;
-  color: var(--accent-text);
+  font-weight: 500;
+  color: var(--ds-link);
   text-decoration: underline;
+  text-underline-offset: 3px;
   background: none;
   border: 0;
   cursor: pointer;
@@ -100,9 +100,9 @@
 .chooser {
   flex-basis: 100%;
   padding: 1rem;
-  background: var(--surface-2);
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-m);
+  background: var(--ds-sidebar);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
 }
 
 .ident {
@@ -122,6 +122,6 @@
 .parties {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
 }

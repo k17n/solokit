@@ -4,33 +4,39 @@
 }
 
 .tabs {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  padding-bottom: 0.9rem;
-  border-bottom: 1.5px solid var(--border);
+  gap: 2px;
+  justify-self: start;
+  max-width: 100%;
+  padding: 3px;
+  background: var(--ds-input);
+  border-radius: 999px;
 }
 
 .tab {
-  padding: 0.55rem 1rem;
-  font: 600 0.98rem/1 var(--ff-sans);
-  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  font: 500 0.8125rem/1 var(--ds-ff);
+  color: var(--ds-text-2);
   background: transparent;
-  border: 1.5px solid transparent;
-  border-radius: var(--radius-m);
+  border: 0;
+  border-radius: 999px;
   cursor: pointer;
+  transition:
+    color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease);
 }
 
 .tab:hover {
-  color: var(--text);
-  background: var(--surface-2);
+  color: var(--ds-text);
 }
 
 .tab[aria-current='page'] {
-  color: var(--text);
-  background: var(--surface);
-  border-color: var(--edge);
-  box-shadow: 0 2px 0 var(--edge);
+  color: var(--ds-text);
+  background: var(--ds-surface);
+  box-shadow:
+    0 0 0 1px var(--ds-border),
+    0 1px 2px rgb(0 0 0 / 0.08);
 }
 
 .panel {
@@ -38,9 +44,27 @@
 }
 
 .empty {
-  padding: 2rem 1.25rem;
+  padding: 2.5rem 1.25rem;
   text-align: center;
-  color: var(--text-muted);
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-m);
+  color: var(--ds-text-2);
+  background: var(--ds-sidebar);
+  border: 1px dashed var(--ds-border-strong);
+  border-radius: var(--ds-r-card);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+.detailsLink {
+  font-size: 0.875rem;
+  color: var(--ds-text-2);
+}
+
+.detailsLink:hover {
+  color: var(--ds-text);
 }

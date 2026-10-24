@@ -12,12 +12,11 @@ mkdirSync(outDir, { recursive: true });
 function svg({ rounded, inset }) {
   const scale = 1 - inset * 2;
   const offset = 64 * inset;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" ${rounded ? 'rx="14"' : ''} fill="#0B1B3A"/>
-  <g transform="translate(${offset} ${offset}) scale(${scale})">
-    <path d="M17 11h30v41.6l-5-3.4-5 3.4-5-3.4-5 3.4-5-3.4-5 3.4z" fill="#FAF8F4"/>
-    <path d="M24 24h16M24 32h10" stroke="#0B1B3A" stroke-width="3.2" stroke-linecap="round" fill="none"/>
-    <circle cx="44" cy="14" r="5" fill="#10B981"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <rect width="24" height="24" ${rounded ? 'rx="6"' : ''} fill="#D4F225"/>
+  <g transform="translate(${offset * 0.375} ${offset * 0.375}) scale(${scale})">
+    <path d="M7.5 5.5h9v12.6l-1.5-1-1.5 1-1.5-1-1.5 1-1.5-1-1.5 1z" fill="#111111"/>
+    <path d="M9.75 9.25h4.5M9.75 12h2.75" stroke="#D4F225" stroke-width="1.4" stroke-linecap="round" fill="none"/>
   </g>
 </svg>`;
 }

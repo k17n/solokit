@@ -5,7 +5,7 @@
 }
 
 .heading {
-  font-size: 1.8rem;
+  font-size: 1.375rem;
 }
 
 .heading:focus {
@@ -13,8 +13,8 @@
 }
 
 .heading:focus-visible {
-  outline: 3px solid var(--edge);
-  outline-offset: 3px;
+  outline: 2px solid var(--ds-text);
+  outline-offset: 2px;
 }
 
 .lede {
@@ -36,7 +36,7 @@
   min-width: 0;
   padding: 1rem;
   background: var(--surface);
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-m);
 }
 
@@ -49,9 +49,8 @@
 
 .name {
   min-width: 0;
-  font-family: var(--ff-display);
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -62,19 +61,19 @@
 }
 
 .action {
-  min-height: 2.5rem;
-  padding: 0.45rem 0.9rem;
-  font: 600 0.95rem/1.1 var(--ff-sans);
-  color: var(--text);
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
+  min-height: 2.25rem;
+  padding: 0.4rem 0.9rem;
+  font: 500 0.8125rem/1.1 var(--ds-ff);
+  color: var(--ds-text);
+  background: var(--ds-chip-bg);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: 999px;
   cursor: pointer;
+  transition: border-color 0.15s var(--ds-ease);
 }
 
 .action:hover:not(:disabled) {
-  border-color: var(--text-muted);
-  background: var(--surface-2);
+  border-color: var(--ds-text-2);
 }
 
 .action:disabled {
@@ -89,7 +88,7 @@
 .note {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .inline {
@@ -103,7 +102,7 @@
   gap: 0.9rem;
   padding: 1rem;
   background: var(--danger-bg);
-  border: 1.5px solid var(--danger);
+  border: 1px solid var(--danger);
   border-radius: var(--radius-m);
 }
 
@@ -112,26 +111,25 @@
 }
 
 .confirm:focus-visible {
-  outline: 3px solid var(--edge);
-  outline-offset: 3px;
+  outline: 2px solid var(--ds-text);
+  outline-offset: 2px;
 }
 
 .confirmTitle {
-  font-family: var(--ff-display);
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .confirmDelete {
-  min-height: 2.75rem;
+  min-height: 2.5rem;
   max-width: 100%;
-  padding: 0.65rem 1.1rem;
-  font: 700 1rem/1.15 var(--ff-sans);
+  padding: 0.55rem 1.1rem;
+  font: 500 0.875rem/1.15 var(--ds-ff);
   overflow-wrap: anywhere;
   color: #fff;
-  background: #b42318;
-  border: 1.5px solid #7a1710;
-  border-radius: var(--radius-m);
+  background: #c4320a;
+  border: 1px solid #c4320a;
+  border-radius: 999px;
   cursor: pointer;
 }
 
@@ -142,6 +140,6 @@
 
 .done {
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--accent-text);
 }

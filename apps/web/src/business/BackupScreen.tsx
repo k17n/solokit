@@ -260,7 +260,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
 
   return (
     <div className={styles.screen}>
-      <h2 style={{ fontSize: '1.8rem' }}>Backup &amp; restore</h2>
+      <h2 style={{ fontSize: '1.5rem' }}>Backup &amp; restore</h2>
       <p className={styles.lede}>
         Everything is saved only in this browser. If you clear your browser data or lose this device, it is gone. A backup file lets you keep a copy somewhere safe and bring it back on any device.
       </p>
@@ -278,7 +278,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
 
       {restoreOnly ? null : (
       <section className={styles.card} aria-labelledby={`${summaryId}-download`}>
-        <h3 id={`${summaryId}-download`} style={{ fontSize: '1.25rem' }}>
+        <h3 id={`${summaryId}-download`} style={{ fontSize: '1.0625rem' }}>
           Download a backup
         </h3>
         <Notice tone="warning" title="Keep this file private">
@@ -301,7 +301,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
       )}
 
       <section className={styles.card} aria-labelledby={`${summaryId}-restore`}>
-        <h3 id={`${summaryId}-restore`} style={{ fontSize: '1.25rem' }}>
+        <h3 id={`${summaryId}-restore`} style={{ fontSize: '1.0625rem' }}>
           Restore from a backup
         </h3>
         <p>
@@ -324,7 +324,7 @@ export function BackupScreen({ store, onRestored, restoreOnly = false, now = rea
 
         {pending ? (
           <section className={styles.confirm} aria-labelledby={`${summaryId}-summary`} ref={summaryRef} tabIndex={-1}>
-            <h4 id={`${summaryId}-summary`} style={{ fontSize: '1.1rem' }}>
+            <h4 id={`${summaryId}-summary`} style={{ fontSize: '1rem' }}>
               Restore this backup?
             </h4>
             <ul>

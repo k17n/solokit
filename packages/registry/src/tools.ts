@@ -9,6 +9,10 @@ export interface ToolDefinition {
   category: ToolCategory;
   status: ToolStatus;
   featured?: boolean;
+  /** A short name for the app's navigation, such as "Invoices". Ready tools need one. */
+  navLabel?: string;
+  /** Other words people search for this tool by, beyond its name and tagline ("bill", "NDA"). */
+  keywords?: readonly string[];
 }
 
 export const TOOL_CATEGORY_LABELS: Record<ToolCategory, string> = {
@@ -29,6 +33,8 @@ const TOOLS: readonly ToolDefinition[] = [
     category: 'money',
     status: 'available',
     featured: true,
+    navLabel: 'Invoices',
+    keywords: ['bill', 'tax invoice', 'quotation', 'quote', 'estimate', 'proforma', 'GST', 'bill of supply', 'receipt', 'payment'],
   },
   {
     slug: 'rate-calculator',
@@ -37,6 +43,7 @@ const TOOLS: readonly ToolDefinition[] = [
     description: 'Turn your income goal, expenses, taxes and billable hours into an hourly or daily rate.',
     category: 'money',
     status: 'coming-soon',
+    keywords: ['pricing', 'rate', 'how much to charge', 'day rate'],
   },
   {
     slug: 'contract',
@@ -46,6 +53,8 @@ const TOOLS: readonly ToolDefinition[] = [
       'Make a mutual or one-way NDA, or a freelance services agreement, in plain English. Answer a few questions, check a summary of your choices, and download a PDF, an editable Word file, or a review pack to send to your lawyer. A template, not legal advice.',
     category: 'clients',
     status: 'available',
+    navLabel: 'Agreements',
+    keywords: ['NDA', 'non-disclosure', 'confidentiality', 'agreement', 'contract', 'freelance', 'services agreement', 'legal'],
   },
   {
     slug: 'time-tracker',
@@ -54,6 +63,7 @@ const TOOLS: readonly ToolDefinition[] = [
     description: 'Track time per client and project, then turn a timesheet into invoice line items.',
     category: 'clients',
     status: 'coming-soon',
+    keywords: ['timesheet', 'hours', 'timer'],
   },
   {
     slug: 'qr-code',
@@ -62,6 +72,7 @@ const TOOLS: readonly ToolDefinition[] = [
     description: 'Make QR codes for payment links, websites, Wi-Fi and contact details, and download them as PNG or SVG.',
     category: 'marketing',
     status: 'coming-soon',
+    keywords: ['UPI', 'payment link', 'wifi', 'vCard'],
   },
   {
     slug: 'email-signature',
@@ -70,6 +81,7 @@ const TOOLS: readonly ToolDefinition[] = [
     description: 'Pick a layout, add your details and logo, and copy a signature that works in any email app.',
     category: 'marketing',
     status: 'coming-soon',
+    keywords: ['email', 'signature', 'branding'],
   },
 ];
 

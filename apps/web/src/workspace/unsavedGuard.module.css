@@ -6,6 +6,7 @@
   place-items: center;
   padding: 1rem;
   background: rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(4px);
 }
 
 .box {
@@ -15,13 +16,14 @@
   padding: 1.25rem;
   color: var(--text);
   background: var(--surface);
-  border: 1.5px solid var(--edge);
-  border-radius: var(--radius-m);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-r-frame);
+  box-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.4);
 }
 
 .title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.0625rem;
 }
 
 .text,

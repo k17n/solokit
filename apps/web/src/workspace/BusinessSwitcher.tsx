@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { BUSINESS_PATH } from '../paths';
 import { useWorkspaces } from './WorkspaceProvider';
 import { useGuardedSwitch } from './useGuardedSwitch';
 import styles from './BusinessSwitcher.module.css';
@@ -11,7 +12,7 @@ import styles from './BusinessSwitcher.module.css';
  * through it, the arrow keys are a shortcut, Escape closes it and gives focus back to the button. A polite live region
  * says "Now working in <name>" whenever the current Business changes, however that came about.
  */
-export function BusinessSwitcher() {
+export function BusinessSwitcher({ placement = 'header' }: { placement?: 'header' | 'sidebar' } = {}) {
   const { ready, workspaces, current } = useWorkspaces();
   const switchTo = useGuardedSwitch();
   const [open, setOpen] = useState(false);
@@ -87,7 +88,7 @@ export function BusinessSwitcher() {
   }
 
   return (
-    <div className={styles.wrap} ref={wrapRef} onKeyDown={onKeyDown} onBlur={onBlur}>
+    <div className={styles.wrap} data-placement={placement} ref={wrapRef} onKeyDown={onKeyDown} onBlur={onBlur}>
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
@@ -125,8 +126,8 @@ export function BusinessSwitcher() {
                 </p>
               ) : null}
               <div className={styles.links}>
-                <a href="/business/#add">+ Add a business</a>
-                <a href="/business/#businesses">Manage businesses</a>
+                <a href={`${BUSINESS_PATH}#add`}>+ Add a business</a>
+                <a href={`${BUSINESS_PATH}#businesses`}>Manage businesses</a>
               </div>
             </div>
           ) : null}

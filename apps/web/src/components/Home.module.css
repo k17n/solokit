@@ -1,0 +1,12 @@
+.page {
+  font-family: var(--ds-ff);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ds-text);
+  background: var(--ds-bg);
+}
+
+/* only the family: weights and sizes belong to each component's own classes */
+.page :where(h1, h2, h3, h4) {
+  font-family: var(--ds-ff);
+}

@@ -123,7 +123,7 @@ export function ContractViewer({ storage, invoice, contractId, onBack, onEdit, e
   return (
     <div className={styles.editor}>
       <div className={styles.header}>
-        <h2 style={{ fontSize: '1.8rem' }}>{displayTitle(current)}</h2>
+        <h2 style={{ fontSize: '1.5rem' }}>{displayTitle(current)}</h2>
         <Button variant="secondary" onClick={onBack}>
           Back to agreements
         </Button>

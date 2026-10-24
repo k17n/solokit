@@ -15,7 +15,7 @@ describe('ToolGrid', () => {
     render(<ToolGrid />);
     const section = screen.getByRole('region', { name: 'Tools' });
     const link = within(section).getByRole('link', { name: /Alpha tool/ });
-    expect(link).toHaveAttribute('href', '/tools/alpha/');
+    expect(link).toHaveAttribute('href', '/app/alpha/');
     expect(within(link).getByText('Ready')).toBeInTheDocument();
   });
 

@@ -13,40 +13,47 @@ export function ReceiptDemo() {
   return (
     <section className={styles.receipt} aria-label="Live GST example">
       <header className={styles.head}>
-        <span className={styles.stamp}>Example</span>
-        <span className={`num ${styles.title}`}>Tax invoice</span>
+        <p className={styles.title}>Tax invoice</p>
+        <span className={styles.status}>Example</span>
       </header>
+      <p className={styles.desc}>One line at 18% GST. Change the amount or where the buyer is.</p>
 
-      <label className={styles.label} htmlFor={inputId}>
-        Amount before GST
-      </label>
-      <div className={styles.field}>
-        <span className={`num ${styles.symbol}`} aria-hidden="true">
-          ₹
-        </span>
-        <input
-          id={inputId}
-          className={`num ${styles.input}`}
-          inputMode="decimal"
-          autoComplete="off"
-          value={amount}
-          onChange={(event) => setAmount(event.target.value)}
-        />
+      <div className={styles.form}>
+        <div className={styles.amount}>
+          <label className={styles.label} htmlFor={inputId}>
+            Amount before GST
+          </label>
+          <div className={styles.field}>
+            <span className={`num ${styles.symbol}`} aria-hidden="true">
+              ₹
+            </span>
+            <input
+              id={inputId}
+              className={`num ${styles.input}`}
+              inputMode="decimal"
+              autoComplete="off"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+            />
+          </div>
+        </div>
+
+        <fieldset className={styles.supply}>
+          <legend className={styles.label}>Where is the buyer?</legend>
+          <div className={styles.segmented}>
+            <label className={styles.choice}>
+              <input type="radio" name="supply" checked={sameState} onChange={() => setSameState(true)} />
+              <span>Buyer in Maharashtra</span>
+            </label>
+            <label className={styles.choice}>
+              <input type="radio" name="supply" checked={!sameState} onChange={() => setSameState(false)} />
+              <span>Buyer in another state</span>
+            </label>
+          </div>
+        </fieldset>
       </div>
 
-      <fieldset className={styles.supply}>
-        <legend className="sr-only">Where is the buyer?</legend>
-        <label className={styles.choice}>
-          <input type="radio" name="supply" checked={sameState} onChange={() => setSameState(true)} />
-          <span>Buyer in Maharashtra</span>
-        </label>
-        <label className={styles.choice}>
-          <input type="radio" name="supply" checked={!sameState} onChange={() => setSameState(false)} />
-          <span>Buyer in another state</span>
-        </label>
-      </fieldset>
-
-      <div aria-live="polite">
+      <div aria-live="polite" className={styles.result}>
         {result ? (
           <>
             <dl className={styles.rows}>

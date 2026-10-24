@@ -7,7 +7,7 @@ export interface TotalsPanelProps {
 export function TotalsPanel({ document }: TotalsPanelProps) {
   return (
     <section aria-labelledby="totals-heading" style={{ display: 'grid', gap: '0.75rem' }}>
-      <h3 id="totals-heading" style={{ fontSize: '1.25rem' }}>
+      <h3 id="totals-heading" style={{ fontSize: '1.0625rem' }}>
         Totals
       </h3>
       {document === null ? (
@@ -22,9 +22,9 @@ export function TotalsPanel({ document }: TotalsPanelProps) {
                   display: 'flex',
                   justifyContent: 'space-between',
                   gap: '1rem',
-                  fontWeight: row.emphasis === 'total' || row.emphasis === 'net' ? 700 : 400,
+                  fontWeight: row.emphasis === 'total' || row.emphasis === 'net' ? 600 : 400,
                   color: row.emphasis === 'muted' ? 'var(--text-muted)' : undefined,
-                  borderTop: row.emphasis === 'total' ? '1.5px solid var(--edge)' : undefined,
+                  borderTop: row.emphasis === 'total' ? '1px solid var(--ds-border-strong)' : undefined,
                   paddingTop: row.emphasis === 'total' ? '0.4rem' : undefined,
                 }}
               >
@@ -33,9 +33,9 @@ export function TotalsPanel({ document }: TotalsPanelProps) {
               </li>
             ))}
           </ul>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{document.amountInWords}</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{document.amountInWords}</p>
           {document.declarations.map((line) => (
-            <p key={line} style={{ fontSize: '0.9rem' }}>
+            <p key={line} style={{ fontSize: '0.8125rem' }}>
               {line}
             </p>
           ))}

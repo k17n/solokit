@@ -1,18 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { startDocument } from './helpers';
+import { onboardInvoice } from './setup-helpers';
 
 const shots = 'test-results';
 
 async function onboardRegular(page: Page) {
-  await page.goto('/tools/invoice/');
-  await page.getByRole('radio', { name: /Regular GST registration/ }).check();
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.getByLabel('Business or personal name').fill('Asha Rao Consulting');
-  await page.getByLabel('GSTIN').fill('27AABCT3518Q1ZW');
-  await page.getByLabel('Address line 1').fill('12 Linking Road');
-  await page.getByLabel('City').fill('Mumbai');
-  await page.getByRole('button', { name: 'Save and continue' }).click();
-  await expect(page.getByRole('button', { name: 'Documents' })).toHaveAttribute('aria-current', 'page');
+  await onboardInvoice(page, { gst: 'regular' });
 }
 
 async function fillDocument(page: Page, client: string) {
@@ -33,7 +26,7 @@ test('the Documents page: one New control, three distinct kinds, filters with co
   await onboardRegular(page);
 
   const nav = page.getByRole('navigation', { name: 'Invoice tool' });
-  await expect(nav.getByRole('button')).toHaveText(['Documents', 'Themes', 'Backup & restore', 'Profile']);
+  await expect(nav.getByRole('button')).toHaveText(['Documents', 'Themes', 'Backup & restore']);
 
   // First run: the three kinds are shown directly, with the usual order.
   await expect(page.getByRole('heading', { name: 'Start your first document' })).toBeVisible();

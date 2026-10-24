@@ -26,7 +26,7 @@ export function LogoField({ value, onChange, process = processLogoFile }: LogoFi
 
   return (
     <div style={{ display: 'grid', gap: '0.6rem' }}>
-      <label htmlFor={inputId} style={{ fontWeight: 600 }}>
+      <label htmlFor={inputId} style={{ fontWeight: 500 }}>
         Logo
       </label>
       <input
@@ -38,7 +38,7 @@ export function LogoField({ value, onChange, process = processLogoFile }: LogoFi
           event.target.value = '';
         }}
       />
-      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+      <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         Optional. It is shrunk on your device and printed at the top of your invoices.
       </p>
       {value ? (

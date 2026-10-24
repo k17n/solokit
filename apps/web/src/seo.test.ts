@@ -22,9 +22,10 @@ describe('site url', () => {
 });
 
 describe('sitemap', () => {
-  it('lists home, business, privacy and only the tools that are available', () => {
+  it('lists home, privacy and the landing pages of the tools that are available, and nothing in the app', () => {
     const paths = sitemapPaths();
-    expect(paths.slice(0, 3)).toEqual(['/', '/business/', '/privacy/']);
+    expect(paths.slice(0, 2)).toEqual(['/', '/privacy/']);
+    expect(paths.some((path) => path.startsWith('/app/'))).toBe(false);
     expect(paths).toContain('/tools/invoice/');
     expect(paths).toContain('/tools/contract/');
     expect(paths).not.toContain('/tools/qr-code/');

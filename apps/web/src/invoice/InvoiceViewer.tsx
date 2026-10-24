@@ -154,7 +154,7 @@ export function InvoiceViewer({ storage, invoiceId, onBack, onEdit, onView, rend
     <div style={{ display: 'grid', gap: '1.5rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-          <h2 style={{ fontSize: '1.8rem', fontFamily: 'var(--ff-mono)' }}>{current.number}</h2>
+          <h2 style={{ fontSize: '1.5rem', fontVariantNumeric: 'tabular-nums' }}>{current.number}</h2>
           <KindBadge kind={current.kind} large />
           <StatusBadge status={current.status} />
           <ConvertedBadge invoice={current} />

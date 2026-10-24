@@ -25,7 +25,7 @@ export function ExportBar({ onExport, busy, error }: ExportBarProps) {
         {button('review-pdf', 'Download review pack', 'secondary')}
         {button('review-docx', 'Review pack as Word', 'ghost')}
       </div>
-      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
         The Word file is editable, so your lawyer can mark it up. The review pack is the agreement followed by a summary of your choices and questions to ask a lawyer.
       </p>
       {error ? <Notice tone="danger">{error}</Notice> : null}
