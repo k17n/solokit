@@ -1,4 +1,5 @@
-import { render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ServiceWorkerRegister } from './ServiceWorkerRegister';
 
@@ -59,5 +60,29 @@ describe('ServiceWorkerRegister', () => {
   it('does nothing in browsers without service worker support', () => {
     vi.stubEnv('NODE_ENV', 'production');
     expect(() => render(<ServiceWorkerRegister />)).not.toThrow();
+  });
+
+  it('shows a reload banner when a new version takes over an open window, and hides it on Later', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    let takeOver = () => {};
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: {},
+        register: vi.fn().mockResolvedValue({ update: vi.fn() }),
+        addEventListener: (_type: string, fn: () => void) => {
+          takeOver = fn;
+        },
+        removeEventListener: vi.fn(),
+      },
+      configurable: true,
+    });
+    render(<ServiceWorkerRegister />);
+    expect(screen.queryByText(/new version of SoloKit/)).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(takeOver).not.toBe(undefined));
+    await act(async () => takeOver());
+    expect(await screen.findByText(/new version of SoloKit is ready/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Later' }));
+    expect(screen.queryByText(/new version of SoloKit/)).not.toBeInTheDocument();
   });
 });

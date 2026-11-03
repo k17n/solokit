@@ -7,6 +7,7 @@ import { Logo } from '@solokit/ui';
 import { ToolIcon } from '../components/ToolIcon';
 import { APP_HOME, BUSINESS_PATH, SETUP_PATH, toolAppHref } from '../paths';
 import { REQUEST_TOOL_URL } from '../site';
+import { StorageNotice } from '../storage/StorageNotice';
 import { BusinessSwitcher } from '../workspace/BusinessSwitcher';
 import { useConfirmLeave } from '../workspace/unsavedGuard';
 import { AppLink } from './AppLink';
@@ -207,7 +208,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className={styles.main}>{children}</div>
+      <div className={styles.main}>
+        <div className="container">
+          <StorageNotice />
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

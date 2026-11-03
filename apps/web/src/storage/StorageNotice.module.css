@@ -1,0 +1,15 @@
+.wrap {
+  margin: 1rem 0;
+}
+
+.dismiss {
+  margin-left: 0.75rem;
+  padding: 0;
+  font: inherit;
+  color: var(--ds-text-2);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

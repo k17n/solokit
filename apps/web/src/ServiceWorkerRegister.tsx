@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { UpdateBanner } from './update/UpdateBanner';
+import { watchForUpdate } from './update/watchForUpdate';
 
 export function ServiceWorkerRegister() {
+  const [updateReady, setUpdateReady] = useState(false);
+
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     if (process.env.NODE_ENV !== 'production') {
@@ -13,10 +17,22 @@ export function ServiceWorkerRegister() {
         .catch(() => {});
       return;
     }
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // The site works without the service worker; offline support is a bonus.
-    });
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        if (cancelled) return;
+        stop = watchForUpdate(navigator.serviceWorker, registration, () => setUpdateReady(true));
+      })
+      .catch(() => {
+        // The site works without the service worker; offline support is a bonus.
+      });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
   }, []);
 
-  return null;
+  return updateReady ? <UpdateBanner onReload={() => window.location.reload()} onLater={() => setUpdateReady(false)} /> : null;
 }
