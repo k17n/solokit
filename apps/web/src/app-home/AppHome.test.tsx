@@ -101,6 +101,14 @@ describe('AppHome', () => {
     expect(tools.getByText(/Coming soon:/).closest('p')).toHaveTextContent('Time tracker');
   });
 
+  it('links to the request-a-tool form under the tools', async () => {
+    renderHome(await setUp());
+    const tools = within(await screen.findByRole('region', { name: 'Your tools' }));
+    const link = tools.getByRole('link', { name: /Request a tool/ });
+    expect(link).toHaveAttribute('href', expect.stringContaining('/issues/new?template=tool-request.yml'));
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('searches as you type, instead of the usual sections, and Enter opens the first result', async () => {
     renderHome(await setUp());
     await userEvent.type(await screen.findByRole('searchbox'), 'nda');

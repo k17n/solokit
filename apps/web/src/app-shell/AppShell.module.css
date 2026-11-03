@@ -257,3 +257,8 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* Sits under the tools, set apart from the navigation proper. */
+.request {
+  margin-top: 0.75rem;
+}

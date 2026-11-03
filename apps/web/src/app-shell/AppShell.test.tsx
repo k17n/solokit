@@ -44,6 +44,15 @@ describe('AppShell', () => {
     expect(sidebar.queryByRole('link', { name: /Time tracker/ })).not.toBeInTheDocument();
   });
 
+  it('offers a request-a-tool link to GitHub, outside the app navigation', () => {
+    render(<AppShell>page</AppShell>);
+    const sidebar = within(screen.getByRole('complementary', { name: 'SoloKit app' }));
+    const link = sidebar.getByRole('link', { name: /Request a tool/ });
+    expect(link).toHaveAttribute('href', expect.stringContaining('/issues/new?template=tool-request.yml'));
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(nav().queryByRole('link', { name: /Request a tool/ })).not.toBeInTheDocument();
+  });
+
   it('marks the page shown, also deeper in a section and without a trailing slash', () => {
     pathname = '/app/invoice';
     const { unmount } = render(<AppShell>page</AppShell>);

@@ -13,6 +13,7 @@ import { deepLinkHref } from '../app-shell/deepLinks';
 import { ToolIcon } from '../components/ToolIcon';
 import { useContractStorage } from '../contract/useContractStorage';
 import { BUSINESS_PATH, toolAppHref } from '../paths';
+import { REQUEST_TOOL_URL } from '../site';
 import { AFTER_FIRST_SETUP } from '../setup/links';
 import { SetupRequired } from '../setup/SetupRequired';
 import { quickActions, search, type SearchItem } from './search';
@@ -342,6 +343,12 @@ export function AppHome({ now = () => new Date() }: { now?: () => Date } = {}) {
                 <span>Coming soon:</span> {soon.map((tool) => tool.name).join(', ')}
               </p>
             ) : null}
+            <p className={styles.soonLine}>
+              <span>Need something else?</span>{' '}
+              <a href={REQUEST_TOOL_URL} target="_blank" rel="noopener noreferrer">
+                Request a tool<span className="sr-only"> (opens GitHub in a new tab)</span>
+              </a>
+            </p>
           </section>
         </>
       )}

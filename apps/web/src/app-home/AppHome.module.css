@@ -325,3 +325,8 @@ a.result:hover {
 .soonLine span {
   color: var(--ds-text-2);
 }
+
+.soonLine a {
+  color: var(--ds-text);
+  text-underline-offset: 3px;
+}

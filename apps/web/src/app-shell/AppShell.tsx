@@ -6,6 +6,7 @@ import { getTools, type ToolDefinition } from '@solokit/registry';
 import { Logo } from '@solokit/ui';
 import { ToolIcon } from '../components/ToolIcon';
 import { APP_HOME, BUSINESS_PATH, SETUP_PATH, toolAppHref } from '../paths';
+import { REQUEST_TOOL_URL } from '../site';
 import { BusinessSwitcher } from '../workspace/BusinessSwitcher';
 import { useConfirmLeave } from '../workspace/unsavedGuard';
 import { AppLink } from './AppLink';
@@ -27,6 +28,7 @@ interface NavItem {
 /** Outline icons, on the same 16-unit grid as the tool icons. */
 const GLYPHS = {
   home: 'M2.75 7.25 8 3l5.25 4.25M4.25 6.25v6.5h7.5v-6.5M6.75 12.75v-3.5h2.5v3.5',
+  request: 'M8 3v10M3 8h10',
   business: 'M3.25 13.25V4.75L8 2.75l4.75 2v8.5M2.25 13.25h11.5M6 6.5h1M9 6.5h1M6 9h1M9 9h1',
 } as const;
 
@@ -186,6 +188,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </ul>
           </div>
         ) : null}
+
+        <a className={`${styles.navLink} ${styles.request}`} href={REQUEST_TOOL_URL} target="_blank" rel="noopener noreferrer">
+          <Glyph d={GLYPHS.request} />
+          Request a tool
+          <span className="sr-only"> (opens GitHub in a new tab)</span>
+        </a>
 
         <div className={styles.sideFoot}>
           <p className={styles.saved}>
