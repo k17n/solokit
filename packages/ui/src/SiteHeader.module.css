@@ -55,23 +55,31 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.35rem 0.75rem;
-  border: 1.5px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-muted);
-  font-size: 0.9rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8125rem;
   font-weight: 500;
-  text-decoration: none;
+  line-height: 1.2;
   white-space: nowrap;
+  text-decoration: none;
+  color: var(--ds-text-2);
+  background: var(--ds-chip-bg);
+  border: 1px solid var(--ds-border);
+  border-radius: 999px;
+  transition:
+    color 0.15s var(--ds-ease),
+    background-color 0.15s var(--ds-ease),
+    border-color 0.15s var(--ds-ease);
 }
 
 .github:hover {
-  color: var(--text);
-  border-color: var(--amber);
+  color: var(--ds-text);
+  background: var(--ds-active);
+  border-color: var(--ds-border-strong);
 }
 
 .github svg {
-  color: var(--amber);
+  flex: none;
 }
 
 .extra {
