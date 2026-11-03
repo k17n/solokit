@@ -35,4 +35,12 @@ describe('ToolGrid', () => {
     expect(within(section).getByText('Beta tool')).toBeInTheDocument();
     expect(within(section).getByText('Coming soon')).toBeInTheDocument();
   });
+
+  it('offers a request-a-tool link to the GitHub issue form', () => {
+    render(<ToolGrid />);
+    const link = screen.getByRole('link', { name: /Request a tool/ });
+    expect(link).toHaveAttribute('href', expect.stringContaining('/issues/new?template=tool-request.yml'));
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
 });

@@ -1,0 +1,33 @@
+name: Request a tool
+description: Suggest a new tool or an improvement for SoloKit
+title: "Tool request: "
+labels: ["tool-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape SoloKit. Please do not include client names, numbers or other private business details.
+  - type: input
+    id: tool
+    attributes:
+      label: What tool do you need?
+      description: A short name, for example "Salary slip generator".
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to get done?
+      description: Describe the paperwork or task and who it is for.
+    validations:
+      required: true
+  - type: input
+    id: country
+    attributes:
+      label: Country or tax rules it needs to follow
+      placeholder: India (GST), other...
+  - type: textarea
+    id: example
+    attributes:
+      label: Anything similar you use today?
+      description: Links to tools or sample (non-private) documents help.

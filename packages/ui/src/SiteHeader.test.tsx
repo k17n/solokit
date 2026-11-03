@@ -26,4 +26,12 @@ describe('SiteHeader', () => {
     const cta = screen.getByRole('link', { name: 'Create an invoice' });
     expect(button.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('shows a GitHub star link that opens in a new tab', () => {
+    render(<SiteHeader {...props} github={{ label: 'Star on GitHub', href: 'https://github.com/o/r' }} />);
+    const link = screen.getByRole('link', { name: /Star on GitHub/ });
+    expect(link).toHaveAttribute('href', 'https://github.com/o/r');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
 });

@@ -2,7 +2,7 @@ import { Badge } from './Badge';
 import { BackToTop } from './BackToTop';
 import { BRAND } from './brand';
 import { formatIsoDate } from './format';
-import type { NavLink } from './SiteHeader';
+import { externalProps, type NavLink } from './SiteHeader';
 import styles from './SiteFooter.module.css';
 
 export interface FooterTool {
@@ -77,7 +77,10 @@ export function SiteFooter({ tools, countries, projectLinks, rulesAsOf }: SiteFo
           <ul className={styles.list}>
             {projectLinks.map((link) => (
               <li key={link.href}>
-                <a href={link.href}>{link.label}</a>
+                <a href={link.href} {...externalProps(link)}>
+                  {link.label}
+                  {link.external ? <span className="sr-only"> (opens in a new tab)</span> : null}
+                </a>
               </li>
             ))}
           </ul>

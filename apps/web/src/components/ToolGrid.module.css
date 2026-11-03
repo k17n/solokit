@@ -283,3 +283,16 @@
   background: var(--ds-active);
   border-radius: 999px;
 }
+
+.request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-top: 2.5rem;
+  padding: 1.25rem;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-m);
+  color: var(--text-muted);
+}

@@ -1,6 +1,8 @@
 import { TOOL_CATEGORY_LABELS, getTools, type ToolDefinition } from '@solokit/registry';
+import { Button } from '@solokit/ui';
 import { toolAppHref } from '../paths';
 import { ToolIcon } from './ToolIcon';
+import { REQUEST_TOOL_URL } from '../site';
 import styles from './ToolGrid.module.css';
 
 /** A one-line sample shown on each ready tool's showcase canvas; decoration, so it stays out of the link's name. */
@@ -77,6 +79,12 @@ export function ToolGrid() {
       </div>
       <ToolGroup label="Ready to use" tools={ready} ready />
       <ToolGroup label="On the way" tools={soon} ready={false} />
+      <div className={styles.request}>
+        <p>Missing something you need? Tell us what to build next.</p>
+        <Button href={REQUEST_TOOL_URL} variant="secondary" target="_blank" rel="noopener noreferrer">
+          Request a tool<span className="sr-only"> (opens GitHub in a new tab)</span>
+        </Button>
+      </div>
     </section>
   );
 }

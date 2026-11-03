@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { IN_RULES_AS_OF } from '@solokit/tax-engines';
-import { HEADER_PROPS, getFooterProps } from './site';
+import { HEADER_PROPS, REPO_URL, REQUEST_TOOL_URL, getFooterProps } from './site';
 
 describe('site config', () => {
   it('keeps the website header about the website, with Get started into the app', () => {
@@ -34,6 +34,13 @@ describe('site config', () => {
       { label: 'Home', href: '/' },
       { label: 'Open SoloKit', href: '/app/' },
       { label: 'Privacy', href: '/privacy/' },
+      { label: 'Request a tool', href: REQUEST_TOOL_URL, external: true },
+      { label: 'GitHub', href: REPO_URL, external: true },
     ]);
+  });
+
+  it('sends tool requests to the GitHub issue form and stars to the repository', () => {
+    expect(REQUEST_TOOL_URL).toBe('https://github.com/k17n/solokit/issues/new?template=tool-request.yml');
+    expect(HEADER_PROPS.github).toEqual({ label: 'Star on GitHub', href: REPO_URL, external: true });
   });
 });
